@@ -1,3 +1,6 @@
 [submodule "submodules/GSL"]
 	path = submodules/GSL
 	url = https://github.com/Microsoft/GSL
+[submodule "submodules/flat_hash_map"]
+	path = submodules/flat_hash_map
+	url = https://github.com/skarupke/flat_hash_map

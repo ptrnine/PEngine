@@ -5,7 +5,7 @@ macro(git_submodule_build _project_name)
         set(multiValueArgs CMAKE_ARGS)
         cmake_parse_arguments(${_project_name} "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-        message("-- Build submodule '${_project_name}' at ${CMAKE_SOURCE_DIR}/remote/${_project_name}")
+        message("-- Build submodule '${_project_name}' at ${CMAKE_SOURCE_DIR}/submodules/${_project_name}")
 
         set(${_project_name}_command
                 -G ${CMAKE_GENERATOR}
@@ -13,14 +13,14 @@ macro(git_submodule_build _project_name)
                 -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                 -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
                 -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/3rd
-                -B${CMAKE_BINARY_DIR}/remote/${_project_name}
+                -B${CMAKE_BINARY_DIR}/submodules/${_project_name}
                 )
 
         list(APPEND ${_project_name}_command ${${_project_name}_CMAKE_ARGS})
 
         execute_process(COMMAND ${CMAKE_COMMAND} ${${_project_name}_command}
                 RESULT_VARIABLE result
-                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/remote/${_project_name}/${${_project_name}_CMAKE_LISTS_DIR}
+                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/submodules/${_project_name}/${${_project_name}_CMAKE_LISTS_DIR}
                 )
 
         if(result)
@@ -29,7 +29,7 @@ macro(git_submodule_build _project_name)
 
         execute_process(COMMAND ${CMAKE_COMMAND} --build . --target install
                 RESULT_VARIABLE result
-                WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/remote/${_project_name}
+                WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/submodules/${_project_name}
                 )
 
         if(result)
@@ -39,12 +39,12 @@ macro(git_submodule_build _project_name)
         if (${_project_name}_INSTALL_SUB_DEPS)
             message("Install sub-dependenies of ${_project_name}...")
 
-            file(COPY "${CMAKE_BINARY_DIR}/remote/${_project_name}/3rd/" DESTINATION "${CMAKE_BINARY_DIR}/3rd/")
+            file(COPY "${CMAKE_BINARY_DIR}/submodules/${_project_name}/3rd/" DESTINATION "${CMAKE_BINARY_DIR}/3rd/")
         endif()
 
         set(${_project_name}_ALREADY_BUILT ON CACHE STRING "Is submodule already built")
     else()
-        message("-- Submodule '${_project_name}' at ${CMAKE_SOURCE_DIR}/remote/${_project_name} already build")
+        message("-- Submodule '${_project_name}' at ${CMAKE_SOURCE_DIR}/submodules/${_project_name} already build")
     endif()
 
 endmacro()
@@ -70,7 +70,7 @@ macro(git_submodule_copy_files _project_name)
 
     foreach(_file ${${_project_name}_INCLUDES})
         get_filename_component(_path ${_file} DIRECTORY)
-        set(_src_path "${CMAKE_SOURCE_DIR}/remote/${_project_name}/${_file}")
+        set(_src_path "${CMAKE_SOURCE_DIR}/submodules/${_project_name}/${_file}")
         set(_dst_path "${CMAKE_BINARY_DIR}/3rd/include")
 
         if(${_project_name}_NO_NAME_INCLUDE)
@@ -88,6 +88,6 @@ macro(git_submodule_copy_files _project_name)
 
     foreach(_file ${${_project_name}_LIBRARIES})
         get_filename_component(_path ${_file} DIRECTORY)
-        file(COPY "${CMAKE_SOURCE_DIR}/remote/${_project_name}/${_file}" DESTINATION "${CMAKE_BINARY_DIR}/3rd/lib/${_path}")
+        file(COPY "${CMAKE_SOURCE_DIR}/submodules/${_project_name}/${_file}" DESTINATION "${CMAKE_BINARY_DIR}/3rd/lib/${_path}")
     endforeach()
 endmacro()
