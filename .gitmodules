@@ -7,3 +7,9 @@
 [submodule "submodules/glm"]
 	path = submodules/glm
 	url = https://github.com/g-truc/glm
+[submodule "submodules/Catch2"]
+	path = submodules/Catch2
+	url = https://github.com/catchorg/Catch2
+[submodule "submodules/robin-map"]
+	path = submodules/robin-map
+	url = https://github.com/Tessil/robin-map

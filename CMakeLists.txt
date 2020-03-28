@@ -1,18 +1,46 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.15)
 project(EvoEngine)
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    set(specific_compiler_flags "-Xclang -fconcepts-ts")
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+set(CMAKE_CXX_STANDARD 20)
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(specific_compiler_flags "-fconcepts")
-else()
-    message(ERROR "Unsupported compiler")
 endif()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++2a -fstrict-aliasing -Wall -pedantic ${specific_compiler_flags}")
+set(cxx_flags
+    -fstrict-aliasing
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wcast-align
+    -Wconversion
+    -Wctor-dtor-privacy
+    -Wduplicated-branches
+    -Wduplicated-cond
+    -Wextra-semi
+    -Wfloat-equal
+    -Wlogical-op
+    -Wnon-virtual-dtor
+    -Wold-style-cast
+    -Woverloaded-virtual
+    -Wredundant-decls
+    -Wsign-conversion
+    -Wsign-promo
+    -Wno-unused-function -Wno-missing-braces
+)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${specific_compiler_flags}")
+foreach(flag IN LISTS cxx_flags)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${flag}")
+endforeach()
+
 
 set(CMAKE_PREFIX_PATH "${CMAKE_BINARY_DIR}/3rd")
-include_directories("${CMAKE_BINARY_DIR}/3rd/include")
+include_directories(SYSTEM "${CMAKE_BINARY_DIR}/3rd/include")
+include_directories(src)
+
+# GLM
+include_directories(SYSTEM submodules/glm)
 
 # CMake modules
 include(CMake/git_submodule_build.cmake)
@@ -22,7 +50,15 @@ include(CMake/git_submodule_update.cmake)
 git_submodule_update()
 
 # Build submodules
-git_submodule_build(GSL)
+git_submodule_build(GSL CMAKE_ARGS -DGSL_TEST=OFF)
+#git_submodule_build(robin-map)
 git_submodule_copy_files(flat_hash_map NO_NAME_INCLUDE INCLUDES flat_hash_map.hpp)
 
+if (CMAKE_BUILD_TYPE STREQUAL "Release" AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+    #file(COPY ${CMAKE_BINARY_DIR}/compile_commands.json DESTINATION ${CMAKE_SOURCE_DIR})
+endif()
+
 add_executable(EvoEngine main.cpp)
+
+add_subdirectory(src)
