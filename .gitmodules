@@ -13,3 +13,6 @@
 [submodule "submodules/robin-map"]
 	path = submodules/robin-map
 	url = https://github.com/Tessil/robin-map
+[submodule "submodules/glfw"]
+	path = submodules/glfw
+	url = https://github.com/glfw/glfw
