@@ -21,7 +21,7 @@
 namespace core
 {
     template <typename ContainerT, typename T> requires Iterable<ContainerT>
-    auto _fold_operator(const ContainerT& t, const T& delimiter) {
+    inline auto _fold_operator(const ContainerT& t, const T& delimiter) {
         using ItemT = std::remove_const_t<std::decay_t<decltype(t[0])>>;
 
         if (std::empty(t))
@@ -173,13 +173,13 @@ namespace core
 
     // Chains
     template<typename T, typename F> requires ChainFunctor<F>
-    auto operator/(const T& v, F f) {
+    inline auto operator/(const T& v, F f) {
         return f(v);
     }
 
 
     template <typename CharT>
-    std::basic_string<CharT> path_eval(std::basic_string_view<CharT> src) {
+    inline std::basic_string<CharT> path_eval(std::basic_string_view<CharT> src) {
         if (src.empty())
             return std::basic_string<CharT>();
 
@@ -250,11 +250,11 @@ namespace core
         return fold;
     }
 
-    string path_eval(string_view str) {
+    inline string path_eval(string_view str) {
         return path_eval<char>(str);
     }
 
-    optional<vector<string>> read_lines(const string& path) {
+    inline optional<vector<string>> read_lines(const string& path) {
         vector<string> result;
 
         std::ifstream ifs(path, std::ios::in);
@@ -271,7 +271,7 @@ namespace core
         return result;
     }
 
-    optional<string> read_file(const string& file_path) {
+    inline optional<string> read_file(const string& file_path) {
         std::ifstream ifs(file_path, std::ios_base::binary | std::ios_base::in);
     
         if (!ifs.is_open())
@@ -290,7 +290,7 @@ namespace core
 
 
     template <typename CharT>
-    std::basic_string<CharT> operator/ (std::basic_string_view<CharT> path1, std::basic_string_view<CharT> path2) {
+    inline std::basic_string<CharT> operator/ (std::basic_string_view<CharT> path1, std::basic_string_view<CharT> path2) {
         std::basic_string result(path1);
 
         if ((result.empty() || result.back() != '/') && (path2.empty() || path2.front() != '/')) {
@@ -309,7 +309,7 @@ namespace core
     }
 
 
-    core::string operator/ (core::string_view path1, core::string_view path2) {
+    inline core::string operator/ (core::string_view path1, core::string_view path2) {
         return operator/<char>(path1, path2);
     }
 } // namespace core
