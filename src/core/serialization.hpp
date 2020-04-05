@@ -9,9 +9,10 @@
 
 namespace core
 {
+    // Array with size < 32 only (prevent std::array<T, 10000000> compile-time jokes)
     template <typename T>
     concept SerializableStaticCortege =
-            std::tuple_size<std::remove_reference_t<T>>::value < 32; // prevent std::array<T, 10000000> compile-time jokes
+            std::tuple_size<std::remove_reference_t<T>>::value < 32;
 
     template <typename T>
     concept SerializableIterable =

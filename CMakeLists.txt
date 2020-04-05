@@ -37,6 +37,7 @@ endforeach()
 
 set(CMAKE_PREFIX_PATH "${CMAKE_BINARY_DIR}/3rd")
 include_directories(SYSTEM "${CMAKE_BINARY_DIR}/3rd/include")
+link_directories("${CMAKE_BINARY_DIR}/3rd/lib")
 include_directories(src)
 
 # GLM
@@ -59,6 +60,9 @@ if (CMAKE_BUILD_TYPE STREQUAL "Release" AND CMAKE_CXX_COMPILER_ID STREQUAL "Clan
     #file(COPY ${CMAKE_BINARY_DIR}/compile_commands.json DESTINATION ${CMAKE_SOURCE_DIR})
 endif()
 
-add_executable(EvoEngine main.cpp)
+find_package(Threads REQUIRED)
 
 add_subdirectory(src)
+
+add_executable(EvoEngine main.cpp)
+target_link_libraries(EvoEngine evo_graphics)
