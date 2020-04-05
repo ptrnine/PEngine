@@ -361,16 +361,6 @@ namespace core
             do_file(path);
         }
 
-        config_manager(const string& entry_path, string_view config_dir_key) {
-            auto path = path_eval(entry_path);
-            do_file(path);
-
-            path = path_eval(entry_path / "../" / read_unwrap<string>(config_dir_key));
-            _entry_dir = path_eval(path / "../");
-
-            do_file(path);
-        }
-
         auto& sections() const {
             return _sections;
         }
@@ -465,6 +455,10 @@ namespace core
         template <typename... ArgsT>
         void init_cfg_values(ArgsT&... args) const;
 
+        const string& entry_dir() const {
+            return _entry_dir;
+        }
+
     private:
         optional<string> raw_str(string_view section, string_view key) const {
             auto sect = _sections.find(string(section));
@@ -549,7 +543,9 @@ namespace core
                     auto command = line.substr(strsize_cast(pos - line.begin())) / remove_trailing_whitespaces();
 
                     if (preprocessor_directive == "include")
-                        do_file(path_eval(path / ".." / command));
+                        do_file(path_eval(path / ".." /
+                            remove_brackets_if_exists(
+                                remove_brackets_if_exists(command, {'"', '"'}), {'\'', '\''})));
                     else
                         LOG_WARNING("config_manager: {}: unknown preprocessor_directive '{}'", path, preprocessor_directive);
 
@@ -575,7 +571,7 @@ namespace core
         }
 
     private:
-        hash_map<string, string>        _file_paths;
+        hash_map<string, string>         _file_paths;
         hash_map<string, config_section> _sections;
 
         string _entry_dir;
