@@ -428,12 +428,12 @@ namespace core
 
         template <typename T>
         T read_unwrap(string_view key) const {
-            return *read<T>(key);
+            return read<T>(key).value();
         }
 
         template <typename T>
         T read_unwrap(string_view section, string_view key) const {
-            return *read<T>(section, key);
+            return read<T>(section, key).value();
         }
 
         template <typename T>

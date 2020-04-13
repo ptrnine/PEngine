@@ -10,9 +10,15 @@ CLASS(const CLASS&) = delete; \
 CLASS& operator=(const CLASS&) = delete
 
 #define DECLARE_GET(FIELD) \
+[[nodiscard]] \
 auto& FIELD() const { return _##FIELD; }
 
+#define DECLARE_VAL_GET(FIELD) \
+[[nodiscard]] \
+auto FIELD() const { return _##FIELD; }
+
 #define DECLARE_SET(FIELD) \
+[[nodiscard]] \
 void FIELD(const decltype(_##FIELD)& value) { _##FIELD = value; }
 
 #define DECLARE_GET_SET(FIELD) \

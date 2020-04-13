@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include "helper_macros.hpp"
 #include "types.hpp"
 
 
@@ -38,4 +39,16 @@ namespace core {
     private:
         time_point<steady_clock> _start = steady_clock::now();
     };
+
+    class st_global_timer {
+        SINGLETON_IMPL(st_global_timer);
+
+    public:
+        timer _timer;
+        st_global_timer() = default;
+    };
+
+    inline timer& global_timer() {
+        return st_global_timer::instance()._timer;
+    }
 }
