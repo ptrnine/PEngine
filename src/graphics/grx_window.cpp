@@ -6,7 +6,7 @@
 #include <core/assert.hpp>
 #include <core/config_manager.hpp>
 #include "grx_context.hpp"
-#include "grx_shader_manager.hpp"
+#include "grx_shader_mgr.hpp"
 
 using namespace core;
 
@@ -23,7 +23,7 @@ static constexpr auto screen_quad_vertex_buffer = array {
 grx::grx_window::grx_window(
         const string& name,
         const vec2i& size,
-        grx_shader_manager& shader_manager,
+        grx_shader_mgr& shader_manager,
         config_manager& config_manager
 ): _vbo_tuple(nullptr)
 {
@@ -111,8 +111,8 @@ void grx::grx_window::present() {
 
     _render_target.activate_texture();
 
-    grx::grx_shader_manager::use_program(_screen_quad_passthrough);
-    grx::grx_shader_manager::set_uniform(_screen_quad_texture_uniform, 0);
+    grx::grx_shader_mgr::use_program(_screen_quad_passthrough);
+    grx::grx_shader_mgr::set_uniform(_screen_quad_texture_uniform, 0);
 
     //glEnable(GL_FRAMEBUFFER_SRGB);
     _vbo_tuple.draw(18);

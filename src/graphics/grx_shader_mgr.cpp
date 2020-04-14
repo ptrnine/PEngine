@@ -1,4 +1,4 @@
-#include "grx_shader_manager.hpp"
+#include "grx_shader_mgr.hpp"
 #include <core/container_extensions.hpp>
 #include <core/assert.hpp>
 #include <core/config_manager.hpp>
@@ -8,7 +8,7 @@
 
 using namespace core;
 
-auto grx::grx_shader_manager::
+auto grx::grx_shader_mgr::
 compile_program(const string& effect_path, const string& function_name) -> shader_program_id_t {
     Expects(!function_name.empty());
     Expects(!effect_path.empty());
@@ -44,7 +44,7 @@ compile_program(const string& effect_path, const string& function_name) -> shade
     return program;
 }
 
-auto grx::grx_shader_manager::
+auto grx::grx_shader_mgr::
 get_uniform_id(shader_program_id_t program, const core::string& name) -> uniform_id_t {
     auto [position, was_inserted]
         = _uniforms.emplace(pair(name, program), static_cast<uniform_id_t>(-1));
@@ -84,7 +84,7 @@ get_uniform_id(shader_program_id_t program, const core::string& name) -> uniform
     return uniform;
 }
 
-auto grx::grx_shader_manager::
+auto grx::grx_shader_mgr::
 compile_program(const config_manager& cm, string_view section) -> shader_program_id_t {
     RASSERTF(section.starts_with("shader_"), "Shader section must starts with 'shared_' prefix "
                                              "(Actual section: {})", section);
@@ -97,73 +97,73 @@ compile_program(const config_manager& cm, string_view section) -> shader_program
     return compile_program(effect_path, entry_func);
 }
 
-void grx::grx_shader_manager::use_program(shader_program_id_t program) {
+void grx::grx_shader_mgr::use_program(shader_program_id_t program) {
     glUseProgram(static_cast<uint>(program));
 }
 
-void grx::grx_shader_manager::set_uniform(grx::uniform_id_t id, int val1) {
+void grx::grx_shader_mgr::set_uniform(grx::uniform_id_t id, int val1) {
     glUniform1i(static_cast<int>(id), val1);
 }
 
-void grx::grx_shader_manager::set_uniform(grx::uniform_id_t id, int val1, int val2) {
+void grx::grx_shader_mgr::set_uniform(grx::uniform_id_t id, int val1, int val2) {
     glUniform2i(static_cast<int>(id), val1, val2);
 }
 
-void grx::grx_shader_manager::set_uniform(grx::uniform_id_t id, int val1, int val2, int val3) {
+void grx::grx_shader_mgr::set_uniform(grx::uniform_id_t id, int val1, int val2, int val3) {
     glUniform3i(static_cast<int>(id), val1, val2, val3);
 }
 
-void grx::grx_shader_manager::set_uniform(grx::uniform_id_t id, int val1, int val2, int val3, int val4) {
+void grx::grx_shader_mgr::set_uniform(grx::uniform_id_t id, int val1, int val2, int val3, int val4) {
     glUniform4i(static_cast<int>(id), val1, val2, val3, val4);
 }
 
 
-void grx::grx_shader_manager::set_uniform(grx::uniform_id_t id, uint val1) {
+void grx::grx_shader_mgr::set_uniform(grx::uniform_id_t id, uint val1) {
     glUniform1ui(static_cast<int>(id), val1);
 }
 
-void grx::grx_shader_manager::set_uniform(grx::uniform_id_t id, uint val1, uint val2) {
+void grx::grx_shader_mgr::set_uniform(grx::uniform_id_t id, uint val1, uint val2) {
     glUniform2ui(static_cast<int>(id), val1, val2);
 }
 
-void grx::grx_shader_manager::set_uniform(grx::uniform_id_t id, uint val1, uint val2, uint val3) {
+void grx::grx_shader_mgr::set_uniform(grx::uniform_id_t id, uint val1, uint val2, uint val3) {
     glUniform3ui(static_cast<int>(id), val1, val2, val3);
 }
 
-void grx::grx_shader_manager::set_uniform(grx::uniform_id_t id, uint val1, uint val2, uint val3, uint val4) {
+void grx::grx_shader_mgr::set_uniform(grx::uniform_id_t id, uint val1, uint val2, uint val3, uint val4) {
     glUniform4ui(static_cast<int>(id), val1, val2, val3, val4);
 }
 
 
-void grx::grx_shader_manager::set_uniform(grx::uniform_id_t id, float val1) {
+void grx::grx_shader_mgr::set_uniform(grx::uniform_id_t id, float val1) {
     glUniform1f(static_cast<int>(id), val1);
 }
 
-void grx::grx_shader_manager::set_uniform(grx::uniform_id_t id, float val1, float val2) {
+void grx::grx_shader_mgr::set_uniform(grx::uniform_id_t id, float val1, float val2) {
     glUniform2f(static_cast<int>(id), val1, val2);
 }
 
-void grx::grx_shader_manager::set_uniform(grx::uniform_id_t id, float val1, float val2, float val3) {
+void grx::grx_shader_mgr::set_uniform(grx::uniform_id_t id, float val1, float val2, float val3) {
     glUniform3f(static_cast<int>(id), val1, val2, val3);
 }
 
-void grx::grx_shader_manager::set_uniform(grx::uniform_id_t id, float val1, float val2, float val3, float val4) {
+void grx::grx_shader_mgr::set_uniform(grx::uniform_id_t id, float val1, float val2, float val3, float val4) {
     glUniform4f(static_cast<int>(id), val1, val2, val3, val4);
 }
 
 
-void grx::grx_shader_manager::set_uniform(grx::uniform_id_t id, double val1) {
+void grx::grx_shader_mgr::set_uniform(grx::uniform_id_t id, double val1) {
     glUniform1d(static_cast<int>(id), val1);
 }
 
-void grx::grx_shader_manager::set_uniform(grx::uniform_id_t id, double val1, double val2) {
+void grx::grx_shader_mgr::set_uniform(grx::uniform_id_t id, double val1, double val2) {
     glUniform2d(static_cast<int>(id), val1, val2);
 }
 
-void grx::grx_shader_manager::set_uniform(grx::uniform_id_t id, double val1, double val2, double val3) {
+void grx::grx_shader_mgr::set_uniform(grx::uniform_id_t id, double val1, double val2, double val3) {
     glUniform3d(static_cast<int>(id), val1, val2, val3);
 }
 
-void grx::grx_shader_manager::set_uniform(grx::uniform_id_t id, double val1, double val2, double val3, double val4) {
+void grx::grx_shader_mgr::set_uniform(grx::uniform_id_t id, double val1, double val2, double val3, double val4) {
     glUniform4d(static_cast<int>(id), val1, val2, val3, val4);
 }

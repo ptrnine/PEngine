@@ -13,7 +13,7 @@ namespace core {
 }
 
 namespace grx {
-    class grx_shader_manager;
+    class grx_shader_mgr;
 
     using grx_window_render_target =
             grx_postprocess_mgr<
@@ -24,7 +24,7 @@ namespace grx {
         grx_window(
                 const core::string& name,
                 const core::vec2i& size,
-                grx_shader_manager& shader_manager,
+                grx_shader_mgr& shader_manager,
                 core::config_manager& config_manager);
         ~grx_window();
 

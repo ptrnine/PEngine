@@ -428,12 +428,16 @@ namespace core
 
         template <typename T>
         T read_unwrap(string_view key) const {
-            return read<T>(key).value();
+            auto val = read<T>(key);
+            RASSERTF(val.has_value(), "Can't find key '{}' in global section", key);
+            return *val;
         }
 
         template <typename T>
         T read_unwrap(string_view section, string_view key) const {
-            return read<T>(section, key).value();
+            auto val = read<T>(section, key);
+            RASSERTF(val.has_value(), "Can't find key '{}' in section [{}]", key, section);
+            return *val;
         }
 
         template <typename T>

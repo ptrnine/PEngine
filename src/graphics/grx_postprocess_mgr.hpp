@@ -3,7 +3,7 @@
 #include <core/vec.hpp>
 #include "grx_render_target.hpp"
 #include "grx_vbo_tuple.hpp"
-#include "grx_shader_manager.hpp"
+#include "grx_shader_mgr.hpp"
 #include "grx_postprocess.hpp"
 
 namespace grx {
@@ -42,8 +42,8 @@ namespace grx {
 
             _vbo_tuple.bind_vao();
             _render_target_tuple.template activate_texture<1>();
-            grx::grx_shader_manager::use_program(shader_program);
-            grx::grx_shader_manager::set_uniform(texture_uniform, 0); // Texture position
+            grx::grx_shader_mgr::use_program(shader_program);
+            grx::grx_shader_mgr::set_uniform(texture_uniform, 0); // Texture position
 
             _vbo_tuple.draw(18);
 

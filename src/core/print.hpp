@@ -13,23 +13,37 @@ namespace core
         concept PrintStandard = requires (T&& v) { std::cout << v; };
 
         template <typename T>
-        concept PrintStaticCortege = std::tuple_size<std::remove_reference_t<T>>::value < 32; // prevent std::array<T, 10000000> compile-time jokes
+        concept PrintTupleLike = std::tuple_size<std::remove_reference_t<T>>::value < 32; // prevent std::array<T, 10000000> compile-time jokes
 
         template <typename T>
-        concept PrintIterable = (!PrintStandard<T>) && (!PrintStaticCortege<T>) && requires (T&& t) { std::begin(t); std::end(t); };
+        concept PrintIterable = (!PrintStandard<T>) && (!PrintTupleLike<T>) && requires (T&& t) { std::begin(t); std::end(t); };
 
         template <typename T>
-        concept PrintMember = requires (T&& v) { v.print(std::cout); };
+        concept PrintMember = requires (const T& v) { v.print(std::cout); };
 
         template <typename T>
-        concept Printable = PrintIterable<T> || PrintMember<T> || PrintStaticCortege<T> || PrintStandard<T>;
+        concept EnumClass = std::is_enum_v<T>;
+
+        template <typename T>
+        concept TupleConvertible = !PrintMember<T> && requires (const T& v) { v.to_tuple(); };
+
+        template <typename T>
+        concept Printable = PrintIterable<T> || PrintMember<T> || PrintTupleLike<T> || PrintStandard<T>;
 
         template <typename T1, typename T2, typename... Ts>
         void magic_print(std::ostream& os, T1&& v1, T2&& v2, Ts&&... args);
 
+        template <TupleConvertible T>
+        void magic_print(std::ostream& os, const T& v);
+
         void magic_print(std::ostream& os, std::byte b) {
             os << "0x" << "0123456789abcdef"[static_cast<uint8_t>(b) >> 4]
                << "0123456789abcdef"[static_cast<uint8_t>(b) & 0x0f];
+        }
+
+        template <EnumClass T>
+        void magic_print(std::ostream& os, T v) {
+            os << std::underlying_type_t<T>(v);
         }
 
         void magic_print(std::ostream& os, bool v) {
@@ -61,7 +75,7 @@ namespace core
             val.print(os);
         }
 
-        template <size_t idx = 1, PrintStaticCortege T>
+        template <size_t idx = 1, PrintTupleLike T>
         void static_cortage_print_impl(std::ostream& os, const T& val) {
             using std::get;
             if constexpr (std::tuple_size_v<T> != idx) {
@@ -72,7 +86,7 @@ namespace core
             }
         }
 
-        template <PrintStaticCortege T>
+        template <PrintTupleLike T>
         void magic_print(std::ostream& os, const T& val) {
             using std::get;
             if constexpr (std::tuple_size_v<T> == 0)
@@ -96,6 +110,11 @@ namespace core
             magic_print(os, std::forward<T1>(v1));
             magic_print(os, std::forward<T2>(v2));
             ((magic_print(os, std::forward<Ts>(args))), ...);
+        }
+
+        template <TupleConvertible T>
+        void magic_print(std::ostream& os, const T& v) {
+            magic_print(os, v.to_tuple());
         }
 
         template <size_t idx = 0, typename IterT, typename... ArgsT>

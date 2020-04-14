@@ -1,9 +1,12 @@
 #pragma once
 
+#include <core/helper_macros.hpp>
+
 namespace grx {
-    enum class shader_program_id_t : int {};
-    enum class shader_effect_id_t  : int {};
-    enum class uniform_id_t        : int {};
+    enum class shader_program_id_t : int  {};
+    enum class shader_effect_id_t  : int  {};
+    enum class uniform_id_t        : int  {};
+    enum class texture_id_t        : uint {};
 
     enum class grx_color_fmt {
         RGB = 0, SRGB, RGB16, RGB16F, RGB32F
@@ -11,6 +14,13 @@ namespace grx {
 
     enum class grx_filtering {
         Linear = 0, Nearest
+    };
+
+    struct grx_texture {
+        uint width, height, channels;
+        texture_id_t id;
+
+        TO_TUPLE_IMPL(width, height, channels, id)
     };
 
     template <grx_color_fmt ColorFmt, grx_filtering Filtering>

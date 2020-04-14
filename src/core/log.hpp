@@ -138,7 +138,7 @@ namespace core
 } // namespace core
 
 #define LOG(...) \
-core::Logger::instance().write(__VA_ARGS__)
+core::logger::instance().write(__VA_ARGS__)
 
 #define LOG_WARNING(...) \
 core::logger::instance().write(core::logger::Warning, __VA_ARGS__)

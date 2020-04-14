@@ -2,7 +2,7 @@
 
 #include <core/helper_macros.hpp>
 #include <core/config_manager.hpp>
-#include "grx_shader_manager.hpp"
+#include "grx_shader_mgr.hpp"
 
 namespace grx {
 
@@ -12,7 +12,7 @@ namespace grx {
         using uniform_callback_t = std::function<void(const uniform_vector_t&)>;
 
         grx_postprocess(
-                grx_shader_manager& shader_manager,
+                grx_shader_mgr& shader_manager,
                 core::config_manager& config_manager,
                 core::string_view shader_section_name
         ) {
@@ -21,7 +21,7 @@ namespace grx {
         }
 
         grx_postprocess(
-                grx_shader_manager& shader_manager,
+                grx_shader_mgr& shader_manager,
                 core::config_manager& config_manager,
                 core::string_view shader_section_name,
                 const core::vector<core::string>& uniform_names,
@@ -37,8 +37,8 @@ namespace grx {
         }
 
         void bind_program_and_uniforms() const {
-            grx::grx_shader_manager::use_program(_program_id);
-            grx::grx_shader_manager::set_uniform(_screen_quad_texture, 0); // Texture position
+            grx::grx_shader_mgr::use_program(_program_id);
+            grx::grx_shader_mgr::set_uniform(_screen_quad_texture, 0); // Texture position
 
             if (_uniform_callback)
                 _uniform_callback(_uniforms);
@@ -59,8 +59,8 @@ namespace grx {
 
     inline grx_postprocess::uniform_callback_t postprocess_uniform_seconds() {
         return [](const grx::grx_postprocess::uniform_vector_t& it) {
-            grx::grx_shader_manager::set_uniform(it[0],
-                    static_cast<float>(core::global_timer().measure<core::microseconds>() / 1000000.0));
+            grx::grx_shader_mgr::set_uniform(it[0],
+                                             static_cast<float>(core::global_timer().measure<core::microseconds>() / 1000000.0));
         };
     }
 } // namespace grx

@@ -24,7 +24,7 @@ namespace std {
 }
 
 namespace grx {
-    class grx_shader_manager {
+    class grx_shader_mgr {
     public:
         shader_program_id_t compile_program(
                 const core::string& effect_path,

@@ -41,6 +41,10 @@ static auto createShared(Args&&... args) { \
 }                                          \
 DECLARE_SMART_POINTERS_T(CLASS)
 
+#define TO_TUPLE_IMPL(...) \
+auto to_tuple() const { \
+    return std::make_tuple(__VA_ARGS__); \
+}
 
 #define DEBUG_VAL_LMAO(value) \
 std::cout << #value ": " << (value) << std::endl
