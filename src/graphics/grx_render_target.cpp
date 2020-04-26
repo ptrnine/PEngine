@@ -51,7 +51,7 @@ void grx::_grx_render_target_tuple_init(
         glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthbuffer_ids[i]);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture_ids[i], 0);
         GLenum draw_buffers[] = { GL_COLOR_ATTACHMENT0 };
-        glDrawBuffers(GL_COLOR_ATTACHMENT0, draw_buffers);
+        glDrawBuffers(1, draw_buffers);
 
         RASSERTF(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE,
                  "{}", "Error while creating render target");

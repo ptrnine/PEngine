@@ -7,9 +7,9 @@
 #include "graphics/grx_vbo_tuple.hpp"
 #include <graphics/grx_postprocess_mgr.hpp>
 #include <graphics/grx_texture_mgr.hpp>
-
-//#include <GL/glew.h>
-//#include <GLFW/glfw3.h>
+#include <graphics/grx_mesh_mgr.hpp>
+#include <graphics/grx_camera.hpp>
+#include <graphics/grx_camera_manipulator_fly.hpp>
 
 int main() {
     std::ios_base::sync_with_stdio(false);
@@ -20,33 +20,33 @@ int main() {
     auto wnd = grx::grx_window("wnd", {1600, 900}, m, cm);
     wnd.make_current();
 
-    grx::grx_texture_mgr ttm;
-    auto t = ttm.load(cm, "cake.jpg");
+    auto cam = grx::grx_camera::make_shared({0.f, 0.f, 10.f}, 16.f/9.f);
+    cam->create_camera_manipulator<grx::grx_camera_manipulator_fly>(wnd);
+    wnd.attach_camera(cam);
 
-    wnd.push_postprocess({ m, cm, "shader_vhs2_texture", { "time" }, grx::postprocess_uniform_seconds()});
-    wnd.push_postprocess({ m, cm, "shader_vhs1_texture", { "time" }, grx::postprocess_uniform_seconds()});
+    grx::grx_mesh_mgr mm;
+    auto mesh = mm.load(cm, "cz805.dae");
 
-    auto prg = m.compile_program(cm, "shader_dummy");
+    //wnd.push_postprocess({ m, cm, "shader_vhs2_texture", { "time" }, grx::postprocess_uniform_seconds()});
+    //wnd.push_postprocess({ m, cm, "shader_vhs1_texture", { "time" }, grx::postprocess_uniform_seconds()});
 
-    grx::grx_vbo_tuple<grx::vbo_vector_vec3f> vbo_tuple;
-    vbo_tuple.set_data<0>({
-        {-1.0f, -1.0f, 0.0f },
-        { 1.0f, -1.0f, 0.0f },
-        { 0.0f,  1.0f, 0.0f },
-    });
+    auto prg = m.compile_program(cm, "shader_tech_skeleton_textured");
     core::timer tm;
+
+    mesh->translate({0, 0, -20});
+    mesh->rotate({glm::half_pi<float>(), 0, glm::pi<float>()});
+    //mesh->set_instance_count(100);
+    //for (size_t i = 0; i < 100; ++i)
+    //    mesh->translate(core::vec3f{i, 0.f, 0.f}, i);
 
     while (!wnd.should_close()) {
         wnd.bind_and_clear_render_target();
         m.use_program(prg);
 
-        vbo_tuple.bind_vao();
-        vbo_tuple.draw(3);
+        mesh->draw(cam, prg);
 
         wnd.present();
-        wnd.poll_events();
-
-        //std::cout << tm.measure<core::milliseconds>() << std::endl;
+        wnd.update_input();
     }
 
     return 0;

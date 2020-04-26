@@ -45,43 +45,33 @@ compile_program(const string& effect_path, const string& function_name) -> shade
 }
 
 auto grx::grx_shader_mgr::
-get_uniform_id(shader_program_id_t program, const core::string& name) -> uniform_id_t {
-    auto [position, was_inserted]
-        = _uniforms.emplace(pair(name, program), static_cast<uniform_id_t>(-1));
+get_uniform_id(shader_program_id_t program, const core::string& name) -> core::optional<uniform_id_t> {
+    auto position = _uniforms.find(pair(name, program));
 
-    uniform_id_t& uniform = position->second;
+    if (position == _uniforms.end()) {
+        auto gl_uniform = glGetUniformLocation(static_cast<GLuint>(program), name.data());
 
-    if (was_inserted) {
-        uniform = static_cast<uniform_id_t>(glGetUniformLocation(static_cast<GLuint>(program), name.data()));
+        RASSERTF(glGetError() == GL_NO_ERROR, "Invalid uniform '{}' location. Shader program not found", name);
 
-        // For detailed error message
-        if (static_cast<int>(uniform) < 0) {
-            auto found_program_position =
-                std::find_if(_programs.begin(), _programs.end(), [program](auto& pair) {
-                    return pair.second == program;
-                });
+        if (gl_uniform == -1)
+            return core::nullopt;
 
-            if (found_program_position == _programs.end()) {
-                RABORTF("Invalid uniform '{}' location. Shader program not found", name);
-            }
-            else {
-                auto effect = found_program_position->first.first;
-                auto found_effect_position =
-                    std::find_if(_effects.begin(), _effects.end(), [effect](auto& pair) {
-                        return pair.second == effect;
-                    });
+        _uniforms.emplace(pair(name, program), static_cast<uniform_id_t>(gl_uniform));
 
-                if (found_effect_position == _effects.end())
-                    RABORTF("Invalid uniform '{}' location. Shader program entry function is '{}', but"
-                            " effect was not found (!?)", name, found_program_position->first.second);
-                else
-                    RABORTF("Invalid uniform '{}' location in shader {}:{}",
-                            name, found_effect_position->first, found_program_position->first.second);
-            }
-        }
+        return static_cast<uniform_id_t>(gl_uniform);
+    } else {
+        return position->second;
     }
+}
 
-    return uniform;
+auto grx::grx_shader_mgr::
+get_uniform_id_unwrap(shader_program_id_t program, const core::string& name) -> uniform_id_t {
+    auto uniform = get_uniform_id(program, name);
+    if (uniform)
+        return *uniform;
+    else
+        RABORTF("Invalid uniform '{}' location", name);
+    return static_cast<uniform_id_t>(-1);
 }
 
 auto grx::grx_shader_mgr::
@@ -166,4 +156,8 @@ void grx::grx_shader_mgr::set_uniform(grx::uniform_id_t id, double val1, double 
 
 void grx::grx_shader_mgr::set_uniform(grx::uniform_id_t id, double val1, double val2, double val3, double val4) {
     glUniform4d(static_cast<int>(id), val1, val2, val3, val4);
+}
+
+void grx::grx_shader_mgr::set_uniform(uniform_id_t id, const glm::mat4& matrix) {
+    glUniformMatrix4fv(static_cast<int>(id), 1, GL_FALSE, &matrix[0][0]);
 }

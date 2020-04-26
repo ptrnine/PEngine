@@ -17,8 +17,8 @@ namespace grx {
     };
 
     struct grx_texture {
-        uint width, height, channels;
-        texture_id_t id;
+        uint width = 0, height = 0, channels = 0;
+        texture_id_t id = static_cast<texture_id_t>(std::numeric_limits<uint>::max());
 
         TO_TUPLE_IMPL(width, height, channels, id)
     };

@@ -175,6 +175,12 @@ namespace core
     }
 
     template<typename... ArgsT>
+    void printline(string_view fmt, ArgsT&& ... args) {
+        print_base(std::cout, fmt, forward<ArgsT>(args)...);
+        std::cout << std::endl;
+    }
+
+    template<typename... ArgsT>
     string format(string_view fmt, ArgsT&&... args) {
         std::stringstream ss;
         ss << std::setprecision(16);

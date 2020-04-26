@@ -1,4 +1,6 @@
 #pragma once
+
+#include <glm/mat4x4.hpp>
 #include <core/types.hpp>
 #include <core/vec.hpp>
 #include "grx_types.hpp"
@@ -34,7 +36,11 @@ namespace grx {
                 const core::config_manager& cm,
                 core::string_view shader_section_name);
 
-        uniform_id_t get_uniform_id(shader_program_id_t program, const std::string& name);
+        core::optional<uniform_id_t>
+        get_uniform_id(shader_program_id_t program, const core::string& name);
+
+        uniform_id_t
+        get_uniform_id_unwrap(shader_program_id_t program, const core::string& name);
 
         static void set_uniform(uniform_id_t id, int val1);
         static void set_uniform(uniform_id_t id, int val1, int val2);
@@ -56,6 +62,8 @@ namespace grx {
         static void set_uniform(uniform_id_t id, double val1, double val2, double val3);
         static void set_uniform(uniform_id_t id, double val1, double val2, double val3, double val4);
 
+        static void set_uniform(uniform_id_t id, const glm::mat4& matrix);
+
         template <typename T>
         static void set_uniform(uniform_id_t id, const core::vec<T, 2>& vec) {
             set_uniform(id, vec.x(), vec.y());
@@ -73,7 +81,7 @@ namespace grx {
 
         template <typename T, typename... Ts>
         void set_uniform(shader_program_id_t id, const core::string& name, T val, Ts... values) {
-            set_uniform(get_uniform_id(id, name), val, values...);
+            set_uniform(get_uniform_id_unwrap(id, name), val, values...);
         }
 
         static void use_program(shader_program_id_t program);

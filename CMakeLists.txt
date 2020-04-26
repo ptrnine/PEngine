@@ -55,7 +55,23 @@ git_submodule_build(GSL CMAKE_ARGS -DGSL_TEST=OFF)
 #git_submodule_build(robin-map)
 git_submodule_copy_files(flat_hash_map NO_NAME_INCLUDE INCLUDES flat_hash_map.hpp)
 
-if (CMAKE_BUILD_TYPE STREQUAL "Release" AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+
+# Build type
+string(TOUPPER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE)
+
+if (DEFINED CMAKE_BUILD_TYPE AND NOT CMAKE_BUILD_TYPE MATCHES "^(|DEBUG|RELEASE|RELWITHDEBINFO|MINSIZEREL)$")
+    message(FATAL_ERROR "Invalid CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
+endif()
+
+if (NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE MATCHES "^(|DEBUG|RELWITHDEBINFO)$")
+    set(CMAKE_DEBUG_ENABLED ON)
+    add_definitions(-D DEBUG)
+elseif()
+    add_definitions(-D NDEBUG)
+endif()
+
+
+if (CMAKE_BUILD_TYPE STREQUAL "RELEASE" AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
     #file(COPY ${CMAKE_BINARY_DIR}/compile_commands.json DESTINATION ${CMAKE_SOURCE_DIR})
 endif()

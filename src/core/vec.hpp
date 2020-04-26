@@ -8,6 +8,7 @@
 #include <glm/vec4.hpp>
 
 #include "vec_macro_gen.hpp"
+#include "types.hpp"
 
 namespace core {
     /*
@@ -165,7 +166,10 @@ namespace core {
 
     template <typename A, size_t Size>
     inline A vec_magnitude(const std::array<A, Size>& a) {
-        return sqrt(vec_magnitude_2(a, std::make_index_sequence<Size>()));
+        if constexpr (sizeof(A) == 4)
+            return sqrtf(vec_magnitude_2(a, std::make_index_sequence<Size>()));
+        else
+            return sqrt(vec_magnitude_2(a, std::make_index_sequence<Size>()));
     }
 
     template <size_t Steps = 1, typename A, size_t Size>
@@ -240,19 +244,42 @@ namespace core {
     VECTOR_SCALAR_FETCH_GEN_OP(div, /=)
 #undef VECTOR_SCALAR_FETCH_GEN_OP
 
+    template <typename T1, typename T2, size_t... Idxs>
+    constexpr inline auto
+    vec_static_cast(const std::array<T2, sizeof...(Idxs)>& a, std::index_sequence<Idxs...>&&) {
+        return std::array{static_cast<T1>(std::get<Idxs>(a))...};
+    }
+
+    template <typename T, size_t... Idxs>
+    constexpr inline auto
+    vec_unary_minus(const std::array<T, sizeof...(Idxs)>& a, std::index_sequence<Idxs...>&&) {
+        return std::array{-std::get<Idxs>(a)...};
+    }
+
     /*
      * Basic vector
      */
 
     template <typename T, size_t S, template <typename, size_t> class DerivedT>
     struct vec_base {
+        using value_type = T;
+
         std::array<T, S> v;
+
+        template <typename TT>
+        explicit operator TT() const {
+            return TT{vec_static_cast<typename TT::value_type>(v, std::make_index_sequence<S>())};
+        }
 
         template <size_t N>
         constexpr decltype(auto) get() const { return std::get<N>(v); }
 
         template <size_t N>
         constexpr decltype(auto) get() { return std::get<N>(v); }
+
+        constexpr auto operator- () const {
+            return DerivedT{vec_unary_minus(v, std::make_index_sequence<S>())};
+        }
 
         template <typename TT>
         constexpr auto operator+ (const vec_base<TT, S, DerivedT>& vec) const {
@@ -276,45 +303,45 @@ namespace core {
             return static_cast<DerivedT<T, S>&>(*this);
         }
 
-        template <typename N>
+        template <Number N>
         constexpr auto operator+ (N n) const {
             return DerivedT{vec_scalar_add(this->v, n, std::make_index_sequence<S>())};
         }
 
-        template <typename N>
+        template <Number N>
         constexpr auto operator- (N n) const {
             return DerivedT{vec_scalar_sub(this->v, n, std::make_index_sequence<S>())};
         }
 
-        template <typename N>
+        template <Number N>
         constexpr auto operator* (N n) const {
             return DerivedT{vec_scalar_mul(this->v, n, std::make_index_sequence<S>())};
         }
 
-        template <typename N>
+        template <Number N>
         constexpr auto operator/ (N n) const {
             return DerivedT{vec_scalar_div(this->v, n, std::make_index_sequence<S>())};
         }
 
-        template <typename N>
+        template <Number N>
         constexpr DerivedT<T, S>& operator+= (N n) {
             vec_scalar_fetch_add(this->v, n, std::make_index_sequence<S>());
             return static_cast<DerivedT<T, S>&>(*this);
         }
 
-        template <typename N>
+        template <Number N>
         constexpr DerivedT<T, S>& operator-= (N n) {
             vec_scalar_fetch_sub(this->v, n, std::make_index_sequence<S>());
             return static_cast<DerivedT<T, S>&>(*this);
         }
 
-        template <typename N>
+        template <Number N>
         constexpr DerivedT<T, S>& operator*= (N n) {
             vec_scalar_fetch_mul(this->v, n, std::make_index_sequence<S>());
             return static_cast<DerivedT<T, S>&>(*this);
         }
 
-        template <typename N>
+        template <Number N>
         constexpr DerivedT<T, S>& operator/= (N n) {
             vec_scalar_fetch_div(this->v, n, std::make_index_sequence<S>());
             return static_cast<DerivedT<T, S>&>(*this);

@@ -17,7 +17,7 @@ namespace grx {
                 core::string_view shader_section_name
         ) {
             _program_id          = shader_manager.compile_program(config_manager, shader_section_name);
-            _screen_quad_texture = shader_manager.get_uniform_id(_program_id, "screen_quad_texture");
+            _screen_quad_texture = shader_manager.get_uniform_id_unwrap(_program_id, "screen_quad_texture");
         }
 
         grx_postprocess(
@@ -29,11 +29,11 @@ namespace grx {
         ): _uniform_callback(std::move(uniform_callback))
         {
             _program_id          = shader_manager.compile_program(config_manager, shader_section_name);
-            _screen_quad_texture = shader_manager.get_uniform_id(_program_id, "screen_quad_texture");
+            _screen_quad_texture = shader_manager.get_uniform_id_unwrap(_program_id, "screen_quad_texture");
 
             _uniforms.resize(uniform_names.size());
             for (size_t i = 0; i < uniform_names.size(); ++i)
-                _uniforms[i] = shader_manager.get_uniform_id(_program_id, uniform_names[i]);
+                _uniforms[i] = shader_manager.get_uniform_id_unwrap(_program_id, uniform_names[i]);
         }
 
         void bind_program_and_uniforms() const {

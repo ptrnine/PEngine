@@ -17,8 +17,11 @@ auto& FIELD() const { return _##FIELD; }
 [[nodiscard]] \
 auto FIELD() const { return _##FIELD; }
 
-#define DECLARE_SET(FIELD) \
+#define DECLARE_NON_CONST_GET(FIELD) \
 [[nodiscard]] \
+auto& FIELD() { return _##FIELD; }
+
+#define DECLARE_SET(FIELD) \
 void FIELD(const decltype(_##FIELD)& value) { _##FIELD = value; }
 
 #define DECLARE_GET_SET(FIELD) \

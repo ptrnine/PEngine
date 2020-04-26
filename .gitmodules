@@ -22,3 +22,9 @@
 [submodule "submodules/stb"]
 	path = submodules/stb
 	url = https://github.com/nothings/stb
+[submodule "submodules/assimp"]
+	path = submodules/assimp
+	url = https://github.com/assimp/assimp
+[submodule "submodules/gainput"]
+	path = submodules/gainput
+	url = https://github.com/jkuhlmann/gainput

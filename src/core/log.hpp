@@ -146,7 +146,7 @@ core::logger::instance().write(core::logger::Warning, __VA_ARGS__)
 #define LOG_ERROR(...) \
 core::logger::instance().write(core::logger::Error, __VA_ARGS__)
 
-#ifdef DE_DEBUG
+#ifndef NDEBUG
     #define DLOG(...) \
     core::logger::instance().write(__VA_ARGS__)
 
@@ -156,8 +156,8 @@ core::logger::instance().write(core::logger::Error, __VA_ARGS__)
     #define DLOG_ERROR(...) \
     core::logger::instance().write(core::logger::Error, __VA_ARGS__)
 #else
-    #define DLOG        (...) void(0)
+    #define DLOG(...) void(0)
     #define DLOG_WARNING(...) void(0)
-    #define DLOG_ERROR  (...) void(0)
+    #define DLOG_ERROR(...) void(0)
 #endif
 
