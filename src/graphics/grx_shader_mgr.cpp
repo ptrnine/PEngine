@@ -76,8 +76,9 @@ get_uniform_id_unwrap(shader_program_id_t program, const core::string& name) -> 
 
 auto grx::grx_shader_mgr::
 compile_program(const config_manager& cm, string_view section) -> shader_program_id_t {
-    RASSERTF(section.starts_with("shader_"), "Shader section must starts with 'shared_' prefix "
-                                             "(Actual section: {})", section);
+    RASSERTF(section.starts_with("shader_"),
+            "Shader section must starts with 'shared_' prefix "
+            "(Actual section: {})", section);
 
     auto effect_path = cm.entry_dir() /
             cm.read_unwrap<string>("shaders_dir") /
@@ -85,6 +86,25 @@ compile_program(const config_manager& cm, string_view section) -> shader_program
     auto entry_func = cm.read_unwrap<string>(section, "entry_function");
 
     return compile_program(effect_path, entry_func);
+}
+
+auto grx::grx_shader_mgr::
+load_render_tech(const core::config_manager& cm, core::string_view section) -> grx_shader_tech {
+    RASSERTF(section.starts_with("shader_tech_"),
+            "Shader tech section must starts with 'shared_tech_' prefix "
+            "(Actual section: {})", section);
+
+    auto effect_path = cm.entry_dir() /
+            cm.read_unwrap<string>("shaders_dir") /
+            cm.read_unwrap<string>(section, "effect_path");
+
+    auto basic     = cm.read_unwrap<string>(section, "basic");
+    auto skeleton  = cm.read_unwrap<string>(section, "skeleton");
+    auto instanced = cm.read_unwrap<string>(section, "instanced");
+    return grx_shader_tech(
+            compile_program(effect_path, basic),
+            compile_program(effect_path, skeleton),
+            compile_program(effect_path, instanced));
 }
 
 void grx::grx_shader_mgr::use_program(shader_program_id_t program) {

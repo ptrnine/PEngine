@@ -6,24 +6,70 @@
 #include <GLFW/glfw3native.h>
 
 
-void inp::inp_input_ctx::set_glfw_wnd(GLFWwindow* wnd) {
-    x11_display = glfwGetX11Display();
-    _wnd = wnd;
-}
-
 void inp::inp_input_ctx::update() {
-    manager.Update();
+    auto x11_display = glfwGetX11Display();
 
-    std::vector<XEvent> glfw_events;
+    /*
+     * Gardabage collector for destroyed windows
+     */
+    core::vector<GLFWwindow*> to_delete;
+    for (auto& [glfw_window, state] : _window_map)
+        if (state.mgr.use_count() == 1)
+            to_delete.push_back(glfw_window);
+
+    for (auto glfw_window : to_delete)
+        _window_map.erase(glfw_window);
+
+    /*
+     * Perform input
+     */
+    for (auto& [wnd, state] : _window_map) {
+        if (wnd) {
+            auto x11_wnd = glfwGetX11Window(wnd);
+
+            if (auto pos = state.state.mouse_pos.try_get_and_deactivate())
+                XWarpPointer(x11_display, None, x11_wnd, 0, 0, 0, 0, pos->x(), pos->y());
+        }
+    }
+
+    /*
+     * Handle all events
+     */
+    core::vector<XEvent> glfw_events;
     XEvent event;
 
     while (XPending(x11_display)) {
         XNextEvent(x11_display, &event);
-        manager.HandleEvent(event);
+
+        for (auto& [wnd, state] : _window_map) {
+            if (wnd) {
+                auto x11_wnd = glfwGetX11Window(wnd);
+
+                /*
+                 * Handle window events
+                 */
+                switch (event.type) {
+                    case FocusIn:
+                        if (event.xfocus.window == x11_wnd)
+                            state.state.on_focus = true;
+                        break;
+                    case FocusOut:
+                        if (event.xfocus.window == x11_wnd)
+                            state.state.on_focus = false;
+                        break;
+                }
+            }
+
+            state.mgr->HandleEvent(event);
+        }
+
         glfw_events.push_back(event);
     }
 
-    // Put back events for glfw :/
+    /*
+     * Put back events for glfwPollEvents
+     * (Shitty solution, but I have no any ideas)
+     */
     for (auto& e : glfw_events)
         XPutBackEvent(x11_display, &e);
 

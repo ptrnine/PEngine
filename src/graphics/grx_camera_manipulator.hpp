@@ -1,6 +1,7 @@
 #pragma once
 
 #include <core/vec.hpp>
+#include <core/time.hpp>
 
 namespace grx {
     /**
@@ -8,7 +9,6 @@ namespace grx {
      */
     class grx_camera_manipulator {
     public:
-        grx_camera_manipulator();
         virtual ~grx_camera_manipulator() = default;
 
     protected:
@@ -26,8 +26,9 @@ namespace grx {
                 const core::vec3f& up) = 0;
 
 
-        double _last_update_time;
-        float  _timestep = 0.0;
+        core::timer _timer;
+        double      _timestep_d = 0.0;
+        float       _timestep   = 0.f;
     };
 
 } // namespace grx

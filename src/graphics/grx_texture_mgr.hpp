@@ -1,5 +1,6 @@
 #pragma once
 
+#include <mutex>
 #include <core/types.hpp>
 #include <core/assert.hpp>
 #include "grx_types.hpp"
@@ -90,6 +91,7 @@ namespace grx {
         grx_texture load_unwrap(const core::config_manager& config_mgr, core::string_view path);
 
     private:
+        std::mutex _texture_ids_mutex;
         core::hash_map<core::string, grx_texture> _texture_ids;
     };
 

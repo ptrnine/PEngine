@@ -31,3 +31,32 @@ grx::grx_context::grx_context() {
 void grx::grx_context::bind_default_framebuffer() {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
+
+void grx::grx_context::set_wireframe_enabled(bool value) {
+    if (value) {
+        glPolygonMode( GL_FRONT_AND_BACK, GL_LINE);
+        _is_wireframe_enabled = true;
+    } else {
+        glPolygonMode( GL_FRONT_AND_BACK, GL_FILL);
+        _is_wireframe_enabled = false;
+    }
+}
+
+void grx::grx_context::set_depth_test_enabled(bool value) {
+    if (value) {
+        glEnable(GL_DEPTH_TEST);
+        _is_depth_test_enabled = true;
+    } else {
+        glDisable(GL_DEPTH_TEST);
+        _is_wireframe_enabled = false;
+    }
+}
+
+void grx::grx_context::set_cull_face_enabled(bool value) {
+    if (value)
+        glEnable(GL_CULL_FACE);
+    else
+        glDisable(GL_CULL_FACE);
+
+    _is_cull_face_enabled = value;
+}

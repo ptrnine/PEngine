@@ -10,30 +10,34 @@ namespace core {
     using std::chrono::duration;
     using std::chrono::steady_clock;
     using std::chrono::system_clock;
-    using std::chrono::nanoseconds;
-    using std::chrono::microseconds;
-    using std::chrono::milliseconds;
-    using std::chrono::seconds;
-    using std::chrono::minutes;
-    using std::chrono::hours;
+
+    using nanoseconds  = std::ratio<1, 1000000000>;
+    using microseconds = std::ratio<1, 1000000>;
+    using milliseconds = std::ratio<1, 1000>;
+    using seconds      = std::ratio<1, 1>;
+    using minutes      = std::ratio<60>;
+    using hours        = std::ratio<3600>;
     using std::chrono::duration_cast;
     using namespace std::chrono_literals;
 
     class timer {
     public:
+        template <typename T = double, typename Ratio = seconds>
         [[nodiscard]]
         auto measure() const {
-            return steady_clock::now() - _start;
-        }
-
-        template <typename T>
-        [[nodiscard]]
-        auto measure() const {
-            return duration_cast<T>(steady_clock::now() - _start).count();
+            return duration_cast<duration<T, Ratio>>(steady_clock::now() - _start).count();
         }
 
         void reset() {
             _start = steady_clock::now();
+        }
+
+        template <typename T = double, typename Ratio = seconds>
+        T tick() {
+            auto now = steady_clock::now();
+            T result = duration_cast<duration<T, Ratio>>(now - _start).count();
+            _start = now;
+            return result;
         }
 
     private:

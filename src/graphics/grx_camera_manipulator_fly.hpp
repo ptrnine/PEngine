@@ -1,15 +1,26 @@
 #pragma once
 
 #include <core/helper_macros.hpp>
+#include <core/data_structures/mem_vector.hpp>
+#include <core/time.hpp>
 #include <gainput/gainput.h>
 #include "grx_camera_manipulator.hpp"
 
 namespace grx {
     class grx_camera_manipulator_fly : public grx_camera_manipulator {
     public:
-        explicit grx_camera_manipulator_fly(class grx_window& window, float speed = 4.f, float mouse_speed = 2.f);
+        static constexpr float outline_push = 0.01f;
+        static constexpr float low_push     = outline_push;
+        static constexpr float high_push    = 1.f - low_push;
+        static constexpr float diff_push    = high_push - low_push - outline_push;
+
+
+        explicit grx_camera_manipulator_fly(float speed = 4.f, float mouse_speed = 4.f):
+            _speed(speed), _mouse_speed(mouse_speed) {}
 
     protected:
+        core::shared_ptr<gainput::InputMap> map_lock(class grx_window* window);
+
         void update_fov(class grx_window* window, float& fov) override;
         void update_orientation(class grx_window* window, float& yaw, float& pitch, float& roll) override;
         void update_position(
@@ -19,11 +30,12 @@ namespace grx {
                 const core::vec3f& right,
                 const core::vec3f& up) override;
 
-        float _shift_factor = 4.f;
+        float _shift_factor = 10.f;
         float _speed =  0.f;
         float _mouse_speed;
 
-        gainput::InputMap _input_map;
+        core::weak_ptr<gainput::InputMap> _input_map;
+        class grx_window* _cached_wnd = nullptr;
 
     public:
         DECLARE_SET(speed)

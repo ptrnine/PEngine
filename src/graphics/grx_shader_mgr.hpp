@@ -1,12 +1,11 @@
 #pragma once
 
-#include <glm/mat4x4.hpp>
-#include <core/types.hpp>
-#include <core/vec.hpp>
 #include "grx_types.hpp"
+#include <core/vec.hpp>
 
 namespace core {
     class config_manager;
+    class config_section;
 }
 
 namespace std {
@@ -26,6 +25,29 @@ namespace std {
 }
 
 namespace grx {
+    class grx_shader_tech {
+    private:
+        friend class grx_shader_mgr;
+        grx_shader_tech(shader_program_id_t base, shader_program_id_t skeleton, shader_program_id_t instanced):
+            _base(base), _skeleton(skeleton), _instanced(instanced) {}
+
+        shader_program_id_t _base;
+        shader_program_id_t _skeleton;
+        shader_program_id_t _instanced;
+
+    public:
+        DECLARE_VAL_GET(base)
+        DECLARE_VAL_GET(skeleton)
+        DECLARE_VAL_GET(instanced)
+    };
+
+
+    class grx_shader_compiler {
+    public:
+        shader_program_id_t compile(const core::string& effect);
+    };
+
+
     class grx_shader_mgr {
     public:
         shader_program_id_t compile_program(
@@ -35,6 +57,19 @@ namespace grx {
         shader_program_id_t compile_program(
                 const core::config_manager& cm,
                 core::string_view shader_section_name);
+
+        grx_shader_tech load_render_tech(
+                const core::config_manager& cm,
+                core::string_view section);
+        
+        shader_program_id_t compile_program(
+                const core::config_section& cm,
+                core::string_view shader_section_name);
+
+        grx_shader_tech load_render_tech(
+                const core::config_section& cm,
+                core::string_view section);
+
 
         core::optional<uniform_id_t>
         get_uniform_id(shader_program_id_t program, const core::string& name);

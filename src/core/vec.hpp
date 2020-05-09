@@ -97,7 +97,6 @@ namespace core {
      * vector operations
      */
 
-
     template <typename A, typename B, size_t... Idxs>
     constexpr inline bool vec_integer_equal(
             const std::array<A, sizeof...(Idxs)>& a,
@@ -127,37 +126,35 @@ namespace core {
         return true && (approx_equal(std::get<Idxs>(a), std::get<Idxs>(b), epsilon) && ...);
     }
 
-    template <typename A, typename B, size_t... Idxs>
-    constexpr inline auto vec_add(const std::array<A, sizeof...(Idxs)>& a,
-                                  const std::array<B, sizeof...(Idxs)>& b,
-                                  std::index_sequence<Idxs...>&&)
-    {
-        return std::array{(std::get<Idxs>(a) + std::get<Idxs>(b))...};
+#define VECTOR_GEN_OP(NAME, OPERATOR) \
+    template <typename A, typename B, size_t... Idxs> \
+    constexpr inline auto vec_##NAME(const std::array<A, sizeof...(Idxs)>& a, \
+                                    const std::array<B, sizeof...(Idxs)>& b, \
+                                    std::index_sequence<Idxs...>&&) \
+    { \
+        return std::array{(std::get<Idxs>(a) OPERATOR std::get<Idxs>(b))...}; \
     }
 
-    template <typename A, typename B, size_t... Idxs>
-    constexpr inline auto vec_sub(const std::array<A, sizeof...(Idxs)>& a,
-                                  const std::array<B, sizeof...(Idxs)>& b,
-                                  std::index_sequence<Idxs...>&&)
-    {
-        return std::array{(std::get<Idxs>(a) - std::get<Idxs>(b))...};
+    VECTOR_GEN_OP(add, +)
+    VECTOR_GEN_OP(sub, -)
+    VECTOR_GEN_OP(mul, *)
+    VECTOR_GEN_OP(div, /)
+#undef VECTOR_GEN_OP
+
+#define VECTOR_FETCH_GEN_OP(NAME, OPERATOR) \
+    template <typename A, typename B, size_t... Idxs> \
+    constexpr inline void vec_fetch_##NAME(std::array<A, sizeof...(Idxs)>& a, \
+                                           const std::array<B, sizeof...(Idxs)>& b, \
+                                           std::index_sequence<Idxs...>&&) \
+    { \
+        ((std::get<Idxs>(a) OPERATOR std::get<Idxs>(b)), ...); \
     }
 
-    template <typename A, typename B, size_t... Idxs>
-    constexpr inline void vec_fetch_add(std::array<A, sizeof...(Idxs)>& a,
-                                        const std::array<B, sizeof...(Idxs)>& b,
-                                        std::index_sequence<Idxs...>&&)
-    {
-        ((std::get<Idxs>(a) += std::get<Idxs>(b)), ...);
-    }
-
-    template <typename A, typename B, size_t... Idxs>
-    constexpr inline void vec_fetch_sub(std::array<A, sizeof...(Idxs)>& a,
-                                        const std::array<B, sizeof...(Idxs)>& b,
-                                        std::index_sequence<Idxs...>&&)
-    {
-        ((std::get<Idxs>(a) -= std::get<Idxs>(b)), ...);
-    }
+    VECTOR_FETCH_GEN_OP(add, +=)
+    VECTOR_FETCH_GEN_OP(sub, -=)
+    VECTOR_FETCH_GEN_OP(mul, *=)
+    VECTOR_FETCH_GEN_OP(div, /=)
+#undef VECTOR_FETCH_GEN_OP
 
     template <typename A, size_t... Idxs>
     inline A vec_magnitude_2(const std::array<A, sizeof...(Idxs)>& a, std::index_sequence<Idxs...>&&) {
@@ -256,26 +253,41 @@ namespace core {
         return std::array{-std::get<Idxs>(a)...};
     }
 
+    template <typename T, size_t... Idxs>
+    std::array<T, sizeof...(Idxs)> vec_filled_with(T v, std::index_sequence<Idxs...>&&) {
+        return std::array<T, sizeof...(Idxs)>{(Idxs, v)...};
+    }
+
+
     /*
      * Basic vector
      */
 
     template <typename T, size_t S, template <typename, size_t> class DerivedT>
     struct vec_base {
+        using n_dimension_vector = void;
         using value_type = T;
+
+        static constexpr size_t size() noexcept {
+            return S;
+        }
 
         std::array<T, S> v;
 
-        template <typename TT>
+        static constexpr DerivedT<T, S> filled_with(T value) {
+            return DerivedT<T, S>{vec_filled_with(value, std::make_index_sequence<S>())};
+        }
+
+        template <typename TT> requires requires {typename TT::n_dimension_vector;}
         explicit operator TT() const {
             return TT{vec_static_cast<typename TT::value_type>(v, std::make_index_sequence<S>())};
         }
 
         template <size_t N>
-        constexpr decltype(auto) get() const { return std::get<N>(v); }
+        constexpr decltype(auto) get() const noexcept { return std::get<N>(v); }
 
         template <size_t N>
-        constexpr decltype(auto) get() { return std::get<N>(v); }
+        constexpr decltype(auto) get() noexcept { return std::get<N>(v); }
 
         constexpr auto operator- () const {
             return DerivedT{vec_unary_minus(v, std::make_index_sequence<S>())};
@@ -292,6 +304,16 @@ namespace core {
         }
 
         template <typename TT>
+        constexpr auto operator* (const vec_base<TT, S, DerivedT>& vec) const {
+            return DerivedT{vec_mul(v, vec.v, std::make_index_sequence<S>())};
+        }
+
+        template <typename TT>
+        constexpr auto operator/ (const vec_base<TT, S, DerivedT>& vec) const {
+            return DerivedT{vec_div(v, vec.v, std::make_index_sequence<S>())};
+        }
+
+        template <typename TT>
         constexpr DerivedT<T, S>& operator+= (const vec_base<TT, S, DerivedT>& vec) {
             vec_fetch_add(v, vec.v, std::make_index_sequence<S>());
             return static_cast<DerivedT<T, S>&>(*this);
@@ -300,6 +322,18 @@ namespace core {
         template <typename TT>
         constexpr DerivedT<T, S>& operator-= (const vec_base<TT, S, DerivedT>& vec) {
             vec_fetch_sub(v, vec.v, std::make_index_sequence<S>());
+            return static_cast<DerivedT<T, S>&>(*this);
+        }
+
+        template <typename TT>
+        constexpr DerivedT<T, S>& operator*= (const vec_base<TT, S, DerivedT>& vec) {
+            vec_fetch_mul(v, vec.v, std::make_index_sequence<S>());
+            return static_cast<DerivedT<T, S>&>(*this);
+        }
+
+        template <typename TT>
+        constexpr DerivedT<T, S>& operator/= (const vec_base<TT, S, DerivedT>& vec) {
+            vec_fetch_div(v, vec.v, std::make_index_sequence<S>());
             return static_cast<DerivedT<T, S>&>(*this);
         }
 
@@ -431,12 +465,14 @@ namespace core {
     struct vec1_base : public vec_specific<T, S, DerivedT> {
         void x(T _x)       { this->template get<0>() = _x; }
         T    x()     const { return this->template get<0>(); }
+        T&   x()           { return this->template get<0>(); }
     };
 
     template <typename T, size_t S, template <typename, size_t> class DerivedT>
     struct vec2_base : public vec1_base<T, S, DerivedT> {
         void y(T _y)       { this->template get<1>() = _y; }
         T    y()     const { return this->template get<1>(); }
+        T&   y()           { return this->template get<1>(); }
 
         GEN_GET_2_FROM_VEC2(x, y)
         GEN_SET_2_FROM_VEC2(x, y)
@@ -446,15 +482,19 @@ namespace core {
     struct vec3_base : public vec2_base<T, S, DerivedT> {
         void z(T _z)       { this->template get<2>() = _z; }
         T    z()     const { return this->template get<2>(); }
+        T&   z()           { return this->template get<2>(); }
 
         void r(T _r)       { this->x(_r); }
         T    r()     const { return this->x(); }
+        T&   r()           { return this->x(); }
 
         void g(T _g)       { this->y(_g); }
         T    g()     const { return this->y(); }
+        T&   g()           { return this->y(); }
 
         void b(T _b)       { this->z(_b); }
         T    b()     const { return this->z(); }
+        T&   b()           { return this->z(); }
 
         GEN_GET_2_FROM_VEC3(x, y, z)
         GEN_GET_2_FROM_VEC3(r, g, b)
@@ -471,9 +511,11 @@ namespace core {
     struct vec4_base : public vec3_base<T, S, DerivedT> {
         void w(T _w)       { this->template get<3>() = _w; }
         T    w()     const { return this->template get<3>(); }
+        T&   w()           { return this->template get<3>(); }
 
         void a(T _a)       { this->w(_a); }
         T    a()     const { return this->w(); }
+        T&   a()           { return this->w(); }
 
         GEN_GET_2_FROM_VEC4(x, y, z, w)
         GEN_GET_2_FROM_VEC4(r, g, b, a)
@@ -547,7 +589,6 @@ namespace core {
     template <typename T, size_t S>
     vec(std::array<T, S>) -> vec<T, S>;
 
-
     /*
      * Aliases
      */
@@ -588,16 +629,47 @@ namespace core {
     }
 
     template <typename T>
-    inline auto from_glm_vec(T&& glm_vector) {
-        static_assert(glm_vector.length() == 2 || glm_vector.length() == 3 || glm_vector.length() == 4);
+    inline auto from_glm(T&& glm_vector) {
+        static_assert(sizeof(T) / sizeof(float) == 2 || sizeof(T) / sizeof(float) == 3 || sizeof(T) / sizeof(float) == 4);
 
-        if constexpr (glm_vector.length() == 2)
+        if constexpr (sizeof(T) / sizeof(float) == 2)
             return vec{glm_vector.x, glm_vector.y};
-        else if constexpr (glm_vector.length() == 3)
+        else if constexpr (sizeof(T) / sizeof(float) == 3)
             return vec{glm_vector.x, glm_vector.y, glm_vector.z};
-        else if constexpr (glm_vector.length() == 4)
+        else if constexpr (sizeof(T) / sizeof(float) == 4)
             return vec{glm_vector.x, glm_vector.y, glm_vector.z, glm_vector.w};
     }
+
+
+    template <typename T, size_t S, size_t... Idxs>
+    inline glm::vec<static_cast<int>(S), T, glm::defaultp>
+    _to_glm_vec(const vec<T, S>& vec, std::index_sequence<Idxs...>&&) {
+        return glm::vec<static_cast<int>(S), T, glm::defaultp>(std::get<Idxs>(vec.v)...);
+    }
+
+    template <typename T, size_t S>
+    inline glm::vec<static_cast<int>(S), T, glm::defaultp>
+    to_glm(const vec<T, S>& vec) {
+        return _to_glm_vec(vec, std::make_index_sequence<S>());
+    }
+
+    template <typename T, size_t S, typename F, size_t... Idxs>
+    constexpr inline auto vec_map(const vec<T, S>& n_dimm_vector, F callback, std::index_sequence<Idxs...>&&) {
+        return vec{callback(std::get<Idxs>(n_dimm_vector.v))...};
+    }
+
+    template <typename T, size_t S, typename F>
+    constexpr inline auto vec_map(const vec<T, S>& n_dimm_vector, F callback) {
+        return vec_map(n_dimm_vector, callback, std::make_index_sequence<S>());
+    }
+
+    template <FloatingPoint T, size_t S>
+    constexpr inline auto round(const vec<T, S>& n_dimm_vector) {
+        return vec_map(n_dimm_vector, [](auto v) { return std::round(v); });
+    }
+
+    template <typename T>
+    concept MathVector = requires { typename T::n_dimension_vector; };
 }
 
 namespace std {

@@ -11,7 +11,6 @@ program dummy_path {
     fs(410) = main_fs();
 };
 
-
 uniform sampler2D screen_quad_texture;
 uniform float time;
 
@@ -20,44 +19,41 @@ float rand(vec2 co){
     return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
 }
 
-const float range = 0.05;
-const float noiseQuality = 250.0;
-const float noiseIntensity = 0.0088;
-const float offsetIntensity = 0.02;
-const float colorOffsetIntensity = 1.3;
+const float range                  = 0.05;
+const float noise_quality          = 3000.0; //250.0;
+const float noise_intensity        = 0.0088;
+const float offset_intensity       = 0.02;
+const float color_offset_intensity = 1.3;
 
-float verticalBar(float pos, float uvY, float offset)
-{
+float vertical_bar(float pos, float uv_y, float offset) {
     float edge0 = (pos - range);
     float edge1 = (pos + range);
 
-    float x = smoothstep(edge0, pos, uvY) * offset;
-    x -= smoothstep(pos, edge1, uvY) * offset;
+    float x = smoothstep(edge0, pos, uv_y) * offset -
+              smoothstep(pos, edge1, uv_y) * offset;
     return x;
 }
 
 shader vhs1_fs(in vec2 uv, out vec4 color) {
     vec2 uv_op = uv;
 
-    for (float i = 0.0; i < 0.71; i += 0.1313)
-    {
+    for (float i = 0.0; i < 0.71; i += 0.1313) {
         float d = mod(time * i, 1.7);
         float o = sin(1.0 - tan(time * 0.24 * i));
-        o *= offsetIntensity;
-        uv_op.x += verticalBar(d, uv_op.y, o);
+        o *= offset_intensity;
+        uv_op.x += vertical_bar(d, uv_op.y, o);
     }
 
-    float uvY = uv_op.y;
-    uvY *= noiseQuality;
-    uvY = float(int(uvY)) * (1.0 / noiseQuality);
-    float noise = rand(vec2(time * 0.00001, uvY));
-    uv_op.x += noise * noiseIntensity;
+    float uv_y = uv_op.y * noise_quality;
+    uv_y = float(int(uv_y)) * (1.0 / noise_quality);
+    float noise = rand(vec2(time * 0.00001, uv_y));
+    uv_op.x += noise * noise_intensity;
 
-    vec2 offsetR = vec2(0.006 * sin(time), 0.0) * colorOffsetIntensity;
-    vec2 offsetG = vec2(0.0073 * (cos(time * 0.97)), 0.0) * colorOffsetIntensity;
+    vec2 offset_r = vec2(0.006 * sin(time), 0.0) * color_offset_intensity;
+    vec2 offset_g = vec2(0.0073 * (cos(time * 0.97)), 0.0) * color_offset_intensity;
 
-    float r = texture(screen_quad_texture, uv_op + offsetR).r;
-    float g = texture(screen_quad_texture, uv_op + offsetG).g;
+    float r = texture(screen_quad_texture, uv_op + offset_r).r;
+    float g = texture(screen_quad_texture, uv_op + offset_g).g;
     float b = texture(screen_quad_texture, uv_op).b;
 
     color = vec4(r, g, b, 1.0);
@@ -100,21 +96,16 @@ shader passthrough_screen_quad_vs(in vec3 position_ms, out vec2 uv) {
 
 shader passthrough_screen_quad_fs(in vec2 uv, out vec3 color) {
     color = texture(screen_quad_texture, uv).rgb;
-    //color = texture(screen_quad_texture, uv + 0.005 * vec2(sin(time + 800.0 * uv.x), cos(time + 600.0 * uv.y))).xyz;
 }
 
-shader wobbly_texture_fs(in vec2 uv, out vec3 color) {
-    color = texture(screen_quad_texture, uv + 0.005 * vec2(sin(time + 800.0 * uv.x), cos(time + 600.0 * uv.y))).xyz;
+uniform float gamma;
+shader gamma_correction_fs(in vec2 uv, out vec3 color) {
+    color = pow(texture(screen_quad_texture, uv).rgb, vec3(gamma));
 }
 
 program passthrough_screen_quad {
     vs(410) = passthrough_screen_quad_vs();
     fs(410) = passthrough_screen_quad_fs();
-};
-
-program wobbly_texture {
-    vs(410) = passthrough_screen_quad_vs();
-    fs(410) = wobbly_texture_fs();
 };
 
 program vhs1_texture {
@@ -125,4 +116,9 @@ program vhs1_texture {
 program vhs2_texture {
     vs(410) = passthrough_screen_quad_vs();
     fs(410) = vhs2_fs();
+};
+
+program gamma_correction {
+    vs(410) = passthrough_screen_quad_vs();
+    fs(410) = gamma_correction_fs();
 };

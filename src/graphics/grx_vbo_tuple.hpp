@@ -11,6 +11,8 @@
 #define BONES_PER_VERTEX 4
 
 namespace grx {
+    using win_vao_map_t = core::hash_map<void*, uint>;
+
     using vbo_vector_vec2f = core::vector<core::vec2f>;
     template <typename T>
     concept VboVectorVec2f = std::is_same_v<T, vbo_vector_vec2f>;
@@ -22,19 +24,6 @@ namespace grx {
     using vbo_vector_indices = core::vector<uint>;
     template <typename T>
     concept VboVectorIndices = std::is_same_v<T, vbo_vector_indices>;
-
-    /*
-    template <size_t S>
-    using vbo_array_ids = core::array<uint, S>;
-    template <typename T>
-    concept VboArrayIds = core::StdArray<T> && std::is_same_v<typename T::value_type, uint>;
-
-    template <size_t S>
-    using vbo_array_weights = core::array<float, S>;
-    template <typename T>
-    concept VboArrayWeights = core::StdArray<T> && std::is_same_v<typename T::value_type, float>;
-     */
-
 
     using vbo_vector_matrix4 = core::vector<glm::mat4>;
     template <typename T>
@@ -64,7 +53,7 @@ namespace grx {
                 }
             }
 
-            RABORTF("{}", "Not enough bone size");
+            RABORTF("Not enough bone size. Weights: {}", weights);
         }
 
         core::array<uint, S>  ids;
@@ -81,16 +70,26 @@ namespace grx {
                       VboVectorMatrix4<T> || VboVectorBone<T>;
 
 
-    void _grx_gen_vao_and_vbos           (uint* vao, uint* vbos_ptr, size_t vbos_size);
-    void _grx_delete_vao_and_vbos        (uint* vao, uint* vbos_ptr, size_t vbos_size);
+    void _grx_gen_vao_and_vbos           (win_vao_map_t& vao_map, uint* vbos_ptr, size_t vbos_size);
+    void _grx_delete_vao_and_vbos        (win_vao_map_t& vao_map, uint* vbos_ptr, size_t vbos_size);
 
-    void _grx_bind_vao                   (uint vao_id);
+    bool _grx_bind_vao                   (win_vao_map_t& vao_map);
     void _grx_bind_vbo                   (uint target, uint vbo_id);
+
+    void _grx_rebind_vector_vec2f_vbo    (uint vbo_id, uint location);
     void _grx_set_data_vector_vec2f_vbo  (uint vbo_id, uint location, const vbo_vector_vec2f& data);
+
+    void _grx_rebind_vector_vec3f_vbo    (uint vbo_id, uint location);
     void _grx_set_data_vector_vec3f_vbo  (uint vbo_id, uint location, const vbo_vector_vec3f& data);
+
+    void _grx_rebind_vector_indices_ebo  (uint vbo_id);
     void _grx_set_data_vector_indices_ebo(uint vbo_id, const vbo_vector_indices& data);
+
     void _grx_set_data_vector_matrix_vbo (uint vbo_id, const glm::mat4* matrices, size_t size);
+
+    void _grx_rebind_vector_bone_vbo     (uint vbo_id, uint location, size_t bone_per_vertex);
     void _grx_set_data_vector_bone_vbo   (uint vbo_id, uint location, const void* data, size_t bone_per_vertex, size_t size);
+
     void _grx_setup_matrix_vbo           (uint vbo_id, uint location);
     void _grx_draw_elements_base_vertex  (size_t indices_count, size_t start_indices_pos, size_t start_vertex_pos);
     void _grx_draw_arrays                (size_t vertex_count, size_t start_vertex_pos);
@@ -107,6 +106,31 @@ namespace grx {
         friend class grx_window;
         template <typename> friend class grx_postprocess_mgr;
         grx_vbo_tuple([[maybe_unused]] void* no_raii) {}
+
+        template <size_t Idx>
+        void _rebind_buffer() const {
+            auto id = _vbo_ids[Idx];
+            auto loc  = location<Idx>();
+            using DataT = std::tuple_element_t<Idx, std::tuple<Ts...>>;
+
+            if constexpr (VboVectorVec2f<DataT>)
+                _grx_rebind_vector_vec2f_vbo(id, loc);
+            else if constexpr (VboVectorVec3f<DataT>)
+                _grx_rebind_vector_vec3f_vbo(id, loc);
+            else if constexpr (VboVectorIndices<DataT>)
+                _grx_rebind_vector_indices_ebo(id);
+            else if constexpr (VboVectorBone<DataT>)
+                _grx_rebind_vector_bone_vbo(id, loc, BONES_PER_VERTEX);
+        }
+
+        template <size_t... Idx>
+        void _rebind_buffers(std::index_sequence<Idx...>&&) const {
+            ((_rebind_buffer<Idx>()), ...);
+        }
+
+        void _rebind_buffers() const {
+            _rebind_buffers(std::make_index_sequence<sizeof...(Ts)>());
+        }
 
     public:
         template <size_t S>
@@ -139,7 +163,7 @@ namespace grx {
         }
 
         template <size_t I = 0>
-        constexpr void _setup_matrices_iter() {
+        constexpr void _setup_matrices_iter() const {
             if constexpr (I < sizeof...(Ts)) {
                 if constexpr (VboVectorMatrix4<std::tuple_element_t<I, std::tuple<Ts...>>>)
                     _grx_setup_matrix_vbo(_vbo_ids[I], location<I>());
@@ -189,29 +213,25 @@ namespace grx {
         }
 
         grx_vbo_tuple() {
-            _grx_gen_vao_and_vbos(&_vao_id, _vbo_ids.data(), _vbo_ids.size());
+            _grx_gen_vao_and_vbos(_win_vao_map, _vbo_ids.data(), _vbo_ids.size());
             _setup_matrices_iter();
         }
 
         grx_vbo_tuple(grx_vbo_tuple&& vbo_tuple) noexcept:
-            _vbo_ids(vbo_tuple._vbo_ids),
-            _vao_id (vbo_tuple._vao_id)
-        {
-            vbo_tuple._vao_id = std::numeric_limits<uint>::max();
-        }
+            _vbo_ids     (vbo_tuple._vbo_ids),
+            _win_vao_map (std::move(vbo_tuple._win_vao_map)) {}
 
         grx_vbo_tuple& operator= (grx_vbo_tuple&& vbo_tuple) noexcept {
-            _vbo_ids = vbo_tuple._vbo_ids;
-            _vao_id  = vbo_tuple._vao_id;
-
-            vbo_tuple._vao_id = std::numeric_limits<uint>::max();
+            _vbo_ids     = vbo_tuple._vbo_ids;
+            _win_vao_map = std::move(vbo_tuple._win_vao_map);
 
             return *this;
         }
 
         ~grx_vbo_tuple() {
-            if (_vao_id != std::numeric_limits<uint>::max())
-                _grx_delete_vao_and_vbos(&_vao_id, _vbo_ids.data(), _vbo_ids.size());
+            //if (_vao_id != std::numeric_limits<uint>::max())
+            if (!_win_vao_map.empty())
+                _grx_delete_vao_and_vbos(_win_vao_map, _vbo_ids.data(), _vbo_ids.size());
         }
 
         template <size_t I>
@@ -236,7 +256,10 @@ namespace grx {
         }
 
         void bind_vao() const {
-            _grx_bind_vao(_vao_id);
+            if (_grx_bind_vao(_win_vao_map)) {
+                _setup_matrices_iter();
+                _rebind_buffers();
+            }
         }
 
         template <size_t I>
@@ -265,8 +288,8 @@ namespace grx {
         }
 
     private:
-        core::array<uint, count()> _vbo_ids;
-        uint                       _vao_id = std::numeric_limits<uint>::max();
+        core::array<uint, count()>  _vbo_ids;
+        mutable win_vao_map_t       _win_vao_map;
     };
 
 

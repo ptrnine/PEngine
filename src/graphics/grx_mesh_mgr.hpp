@@ -1,10 +1,15 @@
 #pragma once
 
+#include <mutex>
+#include <future>
+
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 
 #include <core/helper_macros.hpp>
 #include <core/types.hpp>
+#include <core/time.hpp>
+
 #include "grx_types.hpp"
 #include "grx_vbo_tuple.hpp"
 #include "grx_texture_mgr.hpp"
@@ -15,7 +20,46 @@ namespace core {
     class config_manager;
 }
 
+class aiScene;
+
 namespace grx {
+    using core::tuple;
+    using core::vector;
+    using core::string;
+    using core::string_view;
+    using core::hash_map;
+    using core::unique_ptr;
+    using core::shared_ptr;
+    using core::move;
+    using core::forward;
+    using core::optional;
+    using core::vec3f;
+
+    using mesh_data_basic = tuple<
+            vector<struct grx_mesh_entry>,
+            vbo_vector_indices,  // Index buffer
+            vbo_vector_vec3f,    // Position buffer
+            vbo_vector_vec2f,    // UV buffer
+            vbo_vector_vec3f,    // Normal buffer
+            vbo_vector_vec3f,    // Tangent buffer
+            vbo_vector_vec3f     // Bitangent buffer
+            >;
+
+    using mesh_bone_data = tuple<
+            vbo_vector_bone,                    // Bone buffer
+            unique_ptr<struct bone_node>, // Skeleton tree
+            hash_map<string, uint>, // Name - bone id map
+            vector<grx_aabb>,             // Aabbs
+            vector<glm::mat4>,            // Offsets matrices
+            vector<glm::mat4>             // Final transform matrices
+            >;
+
+    struct texture_path_pack {
+        optional<string> diffuse;
+        optional<string> normal;
+        optional<string> specular;
+    };
+
     // Simple mesh (no skeleton)
     using mesh_vbo_t = grx_vbo_tuple<
             vbo_vector_indices,  // Index buffer
@@ -48,18 +92,6 @@ namespace grx {
             vbo_vector_bone
             >;
 
-    using mesh_instenced_vbo_skeleton_t = grx_vbo_tuple<
-            vbo_vector_indices,  // Index buffer
-            vbo_vector_vec3f,    // Position buffer
-            vbo_vector_vec2f,    // UV buffer
-//            vbo_vector_vec3f,    // Normal buffer
-//            vbo_vector_vec3f,    // Tangent buffer
-//            vbo_vector_vec3f,    // Bitangent buffer
-            vbo_vector_bone,
-            vbo_vector_matrix4,  // ModelViewProjection matrix
-            vbo_vector_matrix4   // Model matrix
-    >;
-
     namespace mesh_vbo_types {
         enum mesh_vbo_types {
             INDEX_BUF = 0,
@@ -85,18 +117,22 @@ namespace grx {
     }
 
     struct grx_mesh_entry {
-        uint indices_count, material_index = std::numeric_limits<uint>::max(), start_vertex_pos, start_index_pos;
-        TO_TUPLE_IMPL(indices_count, material_index, start_vertex_pos, start_index_pos)
+        uint indices_count;
+        uint vertices_count;
+        uint material_index = std::numeric_limits<uint>::max();
+        uint start_vertex_pos;
+        uint start_index_pos;
+        grx_aabb aabb;
     };
 
     struct anim_position_key {
-        double      time;
-        core::vec3f value;
+        double time;
+        vec3f  value;
     };
 
     struct anim_scaling_key {
-        double      time;
-        core::vec3f value;
+        double time;
+        vec3f  value;
     };
 
     struct anim_rotation_key {
@@ -105,33 +141,44 @@ namespace grx {
     };
 
     struct anim_channel {
-        core::vector<anim_position_key> position_keys;
-        core::vector<anim_scaling_key>  scaling_keys;
-        core::vector<anim_rotation_key> rotation_keys;
+        vector<anim_position_key> position_keys;
+        vector<anim_scaling_key>  scaling_keys;
+        vector<anim_rotation_key> rotation_keys;
     };
 
     struct grx_animation {
-        double duration, ticks_per_second;
-        core::hash_map<core::string, anim_channel> channels;
+        double duration;
+        double ticks_per_second;
+        hash_map<string, anim_channel> channels;
     };
 
     struct bone_node {
-        core::string name;
+        string    name;
         glm::mat4 transform;
-        core::vector<core::unique_ptr<bone_node>> children;
+        vector<unique_ptr<bone_node>> children;
     };
 
-    struct grx_bone_data {
+    class grx_bone_data {
+    protected:
+        friend class grx_mesh_mgr;
+        friend class grx_mesh;
+        friend class grx_mesh_instance;
+
+        static void skeleton_aabb_traverse(grx_bone_data& bone_data);
+        static grx_aabb calculate_skeleton_aabb(grx_bone_data& bone_data);
+
         grx_bone_data() {
             std::fill(offsets.begin(), offsets.end(), glm::mat4(1.f));
             std::fill(final_transforms.begin(), final_transforms.end(), glm::mat4(1.f));
         }
 
-        core::hash_map<core::string, grx_animation> animations;
-        core::vector<glm::mat4>                     offsets;
-        core::vector<glm::mat4>                     final_transforms;
-        core::hash_map<core::string, uint>          bone_map;
-        core::unique_ptr<bone_node>                 root_node;
+    private:
+        hash_map<string, grx_animation> animations;
+        vector<glm::mat4>               offsets;
+        vector<glm::mat4>               final_transforms;
+        vector<grx_aabb>                aabbs;
+        hash_map<string, uint>          bone_map;
+        unique_ptr<bone_node>           root_node;
 
         glm::mat4 global_inverse_transform;
         uniform_id_t cached_bone_matrices_uniform = static_cast<uniform_id_t>(-1);
@@ -139,78 +186,90 @@ namespace grx {
 
     class grx_mesh {
     public:
-        void draw(const core::shared_ptr<class grx_camera>& camera, shader_program_id_t program_id);
-        void draw_instanced(const core::shared_ptr<class grx_camera>& camera, shader_program_id_t program_id);
+        void draw          (const glm::mat4& vp, const glm::mat4& model,          shader_program_id_t program_id);
+        void draw_instanced(const glm::mat4& vp, const vector<glm::mat4>& models, shader_program_id_t program_id);
 
-        void set_instance_count(size_t count) {
-            if (count < 1)
-                count = 1;
-            _model_matrices.resize(count, glm::mat4(1.f));
-        }
-
-        void set_position(const core::vec3f& pos, size_t index = 0) {
-            _model_matrices[index][3].x = pos.x();
-            _model_matrices[index][3].y = pos.y();
-            _model_matrices[index][3].z = pos.z();
-        }
-
-        void translate(const core::vec3f& displacement, size_t index = 0) {
-            set_position(position(index) + displacement, index);
-        }
-
-        void rotate(const core::vec3f& angles, size_t index = 0) {
-            auto rotation = glm::mat4_cast(glm::quat(glm::vec3{angles.x(), angles.y(), angles.z()}));
-            _model_matrices[index] *= rotation;
-        }
-
-        [[nodiscard]]
-        core::vec3f position(size_t index = 0) const {
-            return core::vec3f{_model_matrices[index][3].x, _model_matrices[index][3].y, _model_matrices[index][3].z};
-        }
+        void draw          (const glm::mat4& vp, const glm::mat4& model,          const class grx_shader_tech& tech);
+        void draw_instanced(const glm::mat4& vp, const vector<glm::mat4>& models, const class grx_shader_tech& tech);
 
     private:
         friend class grx_mesh_mgr;
 
+        // TODO: remove this later
         template <typename T>
-        grx_mesh(T&& mesh_vbo, core::vector<grx_mesh_entry> mesh_entries, size_t instance_count = 1):
-                _mesh_vbo(std::forward<T>(mesh_vbo)),
-                _mesh_entries(std::move(mesh_entries)),
-                _model_matrices(instance_count, glm::mat4(1.f))
-        {
-            if (instance_count < 1) {
-                set_instance_count(1);
-                _model_matrices.shrink_to_fit();
-            }
-        }
+        grx_mesh(T&& mesh_vbo,
+                 vector<grx_mesh_entry>&& mesh_entries
+        ):  _mesh_vbo    (forward<T>(mesh_vbo)),
+            _mesh_entries(move(mesh_entries))
+        {}
 
-        grx_vbo_tuple_generic         _mesh_vbo;
-        core::vector<grx_mesh_entry>  _mesh_entries;
-        core::vector<grx_texture_set> _texture_sets;
-        core::vector<glm::mat4>       _model_matrices = { glm::mat4(1.f) };
+        template <typename T>
+        grx_mesh(T&& mesh_vbo,
+                 vector<grx_mesh_entry>&& mesh_entries,
+                 vector<grx_texture_set>&& texture_sets
+        ):  _mesh_vbo    (forward<T>(mesh_vbo)),
+            _mesh_entries(move(mesh_entries)),
+            _texture_sets(move(texture_sets))
+        {}
+
+        template <typename T>
+        grx_mesh(T&& mesh_vbo,
+                 vector<grx_mesh_entry>&& mesh_entries,
+                 vector<grx_texture_set>&& texture_sets,
+                 unique_ptr<grx_bone_data>&& bone_data
+        ):  _mesh_vbo    (forward<T>(mesh_vbo)),
+            _mesh_entries(move(mesh_entries)),
+            _texture_sets(move(texture_sets)),
+            _bone_data   (move(bone_data))
+        {}
+
+        grx_vbo_tuple_generic     _mesh_vbo;
+        vector<grx_mesh_entry>    _mesh_entries;
+        vector<grx_texture_set>   _texture_sets;
+        unique_ptr<grx_bone_data> _bone_data;
+        grx_aabb                  _aabb;
 
         shader_program_id_t _cached_program       = static_cast<shader_program_id_t>(-1);
         uniform_id_t        _cached_uniform_mvp   = static_cast<uniform_id_t>(-1);
         uniform_id_t        _cached_uniform_model = static_cast<uniform_id_t>(-1);
 
-        core::unique_ptr<grx_bone_data> _bone_data;
+        bool _instanced = false;
 
     public:
         DECLARE_GET(mesh_vbo)
         DECLARE_GET(mesh_entries)
         DECLARE_GET(texture_sets)
+        DECLARE_GET(aabb)
+
+        const unique_ptr<grx_bone_data>& skeleton() const {
+            return _bone_data;
+        }
     };
 
 
     class grx_mesh_mgr {
+    private:
+        static void load_anim(const aiScene* scene, grx_bone_data& bone_data);
+
     public:
-        core::shared_ptr<grx_mesh> load(core::string_view path, bool instanced = false);
-        core::shared_ptr<grx_mesh> load(const core::config_manager& config_mgr, core::string_view path, bool instanced = false);
+        shared_ptr<grx_mesh> load(string_view path, bool instanced = false);
+        shared_ptr<grx_mesh> load(const core::config_manager& config_mgr, string_view path, bool instanced = false);
+
+        static void anim_traverse(
+                grx_bone_data& bone_data,
+                const grx_animation& anim,
+                double time,
+                const bone_node* node,
+                const glm::mat4& parent_transform = glm::mat4(1.f));
 
     private:
-        core::shared_ptr<grx_mesh> load_mesh(core::string_view path, bool instanced);
+        static shared_ptr<grx_mesh> load_mesh(string_view path, bool instanced, grx_texture_mgr* texture_mgr);
 
     private:
-        core::hash_map<core::string, core::shared_ptr<grx_mesh>> _meshes;
+        std::mutex _meshes_mutex;
+        hash_map<string, shared_ptr<grx_mesh>> _meshes;
         grx_texture_mgr _texture_mgr;
     };
+
 } // namespace grx
+

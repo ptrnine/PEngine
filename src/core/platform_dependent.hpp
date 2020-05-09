@@ -1,16 +1,22 @@
 #pragma once
 
 #include <iostream>
+#include "helper_macros.hpp"
 #include "types.hpp"
 
-#ifdef __unix
 
-namespace {
+#ifdef __unix
+/*//////////////////////////////////////////
+ *
+ *           Unix implementation
+ *
+ *//////////////////////////////////////////
+
 #include <unistd.h>
 #include <sys/types.h>
 #include <pwd.h>
 #include <climits>
-}
+#include <cpuid.h>
 
 namespace platform_dependent
 {
@@ -64,7 +70,7 @@ namespace platform_dependent
             return result;
         } else {
             auto tmp = errno;
-            std::cerr << "readlink() failed with errno = " << tmp << " (" << ::strerror(tmp) << ")" << std::endl; 
+            std::cerr << "readlink() failed with errno = " << tmp << " (" << ::strerror(tmp) << ")" << std::endl;
             return {};
         }
     }
@@ -76,14 +82,168 @@ namespace platform_dependent
             return buffer;
         } else {
             auto tmp = errno;
-            std::cerr << "getcwd() failed with errno = " << tmp << " (" << ::strerror(tmp) << ")" << std::endl; 
+            std::cerr << "getcwd() failed with errno = " << tmp << " (" << ::strerror(tmp) << ")" << std::endl;
             return {};
         }
     }
 
+    inline void cpuid(uint info[4], uint info_type) {
+        __cpuid_count(info_type, 0, info[0], info[1], info[2], info[3]);
+    }
+
 } // namespace platform_dependent
+
+
+
+#elif _WIN32
+/*//////////////////////////////////////////
+ *
+ *           Windows implementation
+ *
+ *//////////////////////////////////////////
+
+
+#include <intrin.h>
+
+
+namespace platform_dependent
+{
+    inline void cpuid(uint info[4], uint info_type) {
+        __cpuidex(info, info_type, 0);
+    }
+
+} // namespace platform_dependent
+
 
 #else
     #error "Implement me!"
 #endif
+
+
+
+
+/*//////////////////////////////////////////
+ *
+ *         Universal implementation
+ *
+ *//////////////////////////////////////////
+
+namespace platform_dependent
+{
+    struct cpu_extensions_checker {
+        SINGLETON_IMPL(cpu_extensions_checker);
+
+        cpu_extensions_checker() {
+            uint info[4];
+
+            cpuid(info, 0);
+            uint n_ids = info[0];
+
+            cpuid(info, 0x80000000);
+            uint n_ex_ids = info[0];
+
+            //  Detect Features
+            if (n_ids >= 0x00000001) {
+                cpuid(info,0x00000001);
+
+                mmx  = (info[3] & (1U << 23)) != 0;
+                sse  = (info[3] & (1U << 25)) != 0;
+                sse2 = (info[3] & (1U << 26)) != 0;
+                sse3 = (info[2] & (1U <<  0)) != 0;
+
+                ssse3 = (info[2] & (1U <<  9)) != 0;
+                sse41 = (info[2] & (1U << 19)) != 0;
+                sse42 = (info[2] & (1U << 20)) != 0;
+                aes   = (info[2] & (1U << 25)) != 0;
+
+                avx  = (info[2] & (1U << 28)) != 0;
+                fma3 = (info[2] & (1U << 12)) != 0;
+
+                rdrand = (info[2] & (1U << 30)) != 0;
+            }
+            if (n_ids >= 0x00000007) {
+                cpuid(info,0x00000007);
+
+                avx2 = (info[1] & (1U << 5)) != 0;
+
+                bmi1        = (info[1] & (1U <<  3)) != 0;
+                bmi2        = (info[1] & (1U <<  8)) != 0;
+                adx         = (info[1] & (1U << 19)) != 0;
+                sha         = (info[1] & (1U << 29)) != 0;
+                prefetchwt1 = (info[2] & (1U <<  0)) != 0;
+
+                avx512f    = (info[1] & (1U << 16)) != 0;
+                avx512cd   = (info[1] & (1U << 28)) != 0;
+                avx512pf   = (info[1] & (1U << 26)) != 0;
+                avx512er   = (info[1] & (1U << 27)) != 0;
+                avx512vl   = (info[1] & (1U << 31)) != 0;
+                avx512bw   = (info[1] & (1U << 30)) != 0;
+                avx512dq   = (info[1] & (1U << 17)) != 0;
+                avx512ifma = (info[1] & (1U << 21)) != 0;
+                avx512vbmi = (info[2] & (1U <<  1)) != 0;
+            }
+            if (n_ex_ids >= 0x80000001){
+                cpuid(info,0x80000001);
+
+                x64   = (info[3] & (1U << 29)) != 0;
+                abm   = (info[2] & (1U <<  5)) != 0;
+                sse4a = (info[2] & (1U <<  6)) != 0;
+                fma4  = (info[2] & (1U << 16)) != 0;
+                xop   = (info[2] & (1U << 11)) != 0;
+            }
+        }
+
+        /*
+         * Misc
+         */
+        bool mmx         = false;
+        bool x64         = false;
+        bool abm         = false;
+        bool rdrand      = false;
+        bool bmi1        = false;
+        bool bmi2        = false;
+        bool adx         = false;
+        bool prefetchwt1 = false;
+
+        /*
+         * SIMD 128-bit
+         */
+        bool sse   = false;
+        bool sse2  = false;
+        bool sse3  = false;
+        bool ssse3 = false;
+        bool sse41 = false;
+        bool sse42 = false;
+        bool sse4a = false;
+        bool aes   = false;
+        bool sha   = false;
+
+        /*
+         * SIMD 256-bit
+         */
+        bool avx  = false;
+        bool xop  = false;
+        bool fma3 = false;
+        bool fma4 = false;
+        bool avx2 = false;
+
+        /*
+         * SIMD 512-bit
+         */
+        bool avx512f    = false; // Foundation
+        bool avx512cd   = false; // Conflict Detection
+        bool avx512pf   = false; // Prefetch
+        bool avx512er   = false; // Exponential + Reciprocal
+        bool avx512vl   = false; // Vector Length Extensions
+        bool avx512bw   = false; // Byte + Word
+        bool avx512dq   = false; // Doubleword + Quadword
+        bool avx512ifma = false; // Integer 52-bit Fused Multiply-Add
+        bool avx512vbmi = false; // Vector Byte Manipulation Instructions
+    };
+
+    inline const cpu_extensions_checker& cpu_ext_check() {
+        return cpu_extensions_checker::instance();
+    }
+
+} // namespace platform_dependent
 

@@ -117,6 +117,11 @@ namespace core
             magic_print(os, v.to_tuple());
         }
 
+        void fmt_proc(std::ostream& os, std::string_view str) {
+            if (str.front() == '.')
+                os << std::setprecision(std::stoi(std::string(str.substr(1))));
+        }
+
         template <size_t idx = 0, typename IterT, typename... ArgsT>
         size_t print_iter(std::ostream& os, IterT begin, IterT end, ArgsT&&... args) {
             bool on_bracket = false;
@@ -138,8 +143,18 @@ namespace core
 
                         if constexpr (idx < sizeof...(ArgsT)) {
                             using std::get;
+
                             // Todo: do something with fmt
+                            std::ios saved(nullptr);
+                            saved.copyfmt(os);
+
+                            if (!fmt.empty())
+                                fmt_proc(os, fmt);
+
                             magic_print(os, get<idx>(std::forward_as_tuple(forward<ArgsT>(args)...)));
+
+                            os.copyfmt(saved);
+
                             rc = print_iter<idx + 1>(os, begin + 1, end, forward<ArgsT>(args)...);
                         }
                         else {

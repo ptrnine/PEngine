@@ -45,7 +45,7 @@ namespace core
     template <typename T> requires Integral<T> && Unsigned<T>
     inline void deserialize(T& val, span<byte>& in) {
         Expects(sizeof(T) <= static_cast<size_t>(in.size()));
-        
+
         T value;
         memcpy(&value, in.data(), sizeof(T));
         in = in.subspan(sizeof(T));
@@ -69,7 +69,7 @@ namespace core
     template <typename T> requires Integral<T> && (!Unsigned<T>)
     inline void deserialize(T& out, span<byte>& in) {
         std::make_unsigned_t<T> val;
-        
+
         deserialize(val, in);
 
         T value;
@@ -79,13 +79,13 @@ namespace core
     }
 
     //===================== FloatingPoint
-    
+
     template <typename T>
     struct FloatSizeEqualTypeHelper;
 
     template <>
     struct FloatSizeEqualTypeHelper<float> { using type = uint32_t; };
-    
+
     template <>
     struct FloatSizeEqualTypeHelper<double> { using type = uint64_t; };
 
@@ -106,7 +106,7 @@ namespace core
 
         typename FloatSizeEqualTypeHelper<T>::type size_eq_int;
         deserialize(size_eq_int, in);
-            
+
         T value;
         memcpy(&value, &size_eq_int, sizeof(T));
         out = value;

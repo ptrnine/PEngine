@@ -5,6 +5,7 @@
 
 #include <core/assert.hpp>
 #include <core/config_manager.hpp>
+#include <core/math.hpp>
 #include "grx_context.hpp"
 #include "grx_shader_mgr.hpp"
 #include "grx_camera.hpp"
@@ -12,27 +13,26 @@
 using namespace core;
 
 namespace grx {
+    static GLFWwindow* main_window_context;
     static core::hash_map<GLFWwindow*, grx_window*> window_map;
-
-    void grx_window::glfw_focus_callback(GLFWwindow* window, int focused) {
-        window_map[window]->_on_focus = focused != 0;
-    }
 }
 
 grx::grx_window::grx_window(
         const string& name,
         const vec2i& size,
         grx_shader_mgr& shader_manager,
-        config_manager& config_manager
-): _vbo_tuple(nullptr)
-{
+        config_manager& config_manager,
+        const core::shared_ptr<grx_window_render_target>& render_target
+) {
     grx::grx_context::instance();
 
-    _wnd = glfwCreateWindow(size.x(), size.y(), name.data(), nullptr, nullptr);
+    glfwWindowHint( GLFW_DOUBLEBUFFER, GL_FALSE );
+    _wnd = glfwCreateWindow(size.x(), size.y(), name.data(), nullptr,
+            main_window_context ? main_window_context : nullptr);
     RASSERTF(_wnd, "{}", "Can't create GLFW window");
 
-    _input_ctx.set_glfw_wnd(_wnd);
-    _input_ctx.set_display_size(size);
+    if (!main_window_context)
+        main_window_context = _wnd;
 
     auto savedContext = glfwGetCurrentContext();
 
@@ -54,24 +54,19 @@ grx::grx_window::grx_window(
     glEnable   (GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
-    // Screen quad
-    _vbo_tuple = grx_vbo_tuple<vbo_vector_vec3f>();
-    _vbo_tuple.set_data<0>({
-            {-1.0f, -1.0f, 0.0f },
-            { 1.0f, -1.0f, 0.0f },
-            {-1.0f,  1.0f, 0.0f },
-            {-1.0f,  1.0f, 0.0f },
-            { 1.0f, -1.0f, 0.0f },
-            { 1.0f,  1.0f, 0.0f }
-    });
-
-    _render_target = grx_window_render_target(size);
+    _render_target = render_target ?
+        render_target :
+        grx_window_render_target::create_shared(size);
 
     _screen_quad_passthrough = shader_manager.compile_program(config_manager, "shader_passthrough_screen_quad");
     _screen_quad_texture_uniform = shader_manager.get_uniform_id_unwrap(_screen_quad_passthrough, "screen_quad_texture");
 
     window_map.insert_or_assign(_wnd, this);
-    glfwSetWindowFocusCallback(_wnd, grx_window::glfw_focus_callback);
+
+    _input_mgr = inp::inp_ctx().input_mgr_for(_wnd);
+    _input_mgr->SetDisplaySize(size.x(), size.y());
+    _mouse_id    = _input_mgr->CreateDevice<gainput::InputDeviceMouse>();
+    _keyboard_id = _input_mgr->CreateDevice<gainput::InputDeviceKeyboard>();
 
     // Restore context
     glfwMakeContextCurrent(savedContext);
@@ -100,28 +95,30 @@ void grx::grx_window::swap_buffers() {
 }
 
 void grx::grx_window::bind_render_target() {
-    _render_target.bind_render_target();
+    _render_target->bind_render_target();
 }
 
 void grx::grx_window::bind_and_clear_render_target() {
-    _render_target.bind_and_clear_render_target();
+    _render_target->bind_and_clear_render_target();
 }
 
 void grx::grx_window::present() {
-    _render_target.do_postprocess_queue();
+    _render_target->do_postprocess_queue();
 
     make_current();
+    glClearColor(119.f / 255.f, 162.f / 255.f, 155.f / 255.f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    _vbo_tuple.bind_vao();
+    _render_target->bind_quad_vao();
 
-    _render_target.activate_texture();
+    _render_target->activate_texture();
 
     grx::grx_shader_mgr::use_program(_screen_quad_passthrough);
     grx::grx_shader_mgr::set_uniform(_screen_quad_texture_uniform, 0);
 
     //glEnable(GL_FRAMEBUFFER_SRGB);
-    _vbo_tuple.draw(18);
+    _render_target->draw_quad();
+    //_vbo_tuple.draw(18);
     //glDisable(GL_FRAMEBUFFER_SRGB);
 
     swap_buffers();
@@ -134,15 +131,25 @@ core::vec2i grx::grx_window::size() const {
 }
 
 void grx::grx_window::set_mouse_pos(const core::vec2f& position) {
-    glfwSetCursorPos(_wnd, position.x(), position.y());
+    auto sz  = static_cast<core::vec2f>(size());
+    auto pos = static_cast<core::vec2i>(core::vec2f{
+        roundf(core::lerp(0.f, sz.x(), position.x())),
+        roundf(core::lerp(0.f, sz.y(), position.y()))});
+    inp::inp_ctx().window_state_for(_wnd).mouse_pos.set_and_activate(pos);
+}
+
+void grx::grx_window::set_pos(const core::vec2i& position) {
+    glfwSetWindowPos(_wnd, position.x(), position.y());
 }
 
 void grx::grx_window::reset_mouse_pos() {
-    auto size = this->size();
-    set_mouse_pos(static_cast<vec2f>(size) / 2.f);
+    set_mouse_pos({0.5f, 0.5f});
 }
 
-void grx::grx_window::update_input()  {
-    _input_ctx.update();
-    _camera->update(this);
+void grx::grx_window::update_input() {
+    //if (on_focus())
+        _input_mgr->Update();
+
+    if (_camera)
+        _camera->update(this);
 }

@@ -19,7 +19,7 @@ void grx::grx_camera::look_at(const core::vec3f& pos) {
         _orientation = glm::rotate(_orientation,   _yaw,   glm::vec3(0.f, 1.f, 0.f));
         glm::mat4 inv_orientation = glm::inverse(_orientation);
 
-        _right       = core::from_glm_vec(inv_orientation * glm::vec4(1.f, 0.f, 0.f, 1.f)).xyz();
+        _right       = core::from_glm(inv_orientation * glm::vec4(1.f, 0.f, 0.f, 1.f)).xyz();
         _up          = _right.cross(_dir);
         _orientation = glm::rotate(_orientation, _roll, to_glm(_dir));
     }
@@ -31,8 +31,8 @@ void grx::grx_camera::calc_orientation() {
 
     glm::mat4 inv_orient = glm::inverse(_orientation);
 
-    _dir   = core::from_glm_vec(inv_orient * glm::vec4(0.f, 0.f, -1.f, 1.f)).xyz();
-    _right = core::from_glm_vec(inv_orient * glm::vec4(1.f, 0.f,  0.f, 1.f)).xyz();
+    _dir   = core::from_glm(inv_orient * glm::vec4(0.f, 0.f, -1.f, 1.f)).xyz();
+    _right = core::from_glm(inv_orient * glm::vec4(1.f, 0.f,  0.f, 1.f)).xyz();
 
     _up          = _right.cross(_dir);
     _orientation = glm::rotate(_orientation, _roll, to_glm(_dir));
@@ -63,3 +63,42 @@ void grx::grx_camera::update(grx_window* window) {
 
     calc_view_projection();
 }
+
+auto grx::grx_camera::extract_frustum() const -> grx_aabb_frustum_planes_fast {
+    auto vp = view_projection();
+
+    grx_aabb_frustum_planes_fast planes;
+
+    planes.as_names.left.x() = vp[0][3] + vp[0][0];
+    planes.as_names.left.y() = vp[1][3] + vp[1][0];
+    planes.as_names.left.z() = vp[2][3] + vp[2][0];
+    planes.as_names.left.w() = vp[3][3] + vp[3][0];
+
+    planes.as_names.right.x() = vp[0][3] - vp[0][0];
+    planes.as_names.right.y() = vp[1][3] - vp[1][0];
+    planes.as_names.right.z() = vp[2][3] - vp[2][0];
+    planes.as_names.right.w() = vp[3][3] - vp[3][0];
+
+    planes.as_names.bottom.x() = vp[0][3] + vp[0][1];
+    planes.as_names.bottom.y() = vp[1][3] + vp[1][1];
+    planes.as_names.bottom.z() = vp[2][3] + vp[2][1];
+    planes.as_names.bottom.w() = vp[3][3] + vp[3][1];
+
+    planes.as_names.top.x() = vp[0][3] - vp[0][1];
+    planes.as_names.top.y() = vp[1][3] - vp[1][1];
+    planes.as_names.top.z() = vp[2][3] - vp[2][1];
+    planes.as_names.top.w() = vp[3][3] - vp[3][1];
+
+    planes.as_names.near.x() = vp[0][3] + vp[0][2];
+    planes.as_names.near.y() = vp[1][3] + vp[1][2];
+    planes.as_names.near.z() = vp[2][3] + vp[2][2];
+    planes.as_names.near.w() = vp[3][3] + vp[3][2];
+
+    planes.as_names.far.x() = vp[0][3] - vp[0][2];
+    planes.as_names.far.y() = vp[1][3] - vp[1][2];
+    planes.as_names.far.z() = vp[2][3] - vp[2][2];
+    planes.as_names.far.w() = vp[3][3] - vp[3][2];
+
+    return planes;
+}
+

@@ -3,19 +3,44 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
-void grx::_grx_gen_vao_and_vbos(uint* vao, uint* vbos_ptr, size_t vbos_size) {
-    glGenVertexArrays(1, vao);
-    glBindVertexArray(*vao);
+void grx::_grx_gen_vao_and_vbos(win_vao_map_t& vao_map, uint* vbos_ptr, size_t vbos_size) {
+    auto current_window = glfwGetCurrentContext();
+    RASSERTF(current_window, "{}", "Attempt to create grx_vbo_tuple without OpenGL context");
+
+    uint vao;
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
     glGenBuffers(static_cast<GLsizei>(vbos_size), vbos_ptr);
+
+    vao_map.emplace(current_window, vao);
 }
 
-void grx::_grx_delete_vao_and_vbos(uint* vao, uint* vbos_ptr, size_t vbos_size) {
+void grx::_grx_delete_vao_and_vbos(win_vao_map_t& vao_map, uint* vbos_ptr, size_t vbos_size) {
     glDeleteBuffers(static_cast<GLsizei>(vbos_size), vbos_ptr);
-    glDeleteVertexArrays(1, vao);
+
+    for (auto [_, vao] : vao_map)
+        glDeleteVertexArrays(1, &vao);
 }
 
-void grx::_grx_bind_vao(uint vao_id) {
-    glBindVertexArray(vao_id);
+bool grx::_grx_bind_vao(win_vao_map_t& vao_map) {
+    auto current_window = glfwGetCurrentContext();
+    RASSERTF(current_window, "{}", "Attempt to bind VAO without OpenGL context (!?)");
+
+    auto [position, was_inserted] = vao_map.emplace(current_window, -1);
+
+    if (was_inserted) {
+        uint vao;
+        glGenVertexArrays(1, &vao);
+        glBindVertexArray(vao);
+        position->second = vao;
+
+        return true;
+    }
+    else {
+        glBindVertexArray(position->second);
+    }
+
+    return false;
 }
 
 void grx::_grx_bind_vbo(uint gl_target, uint vbo_id) {
@@ -33,12 +58,25 @@ void grx::_grx_setup_matrix_vbo(uint vbo_id, uint location) {
 }
 
 
+void grx::_grx_rebind_vector_vec2f_vbo(uint vbo_id, uint location) {
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
+    glEnableVertexAttribArray(location);
+    glVertexAttribPointer(location, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+}
+
 void grx::_grx_set_data_vector_vec2f_vbo(uint vbo_id, uint location, const vbo_vector_vec2f& data) {
     glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
     glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(sizeof(vbo_vector_vec2f::value_type) * data.size()),
                  data.data(), GL_STATIC_DRAW);
     glEnableVertexAttribArray(location);
     glVertexAttribPointer(location, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+}
+
+
+void grx::_grx_rebind_vector_vec3f_vbo(uint vbo_id, uint location) {
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
+    glEnableVertexAttribArray(location);
+    glVertexAttribPointer(location, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 }
 
 void grx::_grx_set_data_vector_vec3f_vbo(uint vbo_id, uint location, const vbo_vector_vec3f& data) {
@@ -49,33 +87,42 @@ void grx::_grx_set_data_vector_vec3f_vbo(uint vbo_id, uint location, const vbo_v
     glVertexAttribPointer(location, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 }
 
+
+void grx::_grx_rebind_vector_indices_ebo(uint vbo_id) {
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_id);
+}
+
 void grx::_grx_set_data_vector_indices_ebo(uint vbo_id, const vbo_vector_indices& data) {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_id);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(sizeof(vbo_vector_indices::value_type) * data.size()),
                  data.data(), GL_STATIC_DRAW);
 }
 
-/*
-void grx::_grx_set_data_array_ids_vbo(uint vbo_id, uint location, vbo_array_ids<1>::value_type* data, size_t size) {
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
-    glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(sizeof(vbo_array_ids<1>::value_type) * size),
-                 data, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(location);
-    glVertexAttribIPointer(location, static_cast<GLint>(size), GL_INT, 0, nullptr);
-}
-
-void grx::_grx_set_data_array_weights_vbo(uint vbo_id, uint location, vbo_array_weights<1>::value_type* data, size_t size) {
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
-    glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(sizeof(vbo_array_weights<1>::value_type) * size),
-                 data, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(location);
-    glVertexAttribPointer(location, static_cast<GLint>(size), GL_FLOAT, GL_FALSE, 0, nullptr);
-}
- */
-
 void grx::_grx_set_data_vector_matrix_vbo(uint vbo_id, const glm::mat4* matrices, size_t size) {
     glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
     glBufferData(GL_ARRAY_BUFFER, GLsizeiptr(sizeof(glm::mat4) * size), matrices, GL_DYNAMIC_DRAW);
+}
+
+
+void grx::_grx_rebind_vector_bone_vbo(uint vbo_id, uint location, size_t bone_per_vertex) {
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
+
+    glEnableVertexAttribArray(location);
+    glVertexAttribIPointer(
+            location,
+            static_cast<GLint>(bone_per_vertex),
+            GL_INT,
+            static_cast<GLsizei>((sizeof(uint) + sizeof(float)) * bone_per_vertex),
+            reinterpret_cast<GLvoid*>(0));
+
+    glEnableVertexAttribArray(location + 1);
+    glVertexAttribPointer(
+            location + 1,
+            static_cast<GLint>(bone_per_vertex),
+            GL_FLOAT,
+            GL_FALSE,
+            static_cast<GLsizei>((sizeof(uint) + sizeof(float)) * bone_per_vertex),
+            reinterpret_cast<GLvoid*>(sizeof(uint) * bone_per_vertex));
 }
 
 void grx::_grx_set_data_vector_bone_vbo(uint vbo_id, uint location, const void* data, size_t bone_per_vertex, size_t size) {

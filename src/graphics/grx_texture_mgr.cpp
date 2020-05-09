@@ -10,13 +10,17 @@
 
 extern "C" {
 #define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb/stb_image.h>
+#include <stb/stb_image_write.h>
 }
 
 using core::operator/;
 
 auto grx::grx_texture_mgr::load(core::string_view p) -> core::optional<grx_texture> {
     auto path = core::path_eval(p);
+
+    std::lock_guard lock(_texture_ids_mutex);
 
     auto [position, was_inserted] = _texture_ids.emplace(path, grx_texture());
 
@@ -41,12 +45,12 @@ auto grx::grx_texture_mgr::load(core::string_view p) -> core::optional<grx_textu
 
             stbi_image_free(img);
 
-            return (position->second = {
+            return position->second = grx_texture{
                 static_cast<uint>(w),
                 static_cast<uint>(h),
                 static_cast<uint>(comp),
                 static_cast<texture_id_t>(texture_id)
-            });
+            };
         }
     }
 }

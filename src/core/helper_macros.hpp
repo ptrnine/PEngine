@@ -22,11 +22,18 @@ auto FIELD() const { return _##FIELD; }
 auto& FIELD() { return _##FIELD; }
 
 #define DECLARE_SET(FIELD) \
-void FIELD(const decltype(_##FIELD)& value) { _##FIELD = value; }
+void set_##FIELD(const decltype(_##FIELD)& value) { _##FIELD = value; }
+
+#define DECLARE_VAL_SET(FIELD) \
+void set_##FIELD(decltype(_##FIELD) value) { _##FIELD = value; }
 
 #define DECLARE_GET_SET(FIELD) \
 DECLARE_GET(FIELD) \
 DECLARE_SET(FIELD)
+
+#define DECLARE_VAL_GET_SET(FIELD) \
+DECLARE_VAL_GET(FIELD) \
+DECLARE_VAL_SET(FIELD)
 
 #define DECLARE_SMART_POINTERS_T(CLASS) \
 using SharedPtr = std::shared_ptr<CLASS>; \

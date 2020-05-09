@@ -11,11 +11,12 @@ namespace grx {
     class grx_postprocess_mgr {
         static_assert(RenderTargetSettings<T>);
 
-    protected:
-        friend class grx_window;
-        grx_postprocess_mgr(): _vbo_tuple(nullptr) {}
-
     public:
+        static core::shared_ptr<grx_postprocess_mgr<T>>
+        create_shared(const core::vec2i& size) {
+            return core::make_shared<grx_postprocess_mgr>(size);
+        }
+
         grx_postprocess_mgr(const core::vec2i& size): _render_target_tuple(size) {
             _vbo_tuple.set_data<0>({
                 {-1.0f, -1.0f, 0.0f },
@@ -73,6 +74,14 @@ namespace grx {
         void do_postprocess_queue() {
             for (auto& p : _postprocesses)
                 step(p);
+        }
+
+        void bind_quad_vao() {
+            _vbo_tuple.bind_vao();
+        }
+
+        void draw_quad() {
+            _vbo_tuple.draw(18);
         }
 
     private:

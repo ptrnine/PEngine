@@ -33,6 +33,11 @@ namespace grx {
             return sizeof...(Ts);
         }
 
+        static core::shared_ptr<grx_render_target_tuple<Ts...>>
+        create_shared(const core::vec2i& isize) {
+            return core::make_shared<grx_render_target_tuple<Ts...>>(isize);
+        }
+
         grx_render_target_tuple(const core::vec2i& isize): _size(isize) {
             core::array settings = {core::pair{Ts::color_fmt, Ts::filtering}...};
             _grx_render_target_tuple_init(
@@ -119,12 +124,6 @@ namespace grx {
             std::swap(std::get<S1>(_texture_ids),     std::get<S2>(_texture_ids));
             std::swap(std::get<S1>(_depthbuffer_ids), std::get<S2>(_depthbuffer_ids));
         }
-
-    protected:
-        // Only grx_window can break RAII
-        template <typename> friend class grx_postprocess_mgr;
-        friend class grx_window;
-        grx_render_target_tuple() = default;
 
     private:
         core::array<uint, size()> _framebuffer_ids = { (Ts(), std::numeric_limits<uint>::max())... };

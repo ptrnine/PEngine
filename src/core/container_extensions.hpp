@@ -1,5 +1,7 @@
 #pragma once
 #include <fstream>
+#include <utility>
+#include <ranges>
 #include "platform_dependent.hpp"
 #include "print.hpp"
 #include "ston.hpp"
@@ -20,6 +22,206 @@
 
 namespace core
 {
+
+    template <typename size_type>
+    class index_view_iterator : public std::iterator<std::bidirectional_iterator_tag, size_type> {
+    public:
+        index_view_iterator(size_type init): idx(init) {}
+        index_view_iterator() = default;
+
+        inline index_view_iterator& operator++() {
+            ++idx;
+            return *this;
+        }
+
+        inline index_view_iterator& operator--() {
+            --idx;
+            return *this;
+        }
+
+        inline index_view_iterator operator++(int) {
+            auto tmp = *this;
+            ++idx;
+            return tmp;
+        }
+
+        inline index_view_iterator operator--(int) {
+            auto tmp = *this;
+            --idx;
+            return tmp;
+        }
+
+        inline bool operator==(const index_view_iterator& i) const {
+            return idx == i.idx;
+        }
+
+        inline bool operator!=(const index_view_iterator& i) const {
+            return !(*this == i);
+        }
+
+        inline const size_type& operator*() const {
+            return idx;
+        }
+
+        inline size_type& operator*()  {
+            return idx;
+        }
+
+    private:
+        size_type idx = 0;
+    };
+
+
+    template <typename... Ts>
+    struct multi_view_tuple : tuple<Ts...> {
+        using tuple<Ts...>::tuple;
+
+        template <typename... Tts, std::enable_if_t<(std::is_constructible_v<Ts, Tts&&> && ...), int> = 0>
+        multi_view_tuple(tuple<Tts...>&& t) : tuple<Ts...>(std::move(t)) {}
+
+        template <size_t N>
+        auto& get() & {
+            return std::get<N>(*this);
+        }
+
+        template <size_t N>
+        auto& get() const& {
+            return std::get<N>(*this);
+        }
+
+        template <size_t N>
+        auto get() && {
+            return std::get<N>(*this);
+        }
+
+        template <size_t N>
+        auto get() const&& {
+            return std::get<N>(*this);
+        }
+    };
+
+    template <typename... Ts, size_t... Idxs>
+    inline void multi_view_increment(tuple<Ts...>& v, std::index_sequence<Idxs...>&&) {
+        (++std::get<Idxs>(v), ...);
+    }
+
+    template <typename... Ts, size_t... Idxs>
+    inline void multi_view_decrement(tuple<Ts...>& v, std::index_sequence<Idxs...>&&) {
+        (--std::get<Idxs>(v), ...);
+    }
+
+    template <typename... Ts, size_t... Idxs>
+    inline auto multi_view_map_values(tuple<Ts...>& v, std::index_sequence<Idxs...>&&) {
+        return multi_view_tuple<decltype(*std::declval<Ts>())...>(*std::get<Idxs>(v)...);
+    }
+
+    template <typename... Is>
+    class double_view_iterator {
+    public:
+        using iterator_category = std::bidirectional_iterator_tag;
+
+        double_view_iterator(Is... iiterators): iterators(iiterators...) {}
+
+        inline double_view_iterator& operator++() {
+            multi_view_increment(iterators, std::make_index_sequence<sizeof...(Is)>());
+            return *this;
+        }
+
+        inline double_view_iterator& operator--() {
+            multi_view_decrement(iterators, std::make_index_sequence<sizeof...(Is)>());
+            return *this;
+        }
+
+        inline double_view_iterator operator++(int) {
+            double_view_iterator tmp = *this;
+            multi_view_increment(iterators, std::make_index_sequence<sizeof...(Is)>());
+            return tmp;
+        }
+
+        inline double_view_iterator operator--(int) {
+            double_view_iterator tmp = *this;
+            multi_view_decrement(iterators, std::make_index_sequence<sizeof...(Is)>());
+            return tmp;
+        }
+
+        inline bool operator==(const double_view_iterator& i) const {
+            return std::get<0>(iterators) == std::get<0>(i.iterators);
+        }
+
+        inline bool operator!=(const double_view_iterator& i) const {
+            return !(*this == i);
+        }
+
+        decltype(auto) operator*() {
+            value.emplace(multi_view_map_values(iterators, std::make_index_sequence<sizeof...(Is)>()));
+            return *value;
+        }
+
+    private:
+        tuple<Is...> iterators;
+        optional<multi_view_tuple<decltype(*std::declval<Is>())...>> value;
+    };
+
+
+    template <typename IterT>
+    class iterator_view_proxy {
+    public:
+        iterator_view_proxy(IterT begin, IterT end): _begin(begin), _end(end) {}
+
+        IterT begin() const {
+            return _begin;
+        }
+
+        IterT end() const {
+            return _end;
+        }
+
+    private:
+        IterT _begin;
+        IterT _end;
+    };
+
+    template <typename IterT>
+    auto index_view(IterT begin, IterT end) {
+        return iterator_view_proxy(index_view_iterator<size_t>(), index_view_iterator(static_cast<size_t>(end - begin)));
+    }
+
+    template <typename IterT1, typename IterT2>
+    auto zip_view(IterT1 begin1, IterT1 end1, IterT2 begin2, IterT2 end2) {
+        return iterator_view_proxy(
+                double_view_iterator(begin1, begin2),
+                double_view_iterator(end1,   end2));
+    }
+
+    template <Iterable T>
+    auto skip_view(T&& container, size_t start) {
+        using difference_type = decltype(container.begin() - container.begin());
+        return iterator_view_proxy(container.begin() + static_cast<difference_type>(start), container.end());
+    }
+
+    template <typename I>
+    auto value_index_view(I begin, I end) {
+        return zip_view(begin, end, index_view_iterator<size_t>(0), index_view_iterator(static_cast<size_t>(end - begin)));
+    }
+
+    template <Iterable T>
+    auto index_view(T&& container) {
+        return index_view(container.begin(), container.end());
+    }
+
+    template <Iterable T1, Iterable T2>
+    auto zip_view(T1&& container1, T2&& container2) {
+        return iterator_view_proxy(
+            double_view_iterator(container1.begin(), container2.begin()),
+            double_view_iterator(container1.end(),   container2.end()));
+    }
+
+    template <Iterable T>
+    auto value_index_view(T&& container) {
+        return zip_view(std::forward<T>(container), index_view(container.begin(), container.end()));
+    }
+
+
     template <typename ContainerT, typename T> requires Iterable<ContainerT>
     inline auto _fold_operator(const ContainerT& t, const T& delimiter) {
         using ItemT = std::remove_const_t<std::decay_t<decltype(t[0])>>;
@@ -44,6 +246,131 @@ namespace core
             return result;
         }
     }
+
+    template <typename F>
+    struct count_if {
+        using chain_functor = void;
+
+        count_if(F callback): functor(std::move(callback)) {}
+
+        template <Iterable T>
+        bool operator()(const T& c) {
+            return std::any_of(std::begin(c), std::end(c), functor);
+        }
+
+        F functor;
+    };
+
+    template <typename F>
+    struct any_of {
+        using chain_functor = void;
+
+        any_of(F callback): functor(std::move(callback)) {}
+
+        template <Iterable T>
+        bool operator()(const T& c) {
+            return std::any_of(std::begin(c), std::end(c), functor);
+        }
+
+        F functor;
+    };
+
+    template <typename F>
+    struct all_of {
+        using chain_functor = void;
+
+        all_of(F callback): functor(std::move(callback)) {}
+
+        template <Iterable T>
+        bool operator()(const T& c) {
+            return std::all_of(std::begin(c), std::end(c), functor);
+        }
+
+        F functor;
+    };
+
+    template <typename F>
+    struct find_if {
+        using chain_functor = void;
+
+        find_if(F callback): functor(std::move(callback)) {}
+
+        template <Iterable TT>
+        auto operator()(const TT& c) {
+            return std::find_if(std::begin(c), std::end(c), functor);
+        }
+
+        F functor;
+    };
+
+    template <typename C, typename F>
+    struct transform_t {
+        using chain_functor = void;
+
+        transform_t(F callback): functor(std::move(callback)) {}
+
+        template <Iterable T>
+        C operator()(const T& c) {
+            C r;
+            std::transform(std::begin(c), std::end(c), std::back_inserter(r), functor);
+            return r;
+        }
+
+        F functor;
+    };
+
+    template <typename C, typename F>
+    transform_t<C, F> transform(F functor) {
+        return transform_t<C, F>(functor);
+    }
+
+
+    template <typename F = std::less<>>
+    struct is_sorted {
+        using chain_functor = void;
+
+        is_sorted(F callback = F()): functor(std::move(callback)) {}
+
+        template <Iterable T>
+        bool operator()(const T& c) {
+            return std::is_sorted(std::begin(c), std::end(c), functor);
+        }
+
+        F functor;
+    };
+
+    template <typename F = std::minus<>>
+    struct adjacent_difference {
+        using chain_functor = void;
+
+        adjacent_difference(F callback = std::minus<>()): functor(callback) {}
+
+        template <Iterable T>
+        T operator()(const T& c) {
+            T r = c;
+            std::adjacent_difference(std::begin(r), std::end(r), std::begin(r), functor);
+            return r;
+        }
+
+    private:
+        F functor;
+    };
+
+    template <typename T, typename F>
+    struct reduce {
+        using chain_functor = void;
+
+        template <Iterable TT>
+        auto operator()(const TT& c) {
+            return std::reduce(std::begin(c), std::end(c), result, functor);
+        }
+
+        reduce(T initial, F callback): result(initial), functor(callback) {}
+
+    private:
+        T result;
+        F functor;
+    };
 
 
     template <typename T>
@@ -273,10 +600,10 @@ namespace core
 
     inline optional<string> read_file(const string& file_path) {
         std::ifstream ifs(file_path, std::ios_base::binary | std::ios_base::in);
-    
+
         if (!ifs.is_open())
             return nullopt;
- 
+
         ifs.seekg(0, std::ios_base::end);
         auto size = ifs.tellg();
         ifs.seekg(0, std::ios_base::beg);
@@ -288,6 +615,81 @@ namespace core
         return str;
     }
 
+    inline optional<vector<byte>> read_binary_file(const string& file_path) {
+        std::ifstream ifs(file_path, std::ios_base::binary | std::ios_base::in);
+
+        if (!ifs.is_open())
+            return nullopt;
+
+        ifs.seekg(0, std::ios_base::end);
+        auto size = ifs.tellg();
+        ifs.seekg(0, std::ios_base::beg);
+
+        vector<byte> result(static_cast<size_t>(size));
+        ifs.read(reinterpret_cast<char*>(result.data()), size);
+
+        return result;
+    }
+
+    inline string read_file_unwrap(const string& file_path) {
+        if (auto file = read_file(file_path))
+            return *file;
+        else
+            throw std::runtime_error("Can't open file '" + file_path + "'");
+    }
+
+    inline vector<byte> read_binary_file_unwrap(const string& file_path) {
+        if (auto file = read_binary_file(file_path))
+            return *file;
+        else
+            throw std::runtime_error("Can't open file '" + file_path + "'");
+    }
+
+    /**
+     * Returns true if file has been written
+     */
+    inline bool write_file(const string& file_path, string_view data) {
+        std::ofstream ofs(file_path, std::ios_base::out);
+
+        if (!ofs.is_open())
+            return false;
+
+        ofs.write(data.data(), static_cast<std::streamsize>(data.size()));
+        return true;
+    }
+
+    /**
+     * Returns true if file has been written
+     */
+    inline bool write_file(const string& file_path, span<byte> data) {
+        std::ofstream ofs(file_path, std::ios_base::out);
+
+        if (!ofs.is_open())
+            return false;
+
+        ofs.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
+        return true;
+    }
+
+    inline void write_file_unwrap(const string& file_path, string_view data) {
+        if (!write_file(file_path, data))
+            throw std::runtime_error("Can't write file '" + file_path + "'");
+    }
+
+    inline void write_file_unwrap(const string& file_path, span<byte> data) {
+        if (!write_file(file_path, data))
+            throw std::runtime_error("Can't write file '" + file_path + "'");
+    }
+
+    inline bool case_insensitive_match(string_view str1, string_view str2) {
+        auto a = std::string(str1);
+        auto b = std::string(str2);
+
+        std::transform(a.begin(), a.end(), a.begin(), ::tolower);
+        std::transform(b.begin(), b.end(), b.begin(), ::tolower);
+
+        return a == b;
+    }
 
     template <typename CharT>
     inline std::basic_string<CharT> operator/ (std::basic_string_view<CharT> path1, std::basic_string_view<CharT> path2) {
@@ -314,3 +716,10 @@ namespace core
     }
 } // namespace core
 
+namespace std {
+    template <typename... Ts>
+    struct tuple_size<core::multi_view_tuple<Ts...>> : std::integral_constant<size_t, sizeof...(Ts)> {};
+
+    template <size_t N, typename... Ts>
+    struct tuple_element<N, core::multi_view_tuple<Ts...>> : tuple_element<N, tuple<remove_reference_t<Ts>...>> {};
+}

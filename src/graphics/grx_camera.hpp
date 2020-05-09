@@ -8,13 +8,10 @@
 #include <core/types.hpp>
 #include <core/vec.hpp>
 
+#include "grx_types.hpp"
 #include "grx_camera_manipulator.hpp"
 
 namespace grx {
-    inline glm::vec3 to_glm(const core::vec3f& vec) {
-        return glm::vec3(vec.x(), vec.y(), vec.z());
-    }
-
     class grx_camera {
     public:
         static constexpr float FOV_MIN    = 10.f;
@@ -38,6 +35,7 @@ namespace grx {
         void calc_orientation();
         void calc_view_projection();
         void update(class grx_window* window = nullptr);
+        auto extract_frustum() const -> grx_aabb_frustum_planes_fast;
 
         template <typename T, typename... Ts>
         void create_camera_manipulator(Ts&&... args) {

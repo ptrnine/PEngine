@@ -28,3 +28,9 @@
 [submodule "submodules/gainput"]
 	path = submodules/gainput
 	url = https://github.com/jkuhlmann/gainput
+[submodule "submodules/benchmark"]
+	path = submodules/benchmark
+	url = https://github.com/google/benchmark
+[submodule "submodules/libcuckoo"]
+	path = submodules/libcuckoo
+	url = https://github.com/efficient/libcuckoo

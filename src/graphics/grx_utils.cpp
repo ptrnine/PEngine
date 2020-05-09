@@ -40,9 +40,7 @@ string grx_utils::collada_bake_bind_shape_matrix(string_view data) {
                 position_spans.emplace(name, pair(pos_start + 1, pos_end - pos_start - 1));
                 order.emplace_back(order_value{name, true, pair(pos_start + 1, pos_end - pos_start - 1)});
             }
-
         }
-
         i = end + 1;
     }
 
@@ -68,6 +66,8 @@ string grx_utils::collada_bake_bind_shape_matrix(string_view data) {
             order.emplace_back(order_value{name, false, pair(start, end - start)});
         }
     }
+    if (bind_shape_matrix_spans.empty())
+        return core::string(data);
 
     /*
      * Sort spans by entry position

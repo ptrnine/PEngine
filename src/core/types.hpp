@@ -23,6 +23,10 @@ namespace core
 
     using std::function;
     using std::tuple;
+    using std::tuple_size_v;
+    using std::tuple_element_t;
+    using std::tuple_size;
+    using std::tuple_element;
     using std::pair;
     using std::vector;
     using std::deque;
@@ -67,6 +71,7 @@ namespace core
 
     using gsl::not_null;
     using gsl::span;
+    using gsl::make_span;
     using gsl::zstring;
     using gsl::czstring;
 
@@ -83,6 +88,9 @@ namespace core
 
     template <typename T, typename array<T, 1>::size_type size>
     struct is_std_array<array<T, size>> : std::true_type {};
+
+    template <typename T>
+    concept SharedPtr = is_specialization<T, shared_ptr>::value;
 
     template <typename T, template <typename...> class TemplateT>
     concept SpecializationOf = is_specialization<T, TemplateT>::value;

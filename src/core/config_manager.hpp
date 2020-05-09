@@ -97,6 +97,9 @@ namespace core
         }
     } // anonymous namespace
 
+    static inline string DEFAULT_CFG_PATH() {
+        return ::platform_dependent::get_exe_dir() / "../fs.cfg";
+    }
 
     template <typename T>
     inline T remove_brackets_if_exists(const T& str, pair<char, char> symbols = { '{', '}'}) {
@@ -205,23 +208,23 @@ namespace core
     template <typename T> requires ConfigHasEmplaceBack<T> || ConfigHasEmplaceOnly<T>
     T config_cast(string_view str, const cast_helper& helper = {});
 
-    template <typename T> requires requires { typename std::tuple_size<T>::type; }
+    template <typename T> requires requires { typename tuple_size<T>::type; }
     T config_cast(string_view str, const cast_helper& helper = {});
 
     template <typename T, size_t... idxs>
     T config_cast_static_cortage_impl(const vector<string_view>& unpacked, const cast_helper& helper, std::index_sequence<idxs...>&&) {
-        return T{config_cast<std::tuple_element_t<idxs, T>>(unpacked[idxs], helper)...};
+        return T{config_cast<tuple_element_t<idxs, T>>(unpacked[idxs], helper)...};
     }
 
-    template <typename T> requires requires { typename std::tuple_size<T>::type; }
+    template <typename T> requires requires { typename tuple_size<T>::type; }
     T config_cast(string_view str, const cast_helper& helper) {
         auto unpacked = config_unpack(str);
 
-        RASSERTF(std::tuple_size_v<T> == unpacked.size(),
-                "Invalid cortege size. Requested: {} Has: {}", std::tuple_size_v<T>, unpacked.size());
+        RASSERTF(tuple_size_v<T> == unpacked.size(),
+                "Invalid cortege size. Requested: {} Has: {}", tuple_size_v<T>, unpacked.size());
 
 
-        return config_cast_static_cortage_impl<T>(unpacked, helper, std::make_index_sequence<std::tuple_size_v<T>>());
+        return config_cast_static_cortage_impl<T>(unpacked, helper, std::make_index_sequence<tuple_size_v<T>>());
     }
 
     template <typename T> requires ConfigHasEmplaceBack<T> || ConfigHasEmplaceOnly<T>
@@ -274,6 +277,7 @@ namespace core
 
     protected:
         friend class config_manager;
+        friend class config_section;
 
         auto& str() {
             return _value;
@@ -288,9 +292,99 @@ namespace core
         bool   _is_inherited = false;
     };
 
+    inline string cfg_reentry(string_view name, const string& file_path = DEFAULT_CFG_PATH()) {
+        auto path = path_eval(file_path);
+        auto file = read_file_unwrap(path);
+
+        for (auto& line : file / split_view({'\n', '\r'})) {
+            if (!line.empty() && line.front() == '#') {
+                auto splits = (line.substr(1) / remove_trailing_whitespaces()) / split_view({'\t', ' '});
+
+                if (splits.size() > 2 && splits[0] == "entry" && splits[1] == name)
+                    return path_eval(path / "../" / remove_brackets_if_exists(
+                        remove_brackets_if_exists(splits[2], {'"', '"'}), {'\'', '\''}));
+            }
+        }
+
+        RABORTF("Can't find entry '{}' in file '{}'", name, path);
+
+        return "";
+    }
 
     class config_section {
     public:
+        static config_section direct_read(string_view name = "__global", const string& entry_path = DEFAULT_CFG_PATH()) {
+            auto result     = config_section(name);
+            auto path       = path_eval(entry_path);
+
+            struct file_node {
+                file_node(string_view data): lines(data / split({'\n', '\r'})) {}
+                vector<string> lines;
+                size_t         i = 0;
+            };
+
+            auto file_stack = vector<file_node>(1, file_node(read_file_unwrap(path)));
+            bool is_global  = name == "__global";
+            bool on_section = is_global ? true : false;
+
+            auto current_value_pos = result._map.end();
+            auto section_start = '[' + result._name + ']';
+
+            while (!file_stack.empty()) {
+                for (; file_stack.back().i != file_stack.back().lines.size(); ++file_stack.back().i) {
+                    auto& line = file_stack.back().lines[file_stack.back().i];
+
+                    line = remove_single_line_comment(line) / remove_trailing_whitespaces();
+
+                    if (line.empty())
+                        continue;
+                    if (line.starts_with(section_start)) {
+                        if (on_section)
+                            return result;
+                        else {
+                            RASSERTF((line.substr(section_start.size()) / remove_trailing_whitespaces()).empty(),
+                                    "Unrecognized symbols after section {} definition. "
+                                    "Note: direct reading doesn't support section inheritance", section_start);
+                            on_section = true;
+                        }
+                    }
+                    else if (line.front() == '#') {
+                        line = line.substr(1) / remove_trailing_whitespaces();
+                        if (line.starts_with("include") && !is_global) {
+                            line = line.substr(7) / remove_trailing_whitespaces();
+                            auto new_path = path_eval(path / ".." / remove_brackets_if_exists(
+                                        remove_brackets_if_exists(line, {'"', '"'}), {'\'', '\''}));
+
+                            file_stack.back().i++; // Skip current line after incuded file processing
+                            file_stack.emplace_back(read_file_unwrap(new_path));
+                            file_stack.back().i--; // Prevent skipping first line of included file
+                        }
+                    }
+                    else if (on_section) {
+                        auto splits = line / split_view('=');
+                        for (auto& s : splits)
+                            s = s / remove_trailing_whitespaces();
+
+                        if (splits.size() == 1 && current_value_pos != result._map.end()) {
+                            current_value_pos->second.str() += splits.front();
+                        }
+                        else if (splits.size() == 2) {
+                            current_value_pos = result._map.insert_or_assign(string(splits[0]), config_value(string(splits[1]))).first;
+                        }
+                        else if (splits.size() > 2) {
+                            LOG_WARNING("config_manager: {}: skipping invalid line '{}'", path, line);
+                        }
+                    }
+                }
+
+                file_stack.pop_back();
+            }
+
+            RASSERTF(on_section, "Can't find section {}", section_start);
+
+            return result;
+        }
+
         config_section(string_view name): _name(name) {}
 
         auto& values() const {
@@ -308,6 +402,30 @@ namespace core
         optional<config_value> raw_value(string_view key) const {
             auto found = _map.find(string(key));
             return found != _map.end() ? optional(found->second) : nullopt;
+        }
+
+        template <typename T>
+        optional<T> read(const string& key) const {
+            auto found = _map.find(key);
+            if (found != _map.end())
+                return found->second.cast<T>();
+            else
+                return std::nullopt;
+        }
+
+        template <typename T>
+        T read_unwrap(const string& key) const {
+            auto val = read<T>(key);
+            RASSERTF(val.has_value(), "Can't find key '{}' in section [{}]", key, _name);
+            return *val;
+        }
+
+        template <typename T>
+        T read_default(const string& key, T&& default_value) const {
+            if (auto v = read<T>(key))
+                return *v;
+            else
+                return forward<T>(default_value);
         }
 
         void print(std::ostream& os) const {
@@ -354,7 +472,7 @@ namespace core
 
     class config_manager {
     public:
-        explicit config_manager(const string& entry_path = ::platform_dependent::get_exe_dir() / "../fs.cfg") {
+        explicit config_manager(const string& entry_path = DEFAULT_CFG_PATH()) {
             auto path  = path_eval(entry_path);
             _entry_dir = path_eval(path / "../");
 
@@ -382,7 +500,7 @@ namespace core
                     return value->cast<T>({[this](string_view value) -> string {
                         if (value.size() > 6 && value.front() != '\'' && value.back() != '\'') {
                             auto result = string(value);
-                            
+
                             for (string::size_type i = 0; i < result.size(); ++i) {
                                 if (result[i] == '$' && i + 1 < result.size() && result[i + 1] == '(') {
                                     string::size_type j = i + 2;
@@ -399,7 +517,7 @@ namespace core
                                         if (value) {
                                         string::size_type skip_expanded = 0;
 
-                                            if (value->size() > 2 && ((value->front() == '\'' && value->back() == '\'') || 
+                                            if (value->size() > 2 && ((value->front() == '\'' && value->back() == '\'') ||
                                                                       (value->front() == '"'  && value->back() == '"')))
                                             {
                                                 if (value->front() == '\'')
@@ -422,7 +540,7 @@ namespace core
                         }
                         return string(value);
                     }});
-            
+
             return nullopt;
         }
 
@@ -526,7 +644,7 @@ namespace core
 
                     if (*pos == ':') {
                         auto parents = line.substr(strsize_cast(pos + 1 - line.begin())) / split({','});
-                    
+
                         for (auto& p : parents)
                             p = p / remove_trailing_whitespaces();
 
@@ -550,7 +668,7 @@ namespace core
                         do_file(path_eval(path / ".." /
                             remove_brackets_if_exists(
                                 remove_brackets_if_exists(command, {'"', '"'}), {'\'', '\''})));
-                    else
+                    else if (preprocessor_directive != "entry")
                         LOG_WARNING("config_manager: {}: unknown preprocessor_directive '{}'", path, preprocessor_directive);
 
                 }

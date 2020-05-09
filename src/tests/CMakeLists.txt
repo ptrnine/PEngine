@@ -9,7 +9,10 @@ add_executable(
         tests.cpp
         print.cpp
         config_manager.cpp
-        vec.cpp serialization.cpp)
+        vec.cpp
+        serialization.cpp
+        container_extensions.cpp
+        )
 
 target_link_libraries(
         tests

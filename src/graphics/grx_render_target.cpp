@@ -40,7 +40,7 @@ void grx::_grx_render_target_tuple_init(
         glBindTexture(GL_TEXTURE_2D, texture_ids[i]);
 
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, size.x(), size.y(), 0, color_fmt_to_opengl(settings[i].first),
-                     GL_UNSIGNED_BYTE, nullptr);;
+                     GL_UNSIGNED_BYTE, nullptr);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filtering_to_opengl(settings[i].second));
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filtering_to_opengl(settings[i].second));
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);

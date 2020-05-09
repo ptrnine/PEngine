@@ -4,7 +4,7 @@ project(EvoEngine)
 set(CMAKE_CXX_STANDARD 20)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    set(specific_compiler_flags "-fconcepts")
+    set(specific_compiler_flags "-fconcepts -fcoroutines")
 endif()
 
 set(cxx_flags
@@ -40,6 +40,23 @@ include_directories(SYSTEM "${CMAKE_BINARY_DIR}/3rd/include")
 link_directories("${CMAKE_BINARY_DIR}/3rd/lib")
 include_directories(src)
 
+
+# NASM init
+enable_language(ASM_NASM)
+
+set(BUILD_ARCH ${CMAKE_SYSTEM_PROCESSOR})
+message("Architecture: ${BUILD_ARCH}")
+
+set(CAN_USE_ASSEMBLER TRUE)
+
+if (UNIX)
+    set(CMAKE_ASM_NASM_OBJECT_FORMAT elf64)
+elseif (WIN32)
+    string(APPEND CMAKE_ASM_NASM_FLAGS "-dWIN32=1")
+    set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -DWIN64")
+endif()
+
+
 # GLM
 include_directories(SYSTEM submodules/glm)
 
@@ -53,6 +70,11 @@ git_submodule_update()
 # Build submodules
 git_submodule_build(GSL CMAKE_ARGS -DGSL_TEST=OFF)
 #git_submodule_build(robin-map)
+git_submodule_copy_files(libcuckoo NO_NAME_INCLUDE INCLUDES
+        libcuckoo/cuckoohash_map.hh
+        libcuckoo/cuckoohash_util.hh
+        libcuckoo/cuckoohash_config.hh
+        libcuckoo/bucket_container.hh)
 git_submodule_copy_files(flat_hash_map NO_NAME_INCLUDE INCLUDES flat_hash_map.hpp)
 
 
@@ -81,4 +103,4 @@ find_package(Threads REQUIRED)
 add_subdirectory(src)
 
 add_executable(EvoEngine main.cpp)
-target_link_libraries(EvoEngine evo_graphics)
+target_link_libraries(EvoEngine evo_graphics Threads::Threads)
