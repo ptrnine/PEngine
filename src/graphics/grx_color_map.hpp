@@ -2,13 +2,16 @@
 
 #include <ostream>
 
+extern "C" {
 #include <stb/stb_image.h>
 #include <stb/stb_image_write.h>
+}
 
 #include <core/types.hpp>
 #include <core/container_extensions.hpp>
 #include <core/vec.hpp>
 #include <core/math.hpp>
+#include <core/async.hpp>
 #include "grx_types.hpp"
 
 namespace grx {
@@ -231,7 +234,7 @@ namespace grx {
             _data = new T[_size.x() * _size.y() * NPP];
         }
 
-        grx_color_map(const grx_color_map& map): grx_color_map(reinterpret_cast<unsigned char*>(map._data), map._size) {}
+        grx_color_map(const grx_color_map& map): grx_color_map(map._data, map._size) {}
 
         grx_color_map& operator=(const grx_color_map& map) {
             _size = map._size;
@@ -321,13 +324,12 @@ namespace grx {
     using grx_float_color_map_rgb  = grx_color_map<float, 3>;
     using grx_float_color_map_rgba = grx_color_map<float, 4>;
 
+
     template <core::MathVector T = color_rgb>
     grx_color_map<typename T::value_type, T::size()>
-    load_color_map(core::span<core::byte> bytes) {///core::string_view filepath) {
+    load_color_map_from_bytes(core::span<core::byte> bytes) {
         static_assert(T::size() < 5 && T::size() > 0,
                       "Wrong color type. T must be uint8_t or float, Size must be 1 <= Size <= 4");
-
-        //auto path = core::path_eval(filepath);
 
         int w, h, comp;
         int type;
@@ -361,15 +363,45 @@ namespace grx {
             return static_cast<grx_color_map<typename T::value_type, T::size()>>(map);
     }
 
+
     template <core::MathVector T = color_rgb>
-    grx_color_map<typename T::value_type, T::size()>
-    load_color_map(core::string_view file_path) {
-        auto file = core::read_binary_file_unwrap(core::path_eval(file_path));
-        return load_color_map<T>(file);
+    [[nodiscard]]
+    core::optional<grx_color_map<typename T::value_type, T::size()>>
+    load_color_map(const core::string& file_path) {
+        if (auto file = core::read_binary_file(core::path_eval(file_path)))
+            return load_color_map_from_bytes<T>(*file);
+        else
+            return core::nullopt;
     }
 
+    template <core::MathVector T = color_rgb>
+    [[nodiscard]]
+    grx_color_map<typename T::value_type, T::size()>
+    load_color_map_unwrap(const core::string& file_path) {
+        if (auto map = load_color_map<T>(file_path))
+            return *map;
+        else
+            throw std::runtime_error("Can't load image '" + file_path + "'");
+    }
+
+
+    template <core::MathVector T = color_rgb>
+    [[nodiscard]]
+    std::future<core::optional<grx_color_map<typename T::value_type, T::size()>>>
+    load_color_map_async(const core::string& file_path) {
+        return std::async(std::launch::async, load_color_map<T>, file_path);
+    }
+
+    template <core::MathVector T = color_rgb>
+    [[nodiscard]]
+    std::future<grx_color_map<typename T::value_type, T::size()>>
+    load_color_map_async_unwrap(const core::string& file_path) {
+        return std::async(std::launch::async, load_color_map_unwrap<T>, file_path);
+    }
+
+
     namespace color_map_save_bytes_helper {
-        void write_callback(void* byte_vector, void* data, int size) {
+        inline void write_callback(void* byte_vector, void* data, int size) {
             auto vec      = reinterpret_cast<core::vector<core::byte>*>(byte_vector);
             auto old_size = vec->size();
             vec->resize(old_size + static_cast<size_t>(size));
@@ -377,8 +409,13 @@ namespace grx {
         }
     }
 
+    /**
+     * Returns std::nullopt if fails
+     * Throws exception if 'extension' is unsupported
+     */
     template <typename T, size_t S>
-    core::vector<core::byte>
+    [[nodiscard]]
+    core::optional<core::vector<core::byte>>
     save_color_map_to_bytes(const grx_color_map<T, S>& color_map, core::string_view extension = "png") {
         core::vector<core::byte> result;
 
@@ -419,34 +456,57 @@ namespace grx {
         }
 
         if (rc == 0)
-            throw std::runtime_error("Can't save image");
-
-        return result;
+            return core::nullopt;
+        else
+            return result;
     }
 
     template <typename T, size_t S>
-    void save_color_map(const grx_color_map<T, S>& color_map, core::string_view filepath) {
-        auto path = core::path_eval(filepath);
+    [[nodiscard]]
+    core::vector<core::byte>
+    save_color_map_to_bytes_unwrap(const grx_color_map<T, S>& color_map, core::string_view extension = "png") {
+        if (auto result = save_color_map_to_bytes(color_map, extension))
+            return *result;
+        else
+            throw std::runtime_error("Can't save image");
+    }
 
-        if (path.size() < 5)
-            throw std::runtime_error("Can't save image '" + path + "': can't determine file format");
+    /**
+     * Returns true on success
+     * Throws exception if extension is unsupported or missed
+     */
+    template <typename T, size_t S>
+    [[nodiscard]]
+    bool save_color_map(const grx_color_map<T, S>& color_map, const core::string& file_path) {
+        if (file_path.size() < 5)
+            throw std::runtime_error("Can't save image '" + file_path + "': can't determine file format");
 
-        auto extension = filepath.substr(path.size() - 4) / core::transform<core::string>(::tolower);
+        auto extension = file_path.substr(file_path.size() - 4) /
+            core::transform<core::string>(::tolower);
 
-        if (core::array{".png", ".bmp", ".tga", "jpg"} /
+        if (core::array{".png", ".bmp", ".tga", ".jpg"} /
                 core::count_if([&](auto s) { return s == extension; }) == 0)
-            throw std::runtime_error("Can't save image '" + path + "': unsupported extension '" + extension + "'");
+            throw std::runtime_error("Can't save image '" + file_path + "': unsupported extension '" + extension + "'");
 
         extension = extension.substr(1);
 
-        core::vector<core::byte> bytes;
-        try {
-            bytes = std::move(save_color_map_to_bytes(color_map, extension));
-        } catch (...) {
-            throw std::runtime_error("Can't save image '" + path + "'");
-        }
+        if (auto bytes = std::move(save_color_map_to_bytes(color_map, extension)))
+            return core::write_file(file_path, *bytes);
+        else
+            return false;
+    }
 
+    template <typename T, size_t S>
+    void save_color_map_unwrap(const grx_color_map<T, S>& color_map, const core::string& file_path) {
+        if (!save_color_map(color_map, file_path))
+            throw std::runtime_error("Can't save image '" + file_path + "'");
+    }
 
+    template <typename T, size_t S>
+    [[nodiscard]]
+    std::future<bool>
+    save_color_map_async(const grx_color_map<T, S>& color_map, const core::string& file_path) {
+        return std::async(std::launch::async, save_color_map<T, S>, color_map, file_path);
     }
 } // namespace grx
 

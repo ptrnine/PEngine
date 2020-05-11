@@ -249,7 +249,7 @@ namespace core
 
     template <typename F>
     struct count_if {
-        using chain_functor = void;
+        using adapter = void;
 
         count_if(F callback): functor(std::move(callback)) {}
 
@@ -263,7 +263,7 @@ namespace core
 
     template <typename F>
     struct any_of {
-        using chain_functor = void;
+        using adapter = void;
 
         any_of(F callback): functor(std::move(callback)) {}
 
@@ -277,7 +277,7 @@ namespace core
 
     template <typename F>
     struct all_of {
-        using chain_functor = void;
+        using adapter = void;
 
         all_of(F callback): functor(std::move(callback)) {}
 
@@ -291,7 +291,7 @@ namespace core
 
     template <typename F>
     struct find_if {
-        using chain_functor = void;
+        using adapter = void;
 
         find_if(F callback): functor(std::move(callback)) {}
 
@@ -305,7 +305,7 @@ namespace core
 
     template <typename C, typename F>
     struct transform_t {
-        using chain_functor = void;
+        using adapter = void;
 
         transform_t(F callback): functor(std::move(callback)) {}
 
@@ -327,7 +327,7 @@ namespace core
 
     template <typename F = std::less<>>
     struct is_sorted {
-        using chain_functor = void;
+        using adapter = void;
 
         is_sorted(F callback = F()): functor(std::move(callback)) {}
 
@@ -341,7 +341,7 @@ namespace core
 
     template <typename F = std::minus<>>
     struct adjacent_difference {
-        using chain_functor = void;
+        using adapter = void;
 
         adjacent_difference(F callback = std::minus<>()): functor(callback) {}
 
@@ -358,7 +358,7 @@ namespace core
 
     template <typename T, typename F>
     struct reduce {
-        using chain_functor = void;
+        using adapter = void;
 
         template <Iterable TT>
         auto operator()(const TT& c) {
@@ -375,7 +375,7 @@ namespace core
 
     template <typename T>
     struct fold {
-        using chain_functor = void;
+        using adapter = void;
 
         template <typename ContainerT>
         auto operator()(ContainerT&& c) {
@@ -395,7 +395,7 @@ namespace core
 
     template <typename T>
     struct fold <const T*> {
-        using chain_functor = void;
+        using adapter = void;
 
         template <typename ContainerT>
         auto operator()(const ContainerT& c) {
@@ -409,7 +409,7 @@ namespace core
 
     template <typename NumberT = int>
     struct to_number {
-        using chain_functor = void;
+        using adapter = void;
 
         template <typename T>
         NumberT operator()(const T& str) {
@@ -418,7 +418,7 @@ namespace core
     };
 
     struct remove_trailing_whitespaces {
-        using chain_functor = void;
+        using adapter = void;
 
         template <typename T>
         T operator()(const T& str) {
@@ -441,7 +441,7 @@ namespace core
 
     template <typename CharT, typename StrT = std::basic_string<CharT>>
     struct split {
-        using chain_functor = void;
+        using adapter = void;
 
         template<typename T> requires StringLike<T>
         vector<StrT> operator()(const T& str) {
@@ -498,8 +498,8 @@ namespace core
     };
 
 
-    // Chains
-    template<typename T, typename F> requires ChainFunctor<F>
+    // Adapter operator
+    template<typename T, typename F> requires IsAdapter<F>
     inline auto operator/(const T& v, F f) {
         return f(v);
     }
@@ -577,10 +577,12 @@ namespace core
         return fold;
     }
 
+    [[nodiscard]]
     inline string path_eval(string_view str) {
         return path_eval<char>(str);
     }
 
+    [[nodiscard]]
     inline optional<vector<string>> read_lines(const string& path) {
         vector<string> result;
 
@@ -598,6 +600,7 @@ namespace core
         return result;
     }
 
+    [[nodiscard]]
     inline optional<string> read_file(const string& file_path) {
         std::ifstream ifs(file_path, std::ios_base::binary | std::ios_base::in);
 
@@ -615,6 +618,7 @@ namespace core
         return str;
     }
 
+    [[nodiscard]]
     inline optional<vector<byte>> read_binary_file(const string& file_path) {
         std::ifstream ifs(file_path, std::ios_base::binary | std::ios_base::in);
 
@@ -631,6 +635,7 @@ namespace core
         return result;
     }
 
+    [[nodiscard]]
     inline string read_file_unwrap(const string& file_path) {
         if (auto file = read_file(file_path))
             return *file;
@@ -638,6 +643,7 @@ namespace core
             throw std::runtime_error("Can't open file '" + file_path + "'");
     }
 
+    [[nodiscard]]
     inline vector<byte> read_binary_file_unwrap(const string& file_path) {
         if (auto file = read_binary_file(file_path))
             return *file;
@@ -648,6 +654,7 @@ namespace core
     /**
      * Returns true if file has been written
      */
+    [[nodiscard]]
     inline bool write_file(const string& file_path, string_view data) {
         std::ofstream ofs(file_path, std::ios_base::out);
 
@@ -661,6 +668,7 @@ namespace core
     /**
      * Returns true if file has been written
      */
+    [[nodiscard]]
     inline bool write_file(const string& file_path, span<byte> data) {
         std::ofstream ofs(file_path, std::ios_base::out);
 
@@ -681,6 +689,7 @@ namespace core
             throw std::runtime_error("Can't write file '" + file_path + "'");
     }
 
+    [[nodiscard]]
     inline bool case_insensitive_match(string_view str1, string_view str2) {
         auto a = std::string(str1);
         auto b = std::string(str2);

@@ -8,6 +8,8 @@ namespace grx {
         SINGLETON_IMPL(grx_context);
 
     public:
+        void setup_debug_callback();
+
         void bind_default_framebuffer();
         void set_wireframe_enabled(bool value);
         void set_depth_test_enabled(bool value);
@@ -15,6 +17,7 @@ namespace grx {
 
     private:
         grx_context();
+        ~grx_context();
 
     private:
         bool _is_wireframe_enabled  = false;

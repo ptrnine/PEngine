@@ -50,6 +50,8 @@ namespace grx {
 
     class grx_shader_mgr {
     public:
+        ~grx_shader_mgr();
+
         shader_program_id_t compile_program(
                 const core::string& effect_path,
                 const core::string& function_name);
@@ -61,7 +63,7 @@ namespace grx {
         grx_shader_tech load_render_tech(
                 const core::config_manager& cm,
                 core::string_view section);
-        
+
         shader_program_id_t compile_program(
                 const core::config_section& cm,
                 core::string_view shader_section_name);

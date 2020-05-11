@@ -15,6 +15,7 @@ extern "C" {
 #include <stb/stb_image_write.h>
 }
 
+
 using core::operator/;
 
 auto grx::grx_texture_mgr::load(core::string_view p) -> core::optional<grx_texture> {

@@ -12,7 +12,7 @@ namespace grx {
     enum class shader_program_id_t : int  {};
     enum class shader_effect_id_t  : int  {};
     enum class uniform_id_t        : int  {};
-    enum class texture_id_t        : uint {};
+    //enum class texture_id_t        : uint {};
 
     using color_r    = core::vec<uint8_t, 1>;
     using color_rg   = core::vec<uint8_t, 2>;
@@ -105,12 +105,14 @@ namespace grx {
         };
     };
 
+    /*
     struct grx_texture {
         uint width = 0, height = 0, channels = 0;
         texture_id_t id = static_cast<texture_id_t>(std::numeric_limits<uint>::max());
 
         TO_TUPLE_IMPL(width, height, channels, id)
     };
+    */
 
     template <grx_color_fmt ColorFmt, grx_filtering Filtering>
     struct grx_render_target_settings {

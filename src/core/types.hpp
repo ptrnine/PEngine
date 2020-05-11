@@ -96,6 +96,9 @@ namespace core
     concept SpecializationOf = is_specialization<T, TemplateT>::value;
 
     template <typename T>
+    concept Optional = is_specialization<T, optional>::value;
+
+    template <typename T>
     concept StdArray = is_std_array<T>::value;
 
     template <typename T>
@@ -129,6 +132,6 @@ namespace core
                          AnyOfType<std::decay_t<decltype(std::declval<T>()[0])>, char, char16_t, char32_t, char8_t>;
 
     template<typename T>
-    concept ChainFunctor = requires{typename T::chain_functor;};
+    concept IsAdapter = requires{typename T::adapter;};
 
 } // namespace core

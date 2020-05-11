@@ -387,7 +387,7 @@ namespace grx {
 
         return { std::move(mesh_vbo), std::move(mesh_entries) };
     }
-
+/*
     core::vector<grx_texture_set> load_texture_sets(
             const aiScene* scene,
             core::string_view dir,
@@ -432,7 +432,7 @@ namespace grx {
         }
 
         return texture_set;
-    }
+    }*/
 
     template <typename VboType>
     auto load_bones(
@@ -634,7 +634,7 @@ namespace grx {
 
 
 auto grx::grx_mesh_mgr::
-load_mesh(core::string_view path, bool instanced, grx_texture_mgr* texture_mgr) -> core::shared_ptr<grx_mesh>
+load_mesh(core::string_view path, bool instanced/*, grx_texture_mgr* texture_mgr*/) -> core::shared_ptr<grx_mesh>
 {
     auto importer = Assimp::Importer();
 
@@ -690,7 +690,7 @@ load_mesh(core::string_view path, bool instanced, grx_texture_mgr* texture_mgr) 
                 new grx_mesh(std::move(mesh_vbo), std::move(mesh_entries)));
     }
 
-    mesh->_texture_sets = load_texture_sets(scene, core::path_eval(path / ".."), *texture_mgr);
+    //mesh->_texture_sets = load_texture_sets(scene, core::path_eval(path / ".."), *texture_mgr);
 
     // Calc AABB
     mesh->_aabb = mesh->_mesh_entries.front().aabb;
@@ -712,7 +712,7 @@ auto grx::grx_mesh_mgr::load(core::string_view p, bool instanced) -> core::share
     if (!was_inserted)
         return position->second;
     else
-        return position->second = load_mesh(path, instanced, &_texture_mgr);
+        return position->second = load_mesh(path, instanced/*, &_texture_mgr*/);
 }
 
 auto grx::grx_mesh_mgr::load(const core::config_manager& cm, core::string_view p, bool instanced)
@@ -752,8 +752,8 @@ void grx::grx_mesh::draw(const glm::mat4& vp, const glm::mat4& model, shader_pro
     _mesh_vbo.bind_vao();
 
     for (auto& entry : _mesh_entries) {
-        if (entry.material_index != std::numeric_limits<uint>::max())
-            _texture_sets[entry.material_index].bind(program_id);
+        //if (entry.material_index != std::numeric_limits<uint>::max())
+            //_texture_sets[entry.material_index].bind(program_id);
 
         _mesh_vbo.draw(entry.indices_count, entry.start_vertex_pos, entry.start_index_pos);
     }
@@ -774,8 +774,8 @@ draw_instanced(const glm::mat4& vp, const core::vector<glm::mat4>& models, shade
     vbo_tuple.bind_vao();
 
     for (auto& entry : _mesh_entries) {
-        if (entry.material_index != std::numeric_limits<uint>::max())
-            _texture_sets[entry.material_index].bind(program_id);
+        //if (entry.material_index != std::numeric_limits<uint>::max())
+        //    _texture_sets[entry.material_index].bind(program_id);
 
         vbo_tuple.draw_instanced(
                 models.size(),

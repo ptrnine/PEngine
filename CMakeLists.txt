@@ -26,6 +26,7 @@ set(cxx_flags
     -Wredundant-decls
     -Wsign-conversion
     -Wsign-promo
+    -Werror=unused-result
     -Wno-unused-function -Wno-missing-braces
 )
 

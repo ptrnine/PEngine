@@ -55,7 +55,7 @@ namespace grx {
                     result_aabb.merge(bone_aabb);
 
                     if (_debug_bone_aabb_draw)
-                        grx_aabb_debug().draw(bone_aabb, model_matrix(), view_projection, {0.f, 0.5f, 1.0f});
+                        grx_aabb_debug().draw(bone_aabb, model_matrix(), view_projection, {0.5f, 0.2f, 1.0f});
                 }
             }
 

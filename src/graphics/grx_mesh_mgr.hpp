@@ -12,7 +12,7 @@
 
 #include "grx_types.hpp"
 #include "grx_vbo_tuple.hpp"
-#include "grx_texture_mgr.hpp"
+//#include "grx_texture_mgr.hpp"
 
 #define MAX_BONES_COUNT 128
 
@@ -196,36 +196,36 @@ namespace grx {
         friend class grx_mesh_mgr;
 
         // TODO: remove this later
+        //template <typename T>
+        //grx_mesh(T&& mesh_vbo,
+        //         vector<grx_mesh_entry>&& mesh_entries
+        //):  _mesh_vbo    (forward<T>(mesh_vbo)),
+        //    _mesh_entries(move(mesh_entries))
+        //{}
+
         template <typename T>
         grx_mesh(T&& mesh_vbo,
-                 vector<grx_mesh_entry>&& mesh_entries
+                 vector<grx_mesh_entry>&& mesh_entries//,
+                 //vector<grx_texture_set>&& texture_sets
         ):  _mesh_vbo    (forward<T>(mesh_vbo)),
-            _mesh_entries(move(mesh_entries))
+            _mesh_entries(move(mesh_entries))//,
+            //_texture_sets(move(texture_sets))
         {}
 
         template <typename T>
         grx_mesh(T&& mesh_vbo,
                  vector<grx_mesh_entry>&& mesh_entries,
-                 vector<grx_texture_set>&& texture_sets
-        ):  _mesh_vbo    (forward<T>(mesh_vbo)),
-            _mesh_entries(move(mesh_entries)),
-            _texture_sets(move(texture_sets))
-        {}
-
-        template <typename T>
-        grx_mesh(T&& mesh_vbo,
-                 vector<grx_mesh_entry>&& mesh_entries,
-                 vector<grx_texture_set>&& texture_sets,
+                 //vector<grx_texture_set>&& texture_sets,
                  unique_ptr<grx_bone_data>&& bone_data
         ):  _mesh_vbo    (forward<T>(mesh_vbo)),
             _mesh_entries(move(mesh_entries)),
-            _texture_sets(move(texture_sets)),
+            //_texture_sets(move(texture_sets)),
             _bone_data   (move(bone_data))
         {}
 
         grx_vbo_tuple_generic     _mesh_vbo;
         vector<grx_mesh_entry>    _mesh_entries;
-        vector<grx_texture_set>   _texture_sets;
+        //vector<grx_texture_set>   _texture_sets;
         unique_ptr<grx_bone_data> _bone_data;
         grx_aabb                  _aabb;
 
@@ -238,7 +238,7 @@ namespace grx {
     public:
         DECLARE_GET(mesh_vbo)
         DECLARE_GET(mesh_entries)
-        DECLARE_GET(texture_sets)
+        //DECLARE_GET(texture_sets)
         DECLARE_GET(aabb)
 
         const unique_ptr<grx_bone_data>& skeleton() const {
@@ -263,12 +263,12 @@ namespace grx {
                 const glm::mat4& parent_transform = glm::mat4(1.f));
 
     private:
-        static shared_ptr<grx_mesh> load_mesh(string_view path, bool instanced, grx_texture_mgr* texture_mgr);
+        static shared_ptr<grx_mesh> load_mesh(string_view path, bool instanced/*, grx_texture_mgr* texture_mgr*/);
 
     private:
         std::mutex _meshes_mutex;
         hash_map<string, shared_ptr<grx_mesh>> _meshes;
-        grx_texture_mgr _texture_mgr;
+        //grx_texture_mgr _texture_mgr;
     };
 
 } // namespace grx

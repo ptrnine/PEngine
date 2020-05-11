@@ -8,6 +8,14 @@
 
 using namespace core;
 
+grx::grx_shader_mgr::~grx_shader_mgr() {
+    for (auto& [_, program] : _programs)
+        glDeleteProgram(static_cast<GLuint>(program));
+
+    for (auto& [_, effect] : _effects)
+        glfxDeleteEffect(static_cast<int>(effect));
+}
+
 auto grx::grx_shader_mgr::
 compile_program(const string& effect_path, const string& function_name) -> shader_program_id_t {
     Expects(!function_name.empty());

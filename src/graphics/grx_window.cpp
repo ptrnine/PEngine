@@ -24,6 +24,9 @@ grx::grx_window::grx_window(
         config_manager& config_manager,
         const core::shared_ptr<grx_window_render_target>& render_target
 ) {
+    /*
+     * Explicit call global grx context constructor
+     */
     grx::grx_context::instance();
 
     glfwWindowHint( GLFW_DOUBLEBUFFER, GL_FALSE );
@@ -31,17 +34,18 @@ grx::grx_window::grx_window(
             main_window_context ? main_window_context : nullptr);
     RASSERTF(_wnd, "{}", "Can't create GLFW window");
 
-    if (!main_window_context)
-        main_window_context = _wnd;
-
     auto savedContext = glfwGetCurrentContext();
-
     glfwMakeContextCurrent(_wnd);
 
-    {
+    if (!main_window_context) {
         glewExperimental = GL_TRUE; // required in core mode
         auto rc = glewInit();
         RASSERTF(rc == GLEW_OK, "Failed to initialize GLEW: {}", glewGetErrorString(rc));
+
+        /*
+         * Setup debug callback
+         */
+        grx::grx_ctx().setup_debug_callback();
     }
 
     // Input
@@ -67,6 +71,12 @@ grx::grx_window::grx_window(
     _input_mgr->SetDisplaySize(size.x(), size.y());
     _mouse_id    = _input_mgr->CreateDevice<gainput::InputDeviceMouse>();
     _keyboard_id = _input_mgr->CreateDevice<gainput::InputDeviceKeyboard>();
+
+    /*
+     * First window - main window
+     */
+    if (!main_window_context)
+        main_window_context = _wnd;
 
     // Restore context
     glfwMakeContextCurrent(savedContext);

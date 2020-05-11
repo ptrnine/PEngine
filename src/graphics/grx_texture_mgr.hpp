@@ -4,12 +4,14 @@
 #include <core/types.hpp>
 #include <core/assert.hpp>
 #include "grx_types.hpp"
+#include "grx_color_map.hpp"
 
 namespace core {
     class config_manager;
 }
 
 namespace grx {
+
     namespace grx_texture_type {
         enum grx_texture_type : size_t {
             diffuse = 0,

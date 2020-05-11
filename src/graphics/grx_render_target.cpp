@@ -64,16 +64,9 @@ void grx::_grx_render_target_tuple_delete(
         uint* depthbuffer_ids,
         size_t count
 ) {
-    for (size_t i = 0; i < count; ++i) {
-        if (framebuffer_ids[i] != std::numeric_limits<uint>::max())
-            glDeleteFramebuffers(1, &framebuffer_ids[i]);
-
-        if (depthbuffer_ids[i] != std::numeric_limits<uint>::max())
-            glDeleteRenderbuffers(1, &depthbuffer_ids[i]);
-
-        if (texture_ids[i] != std::numeric_limits<uint>::max())
-            glDeleteTextures(1, &texture_ids[i]);
-    }
+    glDeleteFramebuffers (static_cast<GLsizei>(count), framebuffer_ids);
+    glDeleteRenderbuffers(static_cast<GLsizei>(count), depthbuffer_ids);
+    glDeleteTextures     (static_cast<GLsizei>(count), texture_ids);
 }
 
 void grx::_grx_render_target_tuple_bind(uint framebuffer_id, const core::vec2i& size) {
