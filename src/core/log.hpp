@@ -77,11 +77,11 @@ namespace core
 
     public:
         enum Type {
-            Message = 0, Warning, Error
+            Details = 0, Message = 1, Warning, Error
         };
 
         static constexpr const char* str_types[] = {
-            ": ", " WARNING: ", " ERROR: "
+            ": ", ": ", " WARNING: ", " ERROR: "
         };
 
         logger() {
@@ -159,5 +159,21 @@ core::logger::instance().write(core::logger::Error, __VA_ARGS__)
     #define DLOG(...) void(0)
     #define DLOG_WARNING(...) void(0)
     #define DLOG_ERROR(...) void(0)
+#endif
+
+#ifdef ENABLE_DETAILED_LOG
+    #define LOG_DETAILS(...) \
+    core::logger::instance().write(core::logger::Details, __VA_ARGS__)
+#else
+    #define LOG_DETAILS(...) void(0)
+#endif
+
+#ifdef ENABLE_CALL_TRACE
+    #define CALL_TRACE(...) \
+        core::logger::instance().write(core::logger::Details, "{}", #__VA_ARGS__); \
+        __VA_ARGS__
+#else
+    #define CALL_TRACE(...) \
+        __VA_ARGS__
 #endif
 

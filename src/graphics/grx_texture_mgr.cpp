@@ -1,23 +1,46 @@
 #include "grx_texture_mgr.hpp"
-#include "grx_shader_mgr.hpp"
 
-#include <GL/glew.h>
-
-#include <core/config_manager.hpp>
-#include <core/container_extensions.hpp>
 #include <core/log.hpp>
-#include <core/assert.hpp>
+#include <core/config_manager.hpp>
 
-extern "C" {
-#define STB_IMAGE_IMPLEMENTATION
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <stb/stb_image.h>
-#include <stb/stb_image_write.h>
+using namespace core;
+
+grx::grx_texture_mgr::grx_texture_mgr(const config_manager& cm) {
+    _texture_dir = path_eval(cm.entry_dir() / cm.read_unwrap<string>("textures_dir"));
+}
+
+namespace {
+    template <size_t S>
+    using texture_map_t = hash_map<grx::grx_texture_mgr::path_t, grx::grx_texture_mgr::texture_val_t<S>>;
+
+    template <size_t S>
+    inline void unload_texture(texture_map_t<S>& textures, const string& path, bool load_to_map) {
+        auto pos = textures.find(path);
+        if (pos != textures.end()) {
+            auto& tex = pos->second;
+
+            if (tex.texture) {
+                if (load_to_map)
+                    tex.image = tex.texture->to_color_map();
+                tex.texture.reset();
+            } else {
+                LOG_WARNING("Can't unload texture '{}': texture not loaded!");
+            }
+
+        } else {
+            LOG_WARNING("Can't unload texture '{}': not found in manager!", path);
+        }
+    }
+
+    template <size_t S, typename T>
+    inline void try_unload(T& val, texture_map_t<S>& textures, const string& path) {
+        if (val.usages == 0 && val.load_significance != grx::texture_load_significance::high)
+            unload_texture(textures, path, val.load_significance == grx::texture_load_significance::medium);
+    }
 }
 
 
-using core::operator/;
-
+/*
 auto grx::grx_texture_mgr::load(core::string_view p) -> core::optional<grx_texture> {
     auto path = core::path_eval(p);
 
@@ -105,3 +128,5 @@ void grx::grx_texture_set::bind(shader_program_id_t program_id) {
         }
     }
 }
+
+*/

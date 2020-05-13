@@ -5,6 +5,9 @@
 #include <GL/glew.h>
 #include <GL/glfx.h>
 
+#include "grx_gl_trace.hpp"
+
+
 namespace grx::grx_texture_helper {
     /*
     class fbo_helper {
@@ -85,50 +88,73 @@ namespace grx::grx_texture_helper {
     };
     */
 
+    inline GLenum format_from_channels(uint channels_count) {
+        switch (channels_count) {
+        case 1:
+            return GL_RED;
+        case 2:
+            return GL_RG;
+        case 3:
+            return GL_RGB;
+        case 4:
+            return GL_RGBA;
+        default:
+            ABORTF("Wrong color channels count {}", channels_count);
+            return 0;
+        }
+    }
 
     uint generate_gl_texture() {
         GLuint id;
-        glGenTextures(1, &id);
+        GL_TRACE(glGenTextures, 1, &id);
         return id;
     }
 
     void delete_gl_texture(uint id) {
         if (id != grx_texture<1>::no_id)
-            glDeleteTextures(1, &id);
+            GL_TRACE(glDeleteTextures, 1, &id);
     }
 
     void copy_texture(uint dst_id, uint src_id, uint w, uint h) {
         LOG("GL Texture copy: {} to {}", src_id, dst_id);
-        glCopyImageSubData(
+        GL_TRACE(glCopyImageSubData,
                 src_id, GL_TEXTURE_2D, 0, 0, 0, 0,
                 dst_id, GL_TEXTURE_2D, 0, 0, 0, 0,
                 static_cast<GLsizei>(w),
                 static_cast<GLsizei>(h),
                 1);
-        glBindTexture(GL_TEXTURE_2D, dst_id);
-        glGenerateMipmap(GL_TEXTURE_2D);
+        GL_TRACE(glBindTexture, GL_TEXTURE_2D, dst_id);
+        GL_TRACE(glGenerateMipmap, GL_TEXTURE_2D);
+    }
+
+    void reset_texture(uint id, uint channels_count, uint w, uint h, bool is_float, const void* color_map_data, bool gen_mipmap) {
+        gl_bind_texture(id);
+
+        GLenum format = format_from_channels(channels_count);
+        GLenum type   = is_float ? GL_FLOAT : GL_UNSIGNED_BYTE;
+
+        GL_TRACE(glTexSubImage2D,
+                GL_TEXTURE_2D,
+                0,
+                0,
+                0,
+                static_cast<GLsizei>(w),
+                static_cast<GLsizei>(h),
+                format,
+                type,
+                color_map_data);
+
+        if (gen_mipmap)
+            GL_TRACE(glGenerateMipmap, GL_TEXTURE_2D);
     }
 
     void setup_texture(uint id, uint channels_count, uint w, uint h, bool is_float, const void* color_map_data, bool gen_mipmap) {
         gl_bind_texture(id);
 
-        GLenum format = GL_RGB;
+        GLenum format = format_from_channels(channels_count);
+        GLenum type   = is_float ? GL_FLOAT : GL_UNSIGNED_BYTE;
 
-        switch (channels_count) {
-        case 1:
-            format = GL_RED; break;
-        case 2:
-            format = GL_RG; break;
-        case 3:
-            format = GL_RGB; break;
-        case 4:
-            format = GL_RGBA; break;
-        default:
-            ABORTF("Wrong color channels count {}", channels_count);
-        }
-
-        GLenum type  = is_float ? GL_FLOAT : GL_UNSIGNED_BYTE;
-        glTexImage2D(
+        GL_TRACE(glTexImage2D,
                 GL_TEXTURE_2D,
                 0,
                 static_cast<GLint>(format),
@@ -139,38 +165,25 @@ namespace grx::grx_texture_helper {
                 type,
                 color_map_data);
 
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        GL_TRACE(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        GL_TRACE(glTexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 
         if (gen_mipmap)
-            glGenerateMipmap(GL_TEXTURE_2D);
+            GL_TRACE(glGenerateMipmap, GL_TEXTURE_2D);
     }
 
     void gl_active_texture(uint num) {
-        glActiveTexture(GL_TEXTURE0 + num);
+        GL_TRACE(glActiveTexture, GL_TEXTURE0 + num);
     }
 
     void gl_bind_texture(uint id) {
-        glBindTexture(GL_TEXTURE_2D, id);
+        GL_TRACE(glBindTexture, GL_TEXTURE_2D, id);
     }
 
     void get_texture(void* dst, uint channels_count, bool is_float) {
-        GLenum format = GL_RGB;
-
-        switch (channels_count) {
-        case 1:
-            format = GL_RED; break;
-        case 2:
-            format = GL_RG; break;
-        case 3:
-            format = GL_RGB; break;
-        case 4:
-            format = GL_RGBA; break;
-        default:
-            ABORTF("Wrong color channels count {}", channels_count);
-        }
-
-        GLenum type  = is_float ? GL_FLOAT : GL_UNSIGNED_BYTE;
-        glGetTexImage(GL_TEXTURE_2D, 0, format, type, dst);
+        GLenum format = format_from_channels(channels_count);
+        GLenum type   = is_float ? GL_FLOAT : GL_UNSIGNED_BYTE;
+        GL_TRACE(glGetTexImage, GL_TEXTURE_2D, 0, format, type, dst);
     }
 }
+

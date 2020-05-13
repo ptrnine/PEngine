@@ -37,7 +37,7 @@ namespace grx {
                     auto& anim_name = _anim_data.current_animation.value();
                     auto& anim      = skeleton->animations[anim_name];
                     auto& spec      = _anim_data.specs[anim_name];
-                    auto ticks      = spec.timer.measure() * anim.ticks_per_second;
+                    auto ticks      = spec.timer.measure_count() * anim.ticks_per_second;
 
                     if (!spec.stop_on_end || ticks < anim.duration) {
                         ticks = std::fmod(ticks, anim.duration);

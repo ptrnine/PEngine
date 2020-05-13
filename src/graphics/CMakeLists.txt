@@ -17,7 +17,7 @@ set(GRX_SOURCES
         grx_vbo_tuple.cpp
         grx_color_map.cpp
         grx_texture.cpp
-        #grx_texture_mgr.cpp
+        grx_texture_mgr.cpp
         grx_mesh_mgr.cpp
         grx_camera.cpp
         grx_camera_manipulator.cpp
@@ -36,7 +36,7 @@ set(GRX_HEADERS
         grx_vbo_tuple.hpp
         grx_postprocess_mgr.hpp
         grx_texture.hpp
-        #grx_texture_mgr.hpp
+        grx_texture_mgr.hpp
         grx_mesh_mgr.hpp
         grx_camera.hpp
         grx_camera_manipulator.hpp

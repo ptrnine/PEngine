@@ -224,7 +224,6 @@ namespace grx {
     template <typename T, size_t NPP>
     class grx_color_map {
     public:
-        template <typename Enable = void> requires (std::is_same_v<T, uint8_t> || std::is_same_v<T, float>)
         grx_color_map(T* raw_data, const vec2u& size): _size(size) {
             _data = new T[_size.x() * _size.y() * NPP];
             memcpy(_data, raw_data, _size.x() * _size.y() * NPP * sizeof(T));
@@ -237,19 +236,29 @@ namespace grx {
         grx_color_map(const grx_color_map& map): grx_color_map(map._data, map._size) {}
 
         grx_color_map& operator=(const grx_color_map& map) {
+            if (_data)
+                delete [] _data;
+
             _size = map._size;
             _data = new T[_size.x() * _size.y() * NPP];
             memcpy(_data, map._data, _size.x() * _size.y() * NPP * sizeof(T));
+
+            return *this;
         }
 
-        grx_color_map(grx_color_map&& map): _size(map._size), _data(map._data) {
+        grx_color_map(grx_color_map&& map) noexcept: _size(map._size), _data(map._data) {
             map._data = nullptr;
         }
 
-        grx_color_map operator=(grx_color_map&& map) {
+        grx_color_map& operator=(grx_color_map&& map) noexcept {
+            if (_data)
+                delete [] _data;
+
             _size = map._size;
             _data = map._data;
             map._data = nullptr;
+
+            return *this;
         }
 
         ~grx_color_map() {
@@ -311,7 +320,7 @@ namespace grx {
 
     private:
         vec2u _size;
-        T*    _data;
+        T*    _data = nullptr;
     };
 
     using grx_color_map_r    = grx_color_map<uint8_t, 1>;

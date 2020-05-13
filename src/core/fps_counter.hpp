@@ -10,7 +10,7 @@ namespace core {
     public:
         void update() {
             if (accumulator++ == accumulator_max - 1) {
-                fps = static_cast<double>(accumulator_max) / timer.tick();
+                fps = static_cast<double>(accumulator_max) / timer.tick_count();
                 accumulator = 0;
             }
         }
@@ -32,7 +32,7 @@ namespace core {
                 counter_max(frames_count), ahead_fact(ahead_factor) {}
 
         void smooth() {
-            if (reset_step < reset_timer.measure()) {
+            if (reset_step < reset_timer.measure_count()) {
                 reset_timer.reset();
                 ahead_shift = 0;
                 average_step = 1 / 10000.0;
@@ -41,7 +41,7 @@ namespace core {
 
             if (counter == counter_max - 1) {
                 ahead_shift = delayed_sum / static_cast<double>(counter_max);
-                average_step = timer.tick() / static_cast<double>(counter_max);
+                average_step = timer.tick_count() / static_cast<double>(counter_max);
                 delayed_sum = 0.0;
             }
 
@@ -49,10 +49,10 @@ namespace core {
             if (counter >= counter_max)
                 counter = 0;
 
-            if (delayer.measure() > average_step)
-                delayed_sum += delayer.measure() - average_step;
+            if (delayer.measure_count() > average_step)
+                delayed_sum += delayer.measure_count() - average_step;
 
-            while (delayer.measure() < average_step + ahead_shift * ahead_fact) {}
+            while (delayer.measure_count() < average_step + ahead_shift * ahead_fact) {}
             delayer.reset();
 
             ++frame_elapsed;
@@ -65,11 +65,11 @@ namespace core {
         core::timer delayer;
         core::timer reset_timer;
 
-        double ahead_fact   = 1.0;
-        double delayed_sum  = 0.0;
-        double ahead_shift  = 0.0;
-        double average_step = 1 / 10000.0;
+        double   ahead_fact    = 1.0;
+        double   delayed_sum   = 0.0;
+        double   ahead_shift   = 0.0;
+        double   average_step  = 1 / 10000.0;
         uint64_t frame_elapsed = 0;
-        double reset_step = 2.0;
+        double   reset_step    = 2.0;
     };
 } // namespace core

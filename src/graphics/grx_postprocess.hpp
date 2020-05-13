@@ -10,11 +10,11 @@ namespace grx {
     using uniform_vector_t   = core::vector<uniform_id_t>;
     using uniform_callback_t = std::function<void(const uniform_vector_t&)>;
 
-    template <typename T = double, typename RatioT = core::seconds>
+    template <typename T = float, typename PeriodT = core::seconds::period>
     inline uniform_callback_t postprocess_uniform_seconds() {
         return [](const grx::uniform_vector_t& it) {
             grx::grx_shader_mgr::set_uniform(it[0],
-                    static_cast<float>(core::global_timer().measure<T, RatioT>()));
+                    core::global_timer().measure_count<T, PeriodT>());
         };
     }
 

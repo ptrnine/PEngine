@@ -3,6 +3,7 @@
 #include <core/types.hpp>
 #include <core/vec.hpp>
 #include <core/assert.hpp>
+#include <core/time.hpp>
 
 #include "grx_types.hpp"
 #include "grx_color_map.hpp"
@@ -12,6 +13,7 @@ namespace grx
     namespace grx_texture_helper {
         uint generate_gl_texture();
         void delete_gl_texture(uint id);
+        void reset_texture(uint id, uint channels_count, uint w, uint h, bool is_float, const void* color_map_data, bool gen_mipmap);
         void setup_texture(uint id, uint channels_count, uint w, uint h, bool is_float, const void* color_map_data, bool gen_mipmap);
         void gl_active_texture(uint num);
         void gl_bind_texture(uint id);
@@ -79,6 +81,34 @@ namespace grx
                     true);
         }
 
+        template <typename T>
+        grx_texture& operator= (const grx_color_map<T, S>& color_map) {
+            static_assert(std::is_same_v<T, uint8_t> || std::is_same_v<T, float>, "T must be uint8_t or float only");
+            _size = color_map.size();
+
+            if (_size != color_map.size() || _gl_id == no_id) {
+                grx_texture_helper::delete_gl_texture(_gl_id);
+                grx_texture_helper::setup_texture(
+                        _gl_id,
+                        static_cast<uint>(S),
+                        _size.x(),
+                        _size.y(),
+                        core::FloatingPoint<T>,
+                        color_map.data(),
+                        true);
+            }
+            else {
+                reset_texture(
+                        _gl_id,
+                        static_cast<uint>(S),
+                        _size.x(),
+                        _size.y(),
+                        core::FloatingPoint<T>,
+                        color_map.data(),
+                        true);
+            }
+        }
+
         /**
          * @brief Copy-constructor
          *
@@ -111,8 +141,9 @@ namespace grx
          * @param texture - texture to be copied
          */
         grx_texture& operator= (const grx_texture& texture) {
+            _size = texture._size;
+
             if (_size != texture._size || _gl_id == no_id) {
-                _size = texture._size;
                 grx_texture_helper::delete_gl_texture(_gl_id);
                 grx_texture_helper::setup_texture(
                         _gl_id,
@@ -140,7 +171,7 @@ namespace grx
          *
          * @param texture - texture to be moved
          */
-        grx_texture(grx_texture&& texture): _gl_id(texture._gl_id), _size(texture._size) {
+        grx_texture(grx_texture&& texture) noexcept : _gl_id(texture._gl_id), _size(texture._size) {
             texture._gl_id = no_id;
         }
 
@@ -151,7 +182,7 @@ namespace grx
          *
          * @param texture - texture to be copied
          */
-        grx_texture& operator= (grx_texture&& texture) {
+        grx_texture& operator= (grx_texture&& texture) noexcept {
             _gl_id = texture._gl_id;
             _size  = texture._size;
 
@@ -231,8 +262,10 @@ namespace grx
          * @return color map with texture data
          */
         template <typename T = uint8_t>
+        [[nodiscard]]
         grx_color_map<T, S> to_color_map() const {
             grx_color_map<T, S> result(_size);
+            grx_texture_helper::gl_bind_texture(_gl_id);
             grx_texture_helper::get_texture(result.data(), S, core::FloatingPoint<T>);
             return result;
         }
@@ -242,6 +275,7 @@ namespace grx
          *
          * @return raw OpenGl texture id
          */
+        [[nodiscard]]
         uint raw_id() const {
             return _gl_id;
         }
@@ -251,6 +285,7 @@ namespace grx
          *
          * @return size of the texture
          */
+        [[nodiscard]]
         const core::vec2u& size() const {
             return _size;
         }
@@ -282,7 +317,7 @@ namespace grx
 
         template <typename T>
         struct holder : holder_base {
-            explicit holder(T&& h): val(std::forward<T>(h)) {}
+            explicit holder(T&& h) noexcept: val(std::forward<T>(h)) {}
             holder(const T& h): val(h) {}
 
             size_t channels_count() const override {
@@ -356,6 +391,7 @@ namespace grx
          *
          * @return channels count
          */
+        [[nodiscard]]
         size_t channels_count() const {
             return _holder->channels_count();
         }
@@ -394,6 +430,7 @@ namespace grx
          *
          * @return raw OpenGl texture id
          */
+        [[nodiscard]]
         uint raw_id() const {
             return _holder->raw_id();
         }
@@ -403,6 +440,7 @@ namespace grx
          *
          * @return size of the texture
          */
+        [[nodiscard]]
         const core::vec2u& size() const {
             return _holder->size();
         }
@@ -415,6 +453,7 @@ namespace grx
          * @return pointer to T if cast successful or nullptr
          */
         template <typename T>
+        [[nodiscard]]
         T* ptr_cast() {
             auto ptr = dynamic_cast<holder<T>*>(_holder.get());
             return ptr ? &ptr->val : nullptr;
@@ -428,6 +467,7 @@ namespace grx
          * @return const pointer to T if cast successful or nullptr
          */
         template <typename T>
+        [[nodiscard]]
         const T* ptr_cast() const {
             auto ptr = dynamic_cast<holder<T>*>(_holder.get());
             return ptr ? &ptr->val : nullptr;
@@ -477,7 +517,7 @@ namespace grx
     public:
         using future_t = std::future<T>;
 
-        grx_texture_future(future_t&& init): _future(std::move(init)) {}
+        grx_texture_future(future_t&& init) noexcept: _future(std::move(init)) {}
 
         bool is_ready() const {
             return _future / core::is_ready();
@@ -564,7 +604,7 @@ namespace grx
     template <core::MathVector T = color_rgb>
     grx_texture<T::size()>
     load_texture_unwrap(const core::string& file_path) {
-        return grx_texture<T::size()>(load_color_map_unwrap(file_path));
+        return grx_texture<T::size()>(load_color_map_unwrap<T>(file_path));
     }
 
     /**
@@ -581,7 +621,7 @@ namespace grx
     grx_texture_future<T::size(), core::optional<grx_color_map<uint8_t, T::size()>>>
     load_texture_async(const core::string& file_path) {
         return grx_texture_future<T::size(), core::optional<grx_color_map<uint8_t, T::size()>>>(
-                load_color_map_async(file_path));
+                load_color_map_async<T>(file_path));
     }
 
     /**
@@ -599,7 +639,7 @@ namespace grx
     grx_texture_future<T::size(), grx_color_map<uint8_t, T::size()>>
     load_texture_async_unwrap(const core::string& file_path) {
         return grx_texture_future<T::size(), grx_color_map<uint8_t, T::size()>>(
-                load_color_map_async_unwrap(file_path));
+                load_color_map_async_unwrap<T>(file_path));
     }
 
 } // namespace grx
