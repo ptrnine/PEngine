@@ -27,7 +27,11 @@ macro(git_submodule_build _project_name)
             message(FATAL_ERROR "CMake step for ${_project_name} failed: ${result}")
         endif()
 
-        execute_process(COMMAND ${CMAKE_COMMAND} --build . --target install
+        if(DEFINED MAKE_NPROCS)
+            set(MAKE_ARGS "-j${MAKE_NPROCS}")
+        endif()
+
+        execute_process(COMMAND ${CMAKE_COMMAND} --build . --target install "${MAKE_ARGS}"
                 RESULT_VARIABLE result
                 WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/submodules/${_project_name}
                 )
