@@ -35,6 +35,9 @@ foreach(flag IN LISTS cxx_flags)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${flag}")
 endforeach()
 
+if(ENABLE_ASAN)
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
+endif()
 
 set(CMAKE_PREFIX_PATH "${CMAKE_BINARY_DIR}/3rd")
 include_directories(SYSTEM "${CMAKE_BINARY_DIR}/3rd/include")
