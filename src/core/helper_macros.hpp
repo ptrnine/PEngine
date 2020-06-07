@@ -7,7 +7,9 @@ static CLASS& instance() { \
     return inst; \
 } \
 CLASS(const CLASS&) = delete; \
-CLASS& operator=(const CLASS&) = delete
+CLASS& operator=(const CLASS&) = delete; \
+CLASS(CLASS&&) = delete; \
+CLASS& operator=(CLASS&&) = delete
 
 #define DECLARE_GET(FIELD) \
 [[nodiscard]] \
@@ -58,4 +60,10 @@ auto to_tuple() const { \
 
 #define DEBUG_VAL_LMAO(value) \
 std::cout << #value ": " << (value) << std::endl
+
+/**
+ * Equivalent to ([](const auto& ARGUMENT_NAME) { return ...; })
+ */
+#define xlambda(ARGUMENT_NAME, ...) \
+    ([](const auto& ARGUMENT_NAME) { return __VA_ARGS__; })
 
