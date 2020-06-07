@@ -23,7 +23,7 @@ public:
     failure_opt(E exception) noexcept:
         _exception_ptr(std::make_exception_ptr(exception)) {}
 
-    failure_opt(std::exception_ptr&& ptr): _exception_ptr(std::move(ptr)) {}
+    failure_opt(std::exception_ptr ptr): _exception_ptr(std::move(ptr)) {}
 
     failure_opt(const T& value): _opt(value) {}
     failure_opt(T&& value) noexcept(noexcept(T(std::declval<T>()))): _opt(std::move(value)) {}
@@ -138,6 +138,11 @@ public:
     T& emplace(std::initializer_list<U> ilist, Ts&&... args) {
         _exception_ptr = nullptr;
         return _opt.emplace(ilist, std::forward<Ts>(args)...);
+    }
+
+    [[nodiscard]]
+    const std::exception_ptr& exception_ptr() const noexcept {
+        return _exception_ptr;
     }
 
     /**
