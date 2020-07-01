@@ -38,27 +38,14 @@ namespace grx {
             _render_target_tuple.template swap_targets<0, 1>();
         }
 
-        void step(shader_program_id_t shader_program, uniform_id_t texture_uniform) {
+        void step(grx_postprocess& postprocess) {
             _render_target_tuple.template bind_and_clear<0>();
 
             _vbo_tuple.bind_vao();
             _render_target_tuple.template activate_texture<1>();
-            grx::grx_shader_mgr::use_program(shader_program);
-            grx::grx_shader_mgr::set_uniform(texture_uniform, 0); // Texture position
+            postprocess.bind();
 
-            _vbo_tuple.draw(18);
-
-            _render_target_tuple.template swap_targets<0, 1>();
-        }
-
-        void step(const grx_postprocess& postprocess) {
-            _render_target_tuple.template bind_and_clear<0>();
-
-            _vbo_tuple.bind_vao();
-            _render_target_tuple.template activate_texture<1>();
-            postprocess.bind_program_and_uniforms();
-
-            _vbo_tuple.draw(18);
+            draw_quad();
 
             _render_target_tuple.template swap_targets<0, 1>();
         }
@@ -81,7 +68,8 @@ namespace grx {
         }
 
         void draw_quad() {
-            _vbo_tuple.draw(18);
+            constexpr size_t screen_vertices_count = 18;
+            _vbo_tuple.draw(screen_vertices_count);
         }
 
     private:
