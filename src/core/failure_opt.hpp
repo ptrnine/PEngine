@@ -154,6 +154,11 @@ public:
     constexpr bool has_value() const noexcept {
         return _opt.has_value();
     }
+    template <typename F, typename R = std::invoke_result_t<F, T>>
+    [[nodiscard]]
+    constexpr failure_opt<R> map(F callback) const {
+        return has_value() ? failure_opt<R>(callback(*_opt)) : failure_opt<R>(_exception_ptr);
+    }
 
     constexpr explicit operator bool() const noexcept {
         return has_value();
