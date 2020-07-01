@@ -84,10 +84,11 @@ namespace grx {
          * @tparam T - color type
          * @param file_path - path to image file
          *
-         * @return result texture_id if on success or std::nullopt
+         * @return result texture_id if on success or exception
          */
         template <core::MathVector T>
-        core::optional<grx_texture_id<T::size()>> load(core::string_view file_path) {
+        core::failure_opt<grx_texture_id<T::size()>>
+        load(core::string_view file_path) {
             auto path = core::path_eval(file_path);
             return try_load<T::size(), false>(path);
         }
@@ -95,8 +96,7 @@ namespace grx {
         /**
          * @brief Load texture from file asynchronously with cache lookup
          *
-         * Throws std::runtime_error if image file not contain valid image
-         * or file not found
+         * @throw std::runtime_error if image file not contain valid image or file not found
          *
          * @tparam T - color type
          * @param file_path - path to image file
@@ -104,7 +104,8 @@ namespace grx {
          * @return future to texture_id
          */
         template <core::MathVector T>
-        grx_texture_id_future<T::size(), false> load_async_unwrap(core::string_view file_path) {
+        grx_texture_id_future<T::size(), false>
+        load_async_unwrap(core::string_view file_path) {
             return load_async_tmpl<T, false>(file_path);
         }
 
@@ -116,16 +117,18 @@ namespace grx {
          * @tparam T - color type
          * @param file_path - path to image file
          *
-         * @return future to texture_id on success or future with std::nullopt
+         * @return future to texture_id on success or future with exception
          */
         template <core::MathVector T>
-        grx_texture_id_future<T::size(), true> load_async(core::string_view file_path) {
+        grx_texture_id_future<T::size(), true>
+        load_async(core::string_view file_path) {
             return load_async_tmpl<T, true>(file_path);
         }
 
     private:
         template <core::MathVector T, bool Optional>
-        grx_texture_id_future<T::size(), Optional> load_async_tmpl(core::string_view texture_path) {
+        grx_texture_id_future<T::size(), Optional>
+        load_async_tmpl(core::string_view texture_path) {
             auto path = core::path_eval(texture_path);
 
             auto& map = path_to_id_map<T::size()>();
@@ -233,7 +236,7 @@ namespace grx {
                     auto texture_opt = load_texture<core::vec<uint8_t, S>>(path);
 
                     if (!texture_opt)
-                        return core::optional<grx_texture_id<S>>(core::nullopt);
+                        return core::failure_opt<grx_texture_id<S>>(texture_opt.exception_ptr());
 
                     auto  raw_id   = texture_opt->raw_id();
                     auto& data_map = id_to_data_map<S>();
@@ -303,13 +306,13 @@ namespace grx {
     class grx_texture_id {
     public:
         grx_texture_id(grx_texture_id&& t) noexcept: _raw_id(t._raw_id), _parent_mgr(std::move(t._parent_mgr)) {
-            t._raw_id = grx_texture<S>::no_id;
+            t._raw_id = grx_texture<S>::no_name;
         }
 
         ~grx_texture_id() {
             if (auto mgr = _parent_mgr.lock()) {
                 mgr->decrement_usages<S>(_raw_id);
-            } else if (_raw_id != grx_texture<S>::no_id) {
+            } else if (_raw_id != grx_texture<S>::no_name) {
                 LOG_WARNING("~grx_texture_id(): Texture with id {} active but associated grx_texture_mgr was deleted", _raw_id);
             }
         }
@@ -345,7 +348,7 @@ namespace grx {
             _raw_id     = v._raw_id;
             _parent_mgr = std::move(v._parent_mgr);
 
-            v._raw_id = grx_texture<S>::no_id;
+            v._raw_id = grx_texture<S>::no_name;
 
             return *this;
         }
@@ -354,7 +357,7 @@ namespace grx {
          * @brief Bind texture. Equivalent of glBindTexture
          */
         void bind() const {
-            grx_texture_helper::gl_bind_texture(_raw_id);
+            grx_texture_helper::bind_texture(_raw_id);
         }
 
         /**
@@ -365,19 +368,20 @@ namespace grx {
          * @param number - number of texture (0 - GL_TEXTURE0, 1 - GL_TEXTURE1, etc.)
          */
         void activate(uint number) const {
-            grx_texture_helper::gl_active_texture(number);
+            Expects(number < 32);
+            grx_texture_helper::active_texture(number);
         }
 
         /**
          * @brief Activate texture and bind
          *
-         * Equivalent of glActiveTexture and glBindTexture calls
+         * Equivalent of glActiveTexture and glBindTexture calls (or glBindTextureUnit)
          *
          * @param number - number of texture (0 - GL_TEXTURE0, 1 - GL_TEXTURE1, etc.)
          */
-        void activate_and_bind(uint number) const {
-            activate(number);
-            bind();
+        void bind_unit(uint number) const {
+            Expects(number < 32);
+            grx_texture_helper::bind_unit(_raw_id, number);
         }
 
         /**
@@ -397,6 +401,7 @@ namespace grx {
          *
          * @return usages count
          */
+        [[nodiscard]]
         uint get_usages() const {
             if (auto mgr = _parent_mgr.lock())
                 return mgr->id_to_data_map<S>()[_raw_id].usages;
@@ -427,9 +432,9 @@ namespace grx {
 
         template <size_t S>
         struct image_s<S, true> {
-            using color_map  = core::optional<grx_color_map<uint8_t, S>>;
-            using texture    = core::optional<grx_texture<S>>;
-            using texture_id = core::optional<grx_texture_id<S>>;
+            using color_map  = core::failure_opt<grx_color_map<uint8_t, S>>;
+            using texture    = core::failure_opt<grx_texture<S>>;
+            using texture_id = core::failure_opt<grx_texture_id<S>>;
         };
         template <size_t S>
         struct image_s<S, false> {
@@ -449,14 +454,19 @@ namespace grx {
         using future_t     = core::future<color_map_t>;
 
         grx_texture_id_future(const grx_texture_id_future&) = delete;
+        grx_texture_id_future& operator=(const grx_texture_id_future&) = delete;
+
         grx_texture_id_future(grx_texture_id_future&&) noexcept = default;
         grx_texture_id_future& operator=(grx_texture_id_future&& f) noexcept = default;
 
         grx_texture_id_future(texture_id_t&& v) noexcept: _storage(std::move(v)) {}
 
+        ~grx_texture_id_future() = default;
+
         grx_texture_id_future(future_t&& v, core::weak_ptr<grx_texture_mgr>&& mgr, core::string&& path) noexcept:
             _storage(std::move(v)), _parent(std::move(mgr)), _path(std::move(path)) {}
 
+        [[nodiscard]]
         bool is_ready() const {
             if (_storage.index() == 0)
                 return std::get<future_t>(_storage) / core::is_ready();
@@ -469,8 +479,8 @@ namespace grx {
     private:
         template <typename T>
         static auto& unwrap_if_optional(T& v) {
-            if constexpr (core::Optional<T>)
-                return *v;
+            if constexpr (core::is_specialization<T, core::failure_opt>::value)
+                return v.value();
             else
                 return v;
         }
@@ -482,7 +492,7 @@ namespace grx {
             if (auto mgr = _parent.lock()) {
                 if constexpr (Opt)
                     if (!map)
-                        return core::nullopt;
+                        return {map.exception_ptr()};
 
                 auto [path_pos, was_inserted] = mgr->path_to_id_map<S>().emplace(_path, grx_texture_mgr::path_val_t<S>());
                 auto& path_data = path_pos->second;
@@ -510,8 +520,7 @@ namespace grx {
             }
             else {
                 if constexpr (Opt) {
-                    LOG_ERROR("grx_texture_mgr was deleted and grx_texture_id is invalid.");
-                    return core::nullopt;
+                    return {std::runtime_error("grx_texture_mgr was deleted and grx_texture_id is invalid.")};
                 } else {
                     throw std::runtime_error("grx_texture_mgr was deleted and grx_texture_id is invalid.");
                 }
@@ -533,6 +542,7 @@ namespace grx {
                 throw std::future_error(std::future_errc::future_already_retrieved);
         }
 
+        [[nodiscard]]
         bool valid() const {
             if (_storage.index() == 0)
                 return std::get<future_t>(_storage).valid();
