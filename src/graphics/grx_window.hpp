@@ -15,8 +15,6 @@ namespace core {
 }
 
 namespace grx {
-    class grx_shader_mgr;
-
     using grx_window_render_target =
             grx_postprocess_mgr<
                 grx_render_target_settings<grx::grx_color_fmt::RGB, grx::grx_filtering::Nearest>>;
@@ -26,8 +24,6 @@ namespace grx {
         grx_window(
                 const core::string& name,
                 const core::vec2i& size,
-                grx_shader_mgr& shader_manager,
-                core::config_manager& config_manager,
                 const core::shared_ptr<grx_window_render_target>& render_target = nullptr);
         ~grx_window();
 
@@ -98,9 +94,11 @@ namespace grx {
         void set_pos(const core::vec2i& position);
 
     private:
-        GLFWwindow*                     _wnd;
-        shader_program_id_t             _screen_quad_passthrough;
-        uniform_id_t                    _screen_quad_texture_uniform;
+        GLFWwindow*                           _wnd;
+        core::shared_ptr<grx_shader_program>  _screen_quad_passthrough;
+        grx_uniform<int>                      _screen_quad_texture;
+        //shader_program_id_t _screen_quad_passthrough;
+        //uniform_id_t                    _screen_quad_texture_uniform;
 
         core::shared_ptr<grx_window_render_target> _render_target;
         core::shared_ptr<gainput::InputManager>    _input_mgr;

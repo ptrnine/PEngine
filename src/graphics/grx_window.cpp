@@ -7,7 +7,7 @@
 #include <core/config_manager.hpp>
 #include <core/math.hpp>
 #include "grx_context.hpp"
-#include "grx_shader_mgr.hpp"
+#include "grx_shader.hpp"
 #include "grx_camera.hpp"
 
 using namespace core;
@@ -20,8 +20,6 @@ namespace grx {
 grx::grx_window::grx_window(
         const string& name,
         const vec2i& size,
-        grx_shader_mgr& shader_manager,
-        config_manager& config_manager,
         const core::shared_ptr<grx_window_render_target>& render_target
 ) {
     /*
@@ -62,8 +60,9 @@ grx::grx_window::grx_window(
         render_target :
         grx_window_render_target::create_shared(size);
 
-    _screen_quad_passthrough = shader_manager.compile_program(config_manager, "shader_passthrough_screen_quad");
-    _screen_quad_texture_uniform = shader_manager.get_uniform_id_unwrap(_screen_quad_passthrough, "screen_quad_texture");
+    auto shader_section = config_section::direct_read("shader_passthrough_screen_quad", cfg_reentry("basic_shaders"));
+    _screen_quad_passthrough = grx_shader_program::create_shared(shader_section);
+    _screen_quad_texture     = _screen_quad_passthrough->get_uniform_unwrap<int>("screen_quad_texture");
 
     window_map.insert_or_assign(_wnd, this);
 
@@ -123,8 +122,8 @@ void grx::grx_window::present() {
 
     _render_target->activate_texture();
 
-    grx::grx_shader_mgr::use_program(_screen_quad_passthrough);
-    grx::grx_shader_mgr::set_uniform(_screen_quad_texture_uniform, 0);
+    _screen_quad_passthrough->activate();
+    _screen_quad_texture = 0;
 
     //glEnable(GL_FRAMEBUFFER_SRGB);
     _render_target->draw_quad();
