@@ -26,7 +26,7 @@ TEST_CASE("For loop variations") {
         for (size_t i = 0; auto& v : v1)
             v = i++;
 
-        for (auto [v, i] : value_index_view(v2))
+        for (auto& [v, i] : value_index_view(v2))
             v = i;
 
         REQUIRE(v1 == v2);

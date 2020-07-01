@@ -43,7 +43,7 @@ TEST_CASE("config_manager") {
         class test_class {
         public:
             test_class(config_manager& m) {
-                m.init_cfg_values(val1, val2, val3);
+                m.read_cfg_values(val1, val2, val3);
             }
 
             CFG_VAL(int,    "test_class", val1);
