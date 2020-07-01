@@ -969,6 +969,28 @@ inline std::basic_string<CharT> operator/(std::basic_string_view<CharT> path1, s
 inline core::string operator/(core::string_view path1, core::string_view path2) {
     return operator/<char>(path1, path2);
 }
+
+template <typename T, size_t S, typename F, size_t... Idxs>
+constexpr inline auto array_map(const array<T, S>& arr, F callback, std::index_sequence<Idxs...>&&) {
+    return array{callback(std::get<Idxs>(arr))...};
+}
+
+/**
+ * @brief Compile-time map for array
+ *
+ * @tparam T - the type of the value
+ * @tparam S - the size
+ * @tparam F - callback type
+ * @param arr - the array
+ * @param callback - the callback
+ *
+ * @return new array
+ */
+template <typename T, size_t S, typename F>
+constexpr inline auto array_map(const array<T, S>& arr, F callback) {
+    return array_map(arr, callback, std::make_index_sequence<S>());
+}
+
 } // namespace core
 
 namespace std
