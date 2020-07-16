@@ -1,0 +1,84 @@
+#!/bin/bash
+
+C_COMPILER=gcc-10
+CXX_COMPILER=g++-10
+BUILD_TYPE=release
+ENABLE_ASAN=OFF
+EXEC_PATH=""
+GEN_DB=false
+NPROCS=$(($(grep -c ^processor /proc/cpuinfo) - 0))
+
+if [ "$1" = "--help" ]; then
+    printf "Usage:
+$0 [<options> ...]
+--clang         - enable clang build instead gcc
+--debug         - enable debug info with no optimizations
+--asan          - enable address sanitizer
+--exec NAME     - execute specified program after build
+--jobs N        - set jobs count
+--gendb         - no building, generate compile_commands.json and put into ./
+--help          - show this help
+"
+exit 0
+fi
+
+while [[ $1 == --* ]]; do
+    case "$1" in
+        "--clang")
+            shift
+            C_COMPILER=clang-10
+            CXX_COMPILER=clang++-10
+        ;;
+        "--debug")
+            shift
+            BUILD_TYPE=debug
+        ;;
+        "--asan")
+            shift
+            ENABLE_ASAN=ON
+        ;;
+        "--exec")
+            shift
+            EXEC_PATH="$1"; shift
+        ;;
+        "--jobs")
+            shift
+            NPROCS="$1"; shift
+        ;;
+        "--gendb")
+            shift
+            GEN_DB=true
+        ;;
+        *)
+            echo "Invalid option $1"
+            exit 1
+        ;;
+    esac
+done
+
+if [ "$GEN_DB" == "true" ]; then
+    cmake . -Bbuild-"$BUILD_TYPE"-clang-10 \
+        -DCMAKE_C_COMPILER=/usr/bin/clang-10 \
+        -DCMAKE_CXX_COMPILER=/usr/bin/clang++-10 \
+        -DCMAKE_BUILD_TYPE=release \
+        -DENABLE_ASAN="$ENABLE_ASAN" \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        -DMAKE_NPROCS="$NPROCS"
+    cp -f build-"$BUILD_TYPE"-clang-10/compile_commands.json .
+    exit 0
+fi
+
+
+cmake . -Bbuild-"$BUILD_TYPE"-"$C_COMPILER" \
+    -DCMAKE_C_COMPILER="$C_COMPILER" \
+    -DCMAKE_CXX_COMPILER="$CXX_COMPILER" \
+    -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
+    -DENABLE_ASAN="$ENABLE_ASAN" \
+    -DMAKE_NPROCS="$NPROCS"
+
+[ $? -eq 0 ] && make -j "$NPROCS" -C build-"$BUILD_TYPE"-"$C_COMPILER"
+
+if [ $? -eq 0 ] && [ ! -z "$EXEC_PATH" ]; then
+    build-"$BUILD_TYPE"-"$C_COMPILER"/"$EXEC_PATH"
+fi
+
