@@ -16,9 +16,6 @@
 [submodule "submodules/glfw"]
 	path = submodules/glfw
 	url = https://github.com/glfw/glfw
-[submodule "submodules/glfx"]
-	path = submodules/glfx
-	url = https://github.com/maizensh/glfx
 [submodule "submodules/stb"]
 	path = submodules/stb
 	url = https://github.com/nothings/stb
