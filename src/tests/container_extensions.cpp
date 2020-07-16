@@ -29,6 +29,9 @@ TEST_CASE("For loop variations") {
         for (auto& [v, i] : value_index_view(v2))
             v = i;
 
+        for (auto [v, i] : value_index_view(v2))
+            v += i; // Not affect to v2
+
         REQUIRE(v1 == v2);
     }
 
@@ -40,6 +43,9 @@ TEST_CASE("For loop variations") {
 
         for (auto& [ai, bi] : zip_view(a, b))
             ai = bi;
+
+        for (auto [ai, bi] : zip_view(a, b))
+            ai = bi; // Not affect to ai
 
         REQUIRE(a == b);
     }
