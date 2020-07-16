@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(EvoEngine)
+project(PEngine)
 
 set(CMAKE_CXX_STANDARD 20)
 
@@ -106,5 +106,5 @@ find_package(Threads REQUIRED)
 
 add_subdirectory(src)
 
-add_executable(EvoEngine main.cpp)
-target_link_libraries(EvoEngine evo_graphics Threads::Threads)
+add_executable(PEngine main.cpp)
+target_link_libraries(PEngine evo_graphics Threads::Threads)
