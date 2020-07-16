@@ -1,7 +1,6 @@
 git_submodule_build(glfw)
-git_submodule_build(glfx)
 git_submodule_build(assimp)
-git_submodule_copy_files(stb INCLUDES stb_image.h stb_image_write.h)
+git_submodule_copy_files(stb INCLUDES stb_image.h stb_image_write.h stb_image_resize.h)
 
 find_package(assimp REQUIRED)
 
@@ -11,7 +10,9 @@ set(GRX_SOURCES
         algorithms/grx_frustum_culling.cpp
         grx_utils.cpp
         grx_context.cpp
-        grx_shader_mgr.cpp
+        grx_shader.cpp
+        #grx_shader_mgr.cpp
+        grx_shader_tech.cpp
         grx_window.cpp
         grx_render_target.cpp
         grx_vbo_tuple.cpp
@@ -30,6 +31,7 @@ set(GRX_HEADERS
         algorithms/grx_frustum_culling.hpp
         grx_utils.hpp
         grx_context.hpp
+        grx_shader.hpp
         grx_shader_mgr.hpp
         grx_window.hpp
         grx_render_target.hpp
@@ -45,4 +47,4 @@ set(GRX_HEADERS
 )
 
 add_library(evo_graphics SHARED ${GRX_SOURCES})
-target_link_libraries(evo_graphics GL GLEW glfx glfw3 assimp evo_input)
+target_link_libraries(evo_graphics GL GLEW glfw3 assimp evo_input)
