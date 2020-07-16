@@ -80,24 +80,24 @@ struct multi_view_tuple : tuple<Ts...> {
     multi_view_tuple(tuple<Tts...>&& t): tuple<Ts...>(std::move(t)) {}
 
     template <size_t N>
-    auto& get() & {
+    std::tuple_element_t<N, multi_view_tuple<Ts...>>& get() & {
         return std::get<N>(*this);
     }
 
     template <size_t N>
-    auto& get() const& {
+    const std::tuple_element_t<N, multi_view_tuple<Ts...>>& get() const& {
         return std::get<N>(*this);
     }
 
     template <size_t N>
-    auto&& get() && {
+    std::tuple_element_t<N, multi_view_tuple<Ts...>> get() && {
         return move(std::get<N>(*this));
     }
 
-    template <size_t N>
-    auto&& get() const&& {
-        return move(std::get<N>(*this));
-    }
+    //template <size_t N>
+    //const std::tuple_element_t<N, multi_view_tuple<Ts...>>&& get() const&& {
+    //    return move(std::get<N>(*this));
+    //}
 };
 
 
@@ -238,7 +238,7 @@ auto zip_view(IterT1 begin1, IterT1 end1, IterT2 begin2, IterT2 end2) {
  * @return iterator_view_proxy
  */
 template <Iterable T>
-auto skip_view(T&& container, size_t start) {
+auto skip_view(T& container, size_t start) {
     using difference_type = decltype(container.begin() - container.begin());
     return iterator_view_proxy(container.begin() + static_cast<difference_type>(start), container.end());
 }
@@ -283,7 +283,7 @@ auto value_index_view(I begin, I end) {
  * @return iterator_view_proxy
  */
 template <Iterable T>
-auto index_view(T&& container) {
+auto index_view(T& container) {
     return index_view(container.begin(), container.end());
 }
 
@@ -307,7 +307,7 @@ auto index_view(T&& container) {
  * @return iterator_view_proxy
  */
 template <Iterable... Ts>
-auto zip_view(Ts&&... containers) {
+auto zip_view(Ts&... containers) {
     return iterator_view_proxy(multi_view_iterator(containers.begin()...), multi_view_iterator(containers.end()...));
 }
 
@@ -329,8 +329,12 @@ auto zip_view(Ts&&... containers) {
  * @return iterator_view_proxy
  */
 template <Iterable T>
-auto value_index_view(T&& container) {
-    return zip_view(std::forward<T>(container), index_view(container.begin(), container.end()));
+auto value_index_view(T& container) {
+    return zip_view(
+            container.begin(),
+            container.end(),
+            index_view_iterator<size_t>(0),
+            index_view_iterator(static_cast<size_t>(container.end() - container.begin())));
 }
 
 template <typename ContainerT, typename T>
@@ -999,6 +1003,6 @@ template <typename... Ts>
 struct tuple_size<core::multi_view_tuple<Ts...>> : std::integral_constant<size_t, sizeof...(Ts)> {};
 
 template <size_t N, typename... Ts>
-struct tuple_element<N, core::multi_view_tuple<Ts...>> : tuple_element<N, tuple<remove_reference_t<Ts>...>> {};
+struct tuple_element<N, core::multi_view_tuple<Ts...>> : tuple_element<N, tuple<std::remove_reference_t<Ts>...>> {};
 } // namespace std
 
