@@ -16,7 +16,6 @@ set(GRX_SOURCES
         grx_utils.cpp
         grx_context.cpp
         grx_shader.cpp
-        #grx_shader_mgr.cpp
         grx_shader_tech.cpp
         grx_window.cpp
         grx_render_target.cpp
