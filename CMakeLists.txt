@@ -4,7 +4,7 @@ project(PEngine)
 set(CMAKE_CXX_STANDARD 20)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    set(specific_compiler_flags "-fconcepts -fcoroutines")
+    set(specific_compiler_flags "-fconcepts -fcoroutines -Wduplicated-branches -Wduplicated-cond -Wlogical-op")
 endif()
 
 set(cxx_flags
@@ -15,11 +15,8 @@ set(cxx_flags
     -Wcast-align
     -Wconversion
     -Wctor-dtor-privacy
-    -Wduplicated-branches
-    -Wduplicated-cond
     -Wextra-semi
     -Wfloat-equal
-    -Wlogical-op
     -Wnon-virtual-dtor
     -Wold-style-cast
     -Woverloaded-virtual
