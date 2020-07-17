@@ -1,3 +1,4 @@
+#include "graphics/grx_mesh_mgr.hpp"
 #include "src/core/config_manager.hpp"
 #include "src/core/time.hpp"
 //#include "src/graphics/grx_context.hpp"
@@ -9,23 +10,25 @@
 #include <graphics/grx_mesh_instance.hpp>
 #include <graphics/grx_camera.hpp>
 #include <graphics/grx_camera_manipulator_fly.hpp>
-#include <graphics/grx_mesh_instance.hpp>
 #include <graphics/grx_debug.hpp>
 #include <graphics/algorithms/grx_frustum_culling.hpp>
 #include <core/fps_counter.hpp>
 #include <graphics/grx_color_map.hpp>
 #include <graphics/grx_texture.hpp>
 #include <graphics/grx_texture_mgr.hpp>
+#include <graphics/grx_shader.hpp>
+#include <graphics/grx_shader_tech.hpp>
+#include <graphics/grx_config_ext.hpp>
+#include <core/keyboard_fuzzy_search.hpp>
 
 #include <core/async.hpp>
 
 int main() {
     std::ios_base::sync_with_stdio(false);
-
     core::config_manager cm;
-    grx::grx_shader_mgr m;
+    //grx::grx_shader_program_mgr m;
 
-    auto wnd = grx::grx_window("wnd", {1600, 900}, m, cm);
+    auto wnd = grx::grx_window("wnd", {1600, 900});
     wnd.set_pos({300, 0});
     wnd.make_current();
 
@@ -70,12 +73,14 @@ int main() {
         {1.f, 1.f}
     });
 
-    auto t = m.load_render_tech(cm, "shader_tech_textured");
+    //auto tt = grx::grx_shader_tech(cm, "shader_tech_solid");
+    auto tt = grx::grx_shader_tech(cm, "shader_tech_textured");
 
-    //grx::grx_mesh_mgr mm;
-
-    //core::vector<grx::grx_mesh_instance> models;
-    //models.emplace_back(grx::grx_mesh_instance(cm, mm, "cz805.dae"));
+    grx::grx_mesh_mgr mm(cm);
+    core::vector<grx::grx_mesh_instance> models;
+    models.emplace_back(grx::grx_mesh_instance(mm, "cz805.dae"));
+    models.back().set_debug_bone_aabb_draw(true);
+    models.back().set_debug_aabb_draw(true);
     //for (float pos = 0; auto& m : models)
     //    m.move({pos += 20.f, 20.f, -20.f});
 
@@ -83,11 +88,17 @@ int main() {
     //models.front().set_debug_bone_aabb_draw(true);
     //models.front().set_debug_aabb_draw(true);
 
+    grx::grx_texture_set<3> texset;
+    texset.set(0, tmgr->load_async<grx::color_rgb>("/home/ptrnine/Рабочий стол/22.tga"));
+
+    wnd.push_postprocess(grx::grx_postprocess(cm, "shader_gamma_correction"));
     //wnd.push_postprocess({ m, cm, "shader_vhs2_texture", { "time" }, grx::postprocess_uniform_seconds()});
     //wnd.push_postprocess({ m, cm, "shader_vhs1_texture", { "time" }, grx::postprocess_uniform_seconds()});
-    wnd.push_postprocess({m, cm, "shader_gamma_correction", grx::uniform_pair{"gamma", 1/1.3f}});
+    //wnd.push_postprocess({m, cm, "shader_gamma_correction", grx::uniform_pair{"gamma", 1/1.3f}});
 
-    //auto tech = m.load_render_tech(cm, "shader_tech_textured");
+    auto tech = grx::grx_shader_program::create_shared(cm, "shader_textured_basic");
+    auto tmvp = tech->get_uniform_unwrap<glm::mat4>("MVP");
+    auto ttexture = tech->get_uniform_unwrap<int>("texture0");
 
     core::update_smoother us(10, 0.8);
     core::fps_counter counter;
@@ -95,8 +106,9 @@ int main() {
 
     //grx::grx_texture<3> tx({4000, 2300});
 
-    auto tex = tmgr->load_async_unwrap<grx::color_rgb>("/home/ptrnine/Рабочий стол/22.tga");
-    //core::optional<grx::grx_texture_id<3>> texopt;
+    //auto tex = tmgr->load_async<grx::color_rgb>("/home/ptrnine/Рабочий стол/mabd2.png");
+    //core::failure_opt<grx::grx_texture_id<3>> texopt;
+    core::timer texdelay;
 
     while (!wnd.should_close()) {
         //if (texture2.is_ready()) {
@@ -109,9 +121,9 @@ int main() {
         inp::inp_ctx().update();
 
         if (auto map = input_map.lock()) {
-            //if (map->GetBoolIsNew('R'))
-            //    textures.clear();
-                //models[0].play_animation("", true);
+            if (map->GetBoolIsNew('R'))
+                //textures.clear();
+                models[0].play_animation("", true);
         }
 
         if (timer.measure() > core::seconds(1)) {
@@ -131,34 +143,31 @@ int main() {
         //texxx.set_load_significance(grx::texture_load_significance::high);
 
         vbo.bind_vao();
-        m.use_program(t.base());
-        m.set_uniform(t.base(), "MVP", cam->view_projection());
-        m.set_uniform(t.base(), "texture0", 0);
-        //texxx.activate_and_bind(0);
-        bool wasready=false;
-        if (tex.is_ready()) {
-            wasready = true;
-            auto texid = tex.get();
-            //if (texid) {
-                texid.activate_and_bind(0);
-                texid.set_load_significance(grx::texture_load_significance::low);
-            //}
-            //std::cout << "Load..." << std::endl;
-        }
-        if (wasready)
-            tex = tmgr->load_async_unwrap<grx::color_rgb>("/home/ptrnine/Рабочий стол/22.tga");
+        tech->activate();
+        tmvp = cam->view_projection();
+        ttexture = 0;
 
-        /*
-        if (tex.is_ready())
-            texopt = tex.get();
-        if (texopt)
-            texopt->activate_and_bind(0);
-            */
+        if (texset.get_resource(0).is_ready())
+            texset.get_unwrap(0).bind_unit(0);
+        //if (tex.is_ready()) {
+        //    texdelay.reset();
+        //    texopt = tex.get();
+        //}
+
+        //if (texopt) {
+        //    texopt->bind_unit(0);
+        //    texopt->set_load_significance(grx::texture_load_significance::low);
+        //}
+
+        //if (texopt && texdelay.measure_count() > 1.0) {
+        //    texopt.reset();
+        //    tex = tmgr->load_async<grx::color_rgb>("/home/ptrnine/Рабочий стол/22.tga");
+        //}
 
         vbo.draw(6);
 
-        //for (auto& m : models)
-        //    m.draw(cam->view_projection(), tech);
+        for (auto& m : models)
+            m.draw(cam->view_projection(), tt);
 
         wnd.present();
 
