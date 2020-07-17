@@ -4,7 +4,6 @@
 #include "grx_context.hpp"
 
 #include <GL/glew.h>
-#include <GL/glfx.h>
 #include <GLFW/glfw3.h>
 
 inline GLenum color_fmt_to_opengl(grx::grx_color_fmt fmt) {
