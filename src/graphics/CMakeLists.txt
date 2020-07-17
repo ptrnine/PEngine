@@ -51,5 +51,5 @@ set(GRX_HEADERS
         grx_cascaded_shadow_mapping_tech.hpp
 )
 
-add_library(evo_graphics SHARED ${GRX_SOURCES})
-target_link_libraries(evo_graphics GL GLEW glfw3 assimp evo_input grx_asm)
+add_library(pe_graphics SHARED ${GRX_SOURCES})
+target_link_libraries(pe_graphics GL GLEW glfw3 assimp pe_input grx_asm)

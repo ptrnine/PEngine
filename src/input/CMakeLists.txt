@@ -8,10 +8,10 @@ set(INP_HEADERS
         inp_input_ctx.hpp
         )
 
-add_library(evo_input SHARED ${INP_SOURCES})
+add_library(pe_input SHARED ${INP_SOURCES})
 
 if (CMAKE_BUILD_TYPE STREQUAL "DEBUG")
-    target_link_libraries(evo_input gainput-d)
+    target_link_libraries(pe_input gainput-d)
 else()
-    target_link_libraries(evo_input gainput)
+    target_link_libraries(pe_input gainput)
 endif()
