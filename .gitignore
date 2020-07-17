@@ -2,4 +2,6 @@ cmake-build-*/
 build-*/
 .clangd/
 compile_commands.json
-gamedata/
+gamedata/models/
+gamedata/shaders/
+gamedata/textures/
