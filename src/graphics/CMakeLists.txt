@@ -4,9 +4,14 @@ git_submodule_copy_files(stb INCLUDES stb_image.h stb_image_write.h stb_image_re
 
 find_package(assimp REQUIRED)
 
+add_library(
+    grx_asm
+    STATIC
+    algorithms/asm/x86_64_avx_frustum_culling.asm
+    algorithms/asm/x86_64_sse_frustum_culling.asm
+)
+
 set(GRX_SOURCES
-        algorithms/asm/x86_64_avx_frustum_culling.asm
-        algorithms/asm/x86_64_sse_frustum_culling.asm
         algorithms/grx_frustum_culling.cpp
         grx_utils.cpp
         grx_context.cpp
@@ -47,4 +52,4 @@ set(GRX_HEADERS
 )
 
 add_library(evo_graphics SHARED ${GRX_SOURCES})
-target_link_libraries(evo_graphics GL GLEW glfw3 assimp evo_input)
+target_link_libraries(evo_graphics GL GLEW glfw3 assimp evo_input grx_asm)
