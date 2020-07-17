@@ -6,7 +6,7 @@
 using namespace core;
 
 grx::grx_texture_mgr::grx_texture_mgr(const config_manager& cm) {
-    _texture_dir = path_eval(cm.entry_dir() / cm.read_unwrap<string>("textures_dir"));
+    _textures_dir = path_eval(cm.entry_dir() / cm.read_unwrap<string>("textures_dir"));
 }
 
 namespace {

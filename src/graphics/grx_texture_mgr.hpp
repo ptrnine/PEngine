@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/async.hpp"
 #include "grx_texture.hpp"
 
 namespace core {
@@ -137,10 +138,10 @@ namespace grx {
             if (path_data_pos == map.end()) {
                 if constexpr (Optional)
                     return grx_texture_id_future<T::size(), Optional>(
-                            load_color_map_async(path), weak_from_this(), std::move(path));
+                            load_color_map_async<T>(path), weak_from_this(), std::move(path));
                 else
                     return grx_texture_id_future<T::size(), Optional>(
-                            load_color_map_async_unwrap(path), weak_from_this(), std::move(path));
+                            load_color_map_async_unwrap<T>(path), weak_from_this(), std::move(path));
             } else {
                 auto& cached   = path_data_pos->second.cached_color_map;
                 auto& data_map = id_to_data_map<T::size()>();
@@ -291,7 +292,10 @@ namespace grx {
             core::hash_map<raw_id_t, texture_val_t<3>>,
             core::hash_map<raw_id_t, texture_val_t<4>>> _id_to_data_map;
 
-        path_t _texture_dir;
+        path_t _textures_dir;
+
+    public:
+        DECLARE_GET(textures_dir)
     };
 
 
@@ -313,7 +317,7 @@ namespace grx {
             if (auto mgr = _parent_mgr.lock()) {
                 mgr->decrement_usages<S>(_raw_id);
             } else if (_raw_id != grx_texture<S>::no_name) {
-                LOG_WARNING("~grx_texture_id(): Texture with id {} active but associated grx_texture_mgr was deleted", _raw_id);
+                //LOG_WARNING("~grx_texture_id(): Texture with id {} active but associated grx_texture_mgr was deleted", _raw_id);
             }
         }
 
@@ -445,7 +449,7 @@ namespace grx {
     }
 
 
-    template <size_t S, bool Optional>
+    template <size_t S, bool Optional = true>
     class grx_texture_id_future {
     public:
         using color_map_t  = typename texture_future_id_details::image_s<S, Optional>::color_map;
@@ -577,6 +581,7 @@ namespace grx {
         core::weak_ptr<grx_texture_mgr>             _parent;
         core::string                                _path;
     };
+
 
     /*
     namespace grx_texture_type {
