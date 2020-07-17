@@ -186,6 +186,11 @@ namespace grx_shader_helper
     }
 
     template <glm::length_t C, glm::length_t R, core::FloatingPoint T, glm::qualifier Q>
+    bool uniform(uint program, int location, core::span<glm::mat<C, R, T, Q>> m) {
+        return uniform(program, location, core::span<const glm::mat<C, R, T, Q>>(m.data(), m.size()));
+    }
+
+    template <glm::length_t C, glm::length_t R, core::FloatingPoint T, glm::qualifier Q>
     bool uniform(uint program, int location, const glm::mat<C, R, T, Q>& m) {
         return uniform(program, location, core::span(&m, 1));
     }
