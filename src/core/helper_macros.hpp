@@ -67,3 +67,9 @@ std::cout << #value ": " << (value) << std::endl
 #define xlambda(ARGUMENT_NAME, ...) \
     ([](const auto& ARGUMENT_NAME) { return __VA_ARGS__; })
 
+/**
+ * Equivalent to ([](const auto& ARGUMENT_NAME1, const auto& ARGUMENT_NAME2) { return ...; })
+ */
+#define xlambda2(ARGUMENT_NAME1, ARGUMENT_NAME2, ...) \
+    ([](const auto& ARGUMENT_NAME1, const auto& ARGUMENT_NAME2) { return __VA_ARGS__; })
+

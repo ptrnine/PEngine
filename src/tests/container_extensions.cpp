@@ -1,3 +1,4 @@
+#include "core/vec.hpp"
 #include <core/types.hpp>
 #include <core/container_extensions.hpp>
 #include <random>
@@ -49,4 +50,56 @@ TEST_CASE("For loop variations") {
 
         REQUIRE(a == b);
     }
+
+    SECTION("Adapters") {
+        vector a{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}; // NOLINT
+
+        REQUIRE(a / count_if(xlambda(a, a > 4)) == 6);
+        REQUIRE(a / count_if(xlambda(a, a > 10)) == 0);
+
+        REQUIRE(a / any_of(xlambda(a, a == 9)) == true);
+        REQUIRE(a / any_of(xlambda(a, a == -11)) == false);
+
+        REQUIRE(a / all_of(xlambda(a, a > 0 && a <= 10)) == true);
+        REQUIRE(a / all_of(xlambda(a, a > 0 && a < 10)) == false);
+
+        REQUIRE(a / find_if(xlambda(a, a == 3)) != a.end());
+        REQUIRE(a / find_if(xlambda(a, a == -3)) == a.end());
+
+        REQUIRE(a / transform<vector<string>>(xlambda(a, std::to_string(a))) == vector<string>{
+            "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"
+        });
+
+        REQUIRE(a / is_sorted() == true);
+        a.front() = 100; // NOLINT
+        REQUIRE(a / is_sorted() == false);
+        a.front() = 1;
+
+        REQUIRE(a / adjacent_difference() == vector{1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
+
+        REQUIRE(a / accumulate(string(), xlambda2(e, r, e + std::to_string(r))) == "12345678910");
+        REQUIRE(a / reduce(0, std::plus<>()) == 55);
+
+        REQUIRE(vector{"one"s, "two"s, "three"s} / fold("|") == "one|two|three");
+        REQUIRE(vector{vector{1, 2}, vector{3, 4}, vector{5, 6, 7}} / fold(8) == vector{1, 2, 8, 3, 4, 8, 5, 6, 7});
+        REQUIRE(vector{vector{1, 2}, vector{3, 4}, vector{5, 6, 7}} / fold(array{8}) == vector{1, 2, 8, 3, 4, 8, 5, 6, 7});
+
+        REQUIRE("228" / to_number<int>() == 228);
+        REQUIRE(essentially_equal("228.228" / to_number<float>(), 228.228f, 0.0001f)); // NOLINT
+
+        REQUIRE("    kwek        "s / remove_trailing_whitespaces() == "kwek");
+        REQUIRE("a b c d" / split_view(' ') == vector<string_view>{"a", "b", "c", "d"});
+        REQUIRE("a |b c d |" / split_view({' ', '|'}) == vector<string_view>{"a", "b", "c", "d"});
+        REQUIRE("a |b c d |" / split_view({' ', '|'}, true) == vector<string_view>{"a", "", "b", "c", "d", ""});
+        REQUIRE("a |b c d |" / split(vector{' ', '|'}) == vector<string>{"a", "b", "c", "d"});
+        REQUIRE("a |b c d |" / split(vector{' ', '|'}, true) == vector<string>{"a", "", "b", "c", "d", ""});
+    }
+
+    SECTION("Other shit") {
+        REQUIRE("one"s / "two" / "three" == "one/two/three");
+        REQUIRE(case_insensitive_match("KeK", "kek") == true);
+        REQUIRE(case_insensitive_match("KVK", "kek") == false);
+    }
+
+
 }

@@ -513,6 +513,25 @@ private:
 };
 
 /**
+ * @brief Adapter for std::accumulate
+ */
+template <typename T, typename F>
+struct accumulate {
+    using adapter = void;
+
+    template <Iterable TT>
+    auto operator()(const TT& c) {
+        return std::accumulate(std::begin(c), std::end(c), result, functor);
+    }
+
+    accumulate(T initial, F callback): result(initial), functor(callback) {}
+
+private:
+    T result;
+    F functor;
+};
+
+/**
  * @brief Adapter for folding
  */
 template <typename T>
