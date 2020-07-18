@@ -22,8 +22,8 @@ namespace core {
         aligned_allocator (const aligned_allocator&) = default;
         aligned_allocator& operator= (const aligned_allocator&) = default;
 
-        aligned_allocator(aligned_allocator&&) = delete;
-        aligned_allocator& operator= (aligned_allocator&&) = delete;
+        aligned_allocator(aligned_allocator&&) noexcept = default;
+        aligned_allocator& operator= (aligned_allocator&&) noexcept = default;
 
         template <typename T2>
         explicit aligned_allocator(const aligned_allocator<T2, N>&) noexcept {}

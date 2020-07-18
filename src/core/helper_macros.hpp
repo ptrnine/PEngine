@@ -8,8 +8,8 @@ static CLASS& instance() { \
 } \
 CLASS(const CLASS&) = delete; \
 CLASS& operator=(const CLASS&) = delete; \
-CLASS(CLASS&&) = delete; \
-CLASS& operator=(CLASS&&) = delete
+CLASS(CLASS&&) noexcept = delete; \
+CLASS& operator=(CLASS&&) noexcept = delete
 
 #define DECLARE_GET(FIELD) \
 [[nodiscard]] \

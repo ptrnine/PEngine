@@ -140,6 +140,10 @@ main_loop:
                     ymm14, ymm15,  rdx,    plane_f
 
     vmovdqa [rdi], ymm15  ; write result to result array
+
+    ;vpand    ymm0, ymm15 ; TODO: update result with and instead of rewriting them
+    ;vmovdqa [rdi], ymm0  ;       its useful when you
+
     add      rdi,  32     ; increment result array address
     add      rsi,  256    ; increment AABBs array address
     sub      rcx,  1      ; reduce count (rcx)

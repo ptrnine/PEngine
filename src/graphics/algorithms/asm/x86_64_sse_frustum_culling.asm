@@ -145,6 +145,10 @@ main_loop:
                     xmm14, xmm15,  rdx,    plane_f
 
     movdqa [rdi], xmm15  ; write result to result array
+
+    ;pand    ymm0, ymm15 ; TODO: update result with and instead of rewriting them
+    ;movdqa [rdi], ymm0  ;       its useful when you
+
     add     rdi,  16     ; increment result array address
     add     rsi,  128    ; increment AABBs array address
     sub     rcx,  1      ; reduce count (rcx)
