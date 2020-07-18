@@ -12,6 +12,7 @@ add_executable(
         vec.cpp
         serialization.cpp
         container_extensions.cpp
+        failure_opt.cpp
         )
 
 target_link_libraries(
