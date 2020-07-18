@@ -171,7 +171,7 @@ namespace core {
 
     template <size_t Steps = 1, typename A, size_t Size>
     inline A vec_fast_inverse_magnitude(const std::array<A, Size>& a) {
-        return fast_inverse_square_root(vec_magnitude_2(a, std::make_index_sequence<Size>()));
+        return fast_inverse_square_root<Steps>(vec_magnitude_2(a, std::make_index_sequence<Size>()));
     }
 
     template <size_t Steps = 1, typename A, size_t Size>
@@ -255,7 +255,7 @@ namespace core {
 
     template <typename T, size_t... Idxs>
     std::array<T, sizeof...(Idxs)> vec_filled_with(T v, std::index_sequence<Idxs...>&&) {
-        return std::array<T, sizeof...(Idxs)>{(Idxs, v)...};
+        return std::array<T, sizeof...(Idxs)>{(void(Idxs), v)...};
     }
 
 
@@ -425,12 +425,12 @@ namespace core {
             return vec_magnitude(this->v);
         }
 
-        template <size_t Iterations = 1>
+        template <size_t Iterations = 2>
         T fast_magnitude() const {
             return vec_fast_magnitude<Iterations>(this->v);
         }
 
-        template <size_t Iterations = 1>
+        template <size_t Iterations = 2>
         T fast_inverse_magnitude() const {
             return vec_fast_inverse_magnitude<Iterations>(this->v);
         }
@@ -444,12 +444,12 @@ namespace core {
             return static_cast<DerivedT<T, S>&>(*this);
         }
 
-        template <size_t Iterations = 1>
+        template <size_t Iterations = 2>
         DerivedT<T, S> fast_normalize() const {
             return DerivedT<T, S>{vec_fast_normalize<Iterations>(this->v, std::make_index_sequence<S>())};
         }
 
-        template <size_t Iterations = 1>
+        template <size_t Iterations = 2>
         DerivedT<T, S>& make_fast_normalize() const {
             vec_fetch_fast_normalize<Iterations>(this->v, std::make_index_sequence<S>());
             return static_cast<DerivedT<T, S>&>(*this);
@@ -466,6 +466,10 @@ namespace core {
         void x(T _x)       { this->template get<0>() = _x; }
         T    x()     const { return this->template get<0>(); }
         T&   x()           { return this->template get<0>(); }
+
+        void r(T _r)       { this->x(_r); }
+        T    r()     const { return this->x(); }
+        T&   r()           { return this->x(); }
     };
 
     template <typename T, size_t S, template <typename, size_t> class DerivedT>
@@ -474,8 +478,14 @@ namespace core {
         T    y()     const { return this->template get<1>(); }
         T&   y()           { return this->template get<1>(); }
 
+        void g(T _g)       { this->y(_g); }
+        T    g()     const { return this->y(); }
+        T&   g()           { return this->y(); }
+
         GEN_GET_2_FROM_VEC2(x, y)
         GEN_SET_2_FROM_VEC2(x, y)
+        GEN_GET_2_FROM_VEC2(r, g)
+        GEN_SET_2_FROM_VEC2(r, g)
     };
 
     template <typename T, size_t S, template <typename, size_t> class DerivedT>
@@ -483,14 +493,6 @@ namespace core {
         void z(T _z)       { this->template get<2>() = _z; }
         T    z()     const { return this->template get<2>(); }
         T&   z()           { return this->template get<2>(); }
-
-        void r(T _r)       { this->x(_r); }
-        T    r()     const { return this->x(); }
-        T&   r()           { return this->x(); }
-
-        void g(T _g)       { this->y(_g); }
-        T    g()     const { return this->y(); }
-        T&   g()           { return this->y(); }
 
         void b(T _b)       { this->z(_b); }
         T    b()     const { return this->z(); }
