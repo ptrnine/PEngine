@@ -872,7 +872,8 @@ inline string read_file_unwrap(const string& file_path) {
  *
  * @return the file content
  */
-[[nodiscard]] inline vector<byte> read_binary_file_unwrap(const string& file_path) {
+[[nodiscard]]
+inline vector<byte> read_binary_file_unwrap(const string& file_path) {
     if (auto file = read_binary_file(file_path))
         return *file;
     else
@@ -884,18 +885,24 @@ inline string read_file_unwrap(const string& file_path) {
  *
  * @param file_path - path to new file
  * @param data - the file content
+ * @param append - if true then appends data to the end of the file
  *
  * @return true if write successful, false otherwise
  */
 [[nodiscard]]
-inline bool write_file(const string& file_path, string_view data) {
-    std::ofstream ofs(file_path, std::ios_base::out);
+inline bool write_file(const string& file_path, string_view data, bool append = false) {
+    auto flags = std::ios_base::out;
+    if (append)
+        flags |= std::ios_base::app;
+
+    std::ofstream ofs(file_path, flags);
 
     if (!ofs.is_open())
         return false;
 
     ofs.write(data.data(), static_cast<std::streamsize>(data.size()));
-    return true;
+
+    return !ofs.bad();
 }
 
 /**
@@ -903,18 +910,24 @@ inline bool write_file(const string& file_path, string_view data) {
  *
  * @param file_path - path to new file
  * @param data - the file content
+ * @param append - if true then appends data to the end of the file
  *
  * @return true if write successful, false otherwise
  */
 [[nodiscard]]
-inline bool write_file(const string& file_path, span<byte> data) {
-    std::ofstream ofs(file_path, std::ios_base::out);
+inline bool write_file(const string& file_path, span<byte> data, bool append = false) {
+    auto flags = std::ios_base::out;
+    if (append)
+        flags |= std::ios_base::app;
+
+    std::ofstream ofs(file_path, flags);
 
     if (!ofs.is_open())
         return false;
 
     ofs.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size())); // NOLINT
-    return true;
+
+    return !ofs.bad();
 }
 
 /**
@@ -924,9 +937,10 @@ inline bool write_file(const string& file_path, span<byte> data) {
  *
  * @param file_path - path to new file
  * @param data - the file content
+ * @param append - if true then appends data to the end of the file
  */
-inline void write_file_unwrap(const string& file_path, string_view data) {
-    if (!write_file(file_path, data))
+inline void write_file_unwrap(const string& file_path, string_view data, bool append = false) {
+    if (!write_file(file_path, data, append))
         throw std::runtime_error("Can't write file '" + file_path + "'");
 }
 
@@ -937,9 +951,10 @@ inline void write_file_unwrap(const string& file_path, string_view data) {
  *
  * @param file_path - path to new file
  * @param data - the file content
+ * @param append - if true then appends data to the end of the file
  */
-inline void write_file_unwrap(const string& file_path, span<byte> data) {
-    if (!write_file(file_path, data))
+inline void write_file_unwrap(const string& file_path, span<byte> data, bool append = false) {
+    if (!write_file(file_path, data, append))
         throw std::runtime_error("Can't write file '" + file_path + "'");
 }
 
