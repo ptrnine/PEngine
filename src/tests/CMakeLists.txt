@@ -14,6 +14,7 @@ add_executable(
         container_extensions.cpp
         failure_opt.cpp
         async.cpp
+        base64.cpp
         )
 
 target_link_libraries(

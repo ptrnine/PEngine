@@ -45,7 +45,7 @@ inline string base64_encode(const void* data, size_t size) {
     size_t full_hexads = (size * 4) / 3;
 
     string result;
-    result.resize(full_hexads + (padd ? 3 : 0));
+    result.resize(full_hexads + (padd == 1 ? 3 : (padd == 2 ? 2 : 0)));
 
     size_t bpos = 0;
     for (size_t i = 0; i < (size / 3) * 3; i += 3) {
@@ -58,7 +58,7 @@ inline string base64_encode(const void* data, size_t size) {
     if (padd == 2) {
         result[bpos++] = _base64_map[static_cast<size_t>(  p[size - 2] >> 2)];                                   // NOLINT
         result[bpos++] = _base64_map[static_cast<size_t>(((p[size - 2] << 4) & 0b00111111) | p[size - 1] >> 4)]; // NOLINT
-        result[bpos++] = _base64_map[static_cast<size_t>(( p[size - 1] << 2) & 0b00001111)];                     // NOLINT
+        result[bpos++] = _base64_map[static_cast<size_t>(( p[size - 1] << 2) & 0b00111111)];                     // NOLINT
         result[bpos++] = '=';
     }
     else if (padd == 1) {
