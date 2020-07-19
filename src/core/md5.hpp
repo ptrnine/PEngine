@@ -120,22 +120,62 @@ namespace md5_dtls
 
 struct md5_hash {
     friend std::ostream& operator<<(std::ostream& os, const md5_hash& b) {
-        constexpr auto size = sizeof(b.lo);
-
         if constexpr (std::endian::native == std::endian::little) {
-            for (size_t i = 0; i < size; ++i)
-                os << std::hex << std::setfill('0') << std::setw(2)
-                   << static_cast<u32>((static_cast<u8>(b.lo >> size * i)));
-
-            for (std::size_t i = 0; i < size; ++i)
-                os << std::hex << std::setfill('0') << std::setw(2)
-                << static_cast<u32>((static_cast<u8>(b.hi >> size * i)));
+            auto lo = platform_dependent::byte_swap(b.lo);
+            auto hi = platform_dependent::byte_swap(b.hi);
+            os << std::hex << std::setfill('0') << std::setw(sizeof(b.lo) * 2) << lo;
+            os << std::hex << std::setfill('0') << std::setw(sizeof(b.hi) * 2) << hi;
         } else {
             os << std::hex << std::setfill('0') << std::setw(sizeof(b.lo) * 2) << b.lo;
             os << std::hex << std::setfill('0') << std::setw(sizeof(b.hi) * 2) << b.hi;
         }
 
         return os;
+    }
+
+    friend std::istream& operator>>(std::istream& is, md5_hash& b) {
+        std::string str;
+        is >> str;
+        auto start = str.begin();
+        auto end   = str.end();
+
+        if (str.starts_with("0x") || str.starts_with("0X"))
+            start += 2;
+
+        if (end - start != sizeof(md5_hash) * 2)
+            throw std::runtime_error("Invalid hash length");
+
+        b.lo = 0;
+        b.hi = 0;
+
+        auto to_byte = [](auto c) -> uint {
+            if ('0' <= c && c <= '9')
+                return static_cast<uint>(c - '0');
+            else if ('A' <= c && c <= 'F')
+                return static_cast<uint>(c - 'A' + 10); // NOLINT
+            else if ('a' <= c && c <= 'f')
+                return static_cast<uint>(c - 'a' + 10); // NOLINT
+            else
+                throw std::runtime_error("Invalid hex digit");
+        };
+
+        constexpr auto size = sizeof(b.lo);
+        for (size_t i = 0; i < size; ++i) {
+            b.lo <<= 8; // NOLINT
+            b.lo = b.lo | static_cast<uint8_t>(to_byte(start[0]) << 4) | (to_byte(start[1]));
+            start += 2;
+        }
+        for (size_t i = 0; i < size; ++i) {
+            b.hi <<= 8; // NOLINT
+            b.hi = b.hi | static_cast<uint8_t>(to_byte(start[0]) << 4) | (to_byte(start[1]));
+            start += 2;
+        }
+        if (std::endian::native == std::endian::little) {
+            b.lo = platform_dependent::byte_swap(b.lo);
+            b.hi = platform_dependent::byte_swap(b.hi);
+        }
+
+        return is;
     }
 
     bool operator<(const md5_hash& b) const {

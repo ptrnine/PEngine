@@ -16,6 +16,7 @@ add_executable(
         async.cpp
         base64.cpp
         match_syntax.cpp
+        md5.cpp
         )
 
 target_link_libraries(
