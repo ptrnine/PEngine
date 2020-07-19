@@ -15,6 +15,7 @@ add_executable(
         failure_opt.cpp
         async.cpp
         base64.cpp
+        match_syntax.cpp
         )
 
 target_link_libraries(

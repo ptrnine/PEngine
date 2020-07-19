@@ -620,14 +620,31 @@ constexpr ResT match_foreach(const T& value, match<Ts...>& match_syntax) {
         if constexpr (std::is_invocable_v<func_type, T>) {
             if constexpr (std::is_same_v<void, std::invoke_result_t<func_type, T>>) {
                 func(value);
-                return {};
+                return;
             }
             else
                 return func(value);
         }
         else if constexpr (Variant<T>) {
             if constexpr (function_traits<func_type>::value) {
-                if (auto v = std::visit(
+                if constexpr (std::is_same_v<void, typename function_traits<func_type>::return_type>) {
+                    if (std::visit(
+                        [&](auto&& v) -> bool {
+                            if constexpr (function_traits<func_type>::arity == 1) {
+                                if constexpr (std::is_same_v<std::decay_t<decltype(v)>,
+                                                             std::decay_t<typename function_traits<
+                                                                 func_type>::template arg_type_t<0>>>) {
+                                    func(v);
+                                    return true;
+                                }
+                            }
+                            return false;
+                        },
+                        value))
+                    return;
+                }
+                else {
+                    if (auto v = std::visit(
                         [&](auto&& v) -> std::optional<typename function_traits<func_type>::return_type> {
                             if constexpr (function_traits<func_type>::arity == 1)
                                 if constexpr (std::is_same_v<std::decay_t<decltype(v)>,
@@ -638,6 +655,7 @@ constexpr ResT match_foreach(const T& value, match<Ts...>& match_syntax) {
                         },
                         value))
                     return *v;
+                }
             }
             else {
                 if (std::visit(
