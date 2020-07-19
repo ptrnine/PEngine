@@ -23,6 +23,11 @@ namespace core {
         {f.wait_until(time_point<seconds>())} -> std::convertible_to<std::future_status>;
     };
 
+    template <typename F, typename... ArgsT>
+    auto async_call(F&& function, ArgsT&&... arguments) {
+        return std::async(std::launch::async, std::forward<F>(function), std::forward<ArgsT>(arguments)...);
+    }
+
     /**
      * Returns true if the future ready to retrieve
      * Do not use with deffered tasks
@@ -80,7 +85,7 @@ namespace core {
          *
          * @return reference to self
          */
-        deffered_resource& operator= (F&& f) noexcept { future_ = move(f); }
+        deffered_resource& operator= (F&& f) noexcept { storage_.reset(); future_ = move(f); return *this; }
 
         /**
          * @brief Move constructor
@@ -239,7 +244,7 @@ namespace core {
          */
         [[nodiscard]]
         bool is_ready() const {
-            return future_ && (storage_ || *future_ / core::is_ready() || !future_->valid());
+            return future_ && (storage_ || *future_ / core::is_ready());
         }
 
     private:

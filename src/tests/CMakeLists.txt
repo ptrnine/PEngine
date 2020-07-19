@@ -13,11 +13,13 @@ add_executable(
         serialization.cpp
         container_extensions.cpp
         failure_opt.cpp
+        async.cpp
         )
 
 target_link_libraries(
         tests
         Catch2::Catch2
+        Threads::Threads
 )
 
 include(CTest)

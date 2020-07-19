@@ -31,5 +31,8 @@ TEST_CASE("failure_opt") {
     a3.emplace("KEK");
 
     REQUIRE(a3.value() == "KEK");
+
+    a3.reset();
+    REQUIRE(!a3);
 }
 
