@@ -74,7 +74,7 @@ int main() {
     });
 
     //auto tt = grx::grx_shader_tech(cm, "shader_tech_solid");
-    auto tt = grx::grx_shader_tech(cm, "shader_tech_textured");
+    auto tt = grx::grx_shader_tech(cm, "shader_tech_solid");
 
     grx::grx_mesh_mgr mm(cm);
     core::vector<grx::grx_mesh_instance> models;

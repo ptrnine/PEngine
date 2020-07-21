@@ -3,5 +3,4 @@ build-*/
 .clangd/
 compile_commands.json
 gamedata/models/
-gamedata/shaders/
 gamedata/textures/
