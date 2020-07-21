@@ -32,8 +32,19 @@ foreach(flag IN LISTS cxx_flags)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${flag}")
 endforeach()
 
+option(ENABLE_ASAN "Enable address sanitizer" OFF)
 if(ENABLE_ASAN)
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
+endif()
+
+option(ENABLE_UBSAN "Enable undefined behavior sanitizer" OFF)
+if(ENABLE_UBSAN)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=undefined")
+endif()
+
+option(ENABLE_TSAN "Enable thread sanitizer" OFF)
+if(ENABLE_TSAN)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread")
 endif()
 
 set(CMAKE_PREFIX_PATH "${CMAKE_BINARY_DIR}/3rd")

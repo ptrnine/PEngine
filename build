@@ -4,6 +4,8 @@ C_COMPILER=gcc-10
 CXX_COMPILER=g++-10
 BUILD_TYPE=release
 ENABLE_ASAN=OFF
+ENABLE_UBSAN=OFF
+ENABLE_TSAN=OFF
 EXEC_PATH=""
 GEN_DB=false
 NPROCS=$(($(grep -c ^processor /proc/cpuinfo) - 0))
@@ -14,6 +16,8 @@ $0 [<options> ...]
 --clang         - enable clang build instead gcc
 --debug         - enable debug info with no optimizations
 --asan          - enable address sanitizer
+--ubsan         - enable undefined behavior sanitizer
+--tsan          - enable thread sanitizer
 --exec NAME     - execute specified program after build
 --jobs N        - set jobs count
 --gendb         - no building, generate compile_commands.json and put into ./
@@ -36,6 +40,14 @@ while [[ $1 == --* ]]; do
         "--asan")
             shift
             ENABLE_ASAN=ON
+        ;;
+        "--ubsan")
+            shift
+            ENABLE_UBSAN=ON
+        ;;
+        "--tsan")
+            shift
+            ENABLE_TSAN=ON
         ;;
         "--exec")
             shift
@@ -74,6 +86,8 @@ cmake . -Bbuild-"$BUILD_TYPE"-"$C_COMPILER" \
     -DCMAKE_CXX_COMPILER="$CXX_COMPILER" \
     -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
     -DENABLE_ASAN="$ENABLE_ASAN" \
+    -DENABLE_UBSAN="$ENABLE_UBSAN" \
+    -DENABLE_TSAN="$ENABLE_TSAN" \
     -DMAKE_NPROCS="$NPROCS"
 
 [ $? -eq 0 ] && make -j "$NPROCS" -C build-"$BUILD_TYPE"-"$C_COMPILER"
