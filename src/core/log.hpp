@@ -11,53 +11,7 @@
 
 namespace core
 {
-
-/**
- * @brief Represetns a generic stream
- */
-class log_output_stream {
-public:
-    log_output_stream(): _holder(make_unique<holder<std::ofstream>>(nullptr)) {}
-    log_output_stream(std::ofstream ofs): _holder(make_unique<holder<std::ofstream>>(move(ofs))) {}
-    log_output_stream(std::ostream& os): _holder(make_unique<holder<std::ostream&>>(os)) {}
-    log_output_stream(std::stringstream ss): _holder(make_unique<holder<std::stringstream>>(move(ss))) {}
-
-    /**
-     * @brief Creates the log stream with with stdout
-     *
-     * @return the log stream
-     */
-    static log_output_stream std_out() {
-        return log_output_stream(std::cout);
-    }
-
-    /**
-     * @brief Writes a string to the stream
-     *
-     * @param data - the string to be written
-     */
-    void write(string_view data) {
-        _holder->write(data);
-    }
-
-    /**
-     * @brief Flush the stream
-     */
-    void flush() {
-        _holder->flush();
-    }
-
-    /**
-     * @brief Casts the stream to the string if it possible
-     *
-     * @return the optional with the stream data or nullopt
-     */
-    [[nodiscard]]
-    optional<string> to_string() const {
-        return _holder->to_string();
-    }
-
-private:
+namespace log_dtls {
     struct holder_base {
         holder_base()          = default;
         virtual ~holder_base() = default;
@@ -97,15 +51,90 @@ private:
         T object;
     };
 
+    template <>
+    struct holder<std::weak_ptr<std::ostream>> : holder_base {
+        holder(std::weak_ptr<std::ostream> o): os(move(o)) {}
+
+        void write(string_view data) override {
+            if (auto o = os.lock())
+                o->write(data.data(), static_cast<std::streamsize>(data.size()));
+        }
+
+        void flush() override {
+            if (auto o = os.lock())
+                o->flush();
+        }
+
+        [[nodiscard]]
+        optional<string> to_string() const override {
+            if (auto o1 = os.lock())
+                if (auto o = std::dynamic_pointer_cast<std::stringstream>(o1))
+                    return o->str();
+            return nullptr;
+        }
+
+        std::weak_ptr<std::ostream> os;
+    };
+}
+
+/**
+ * @brief Represetns a generic stream
+ */
+class log_output_stream {
+public:
+    log_output_stream(): _holder(make_unique<log_dtls::holder<std::ofstream>>(nullptr)) {}
+    log_output_stream(std::ofstream ofs): _holder(make_unique<log_dtls::holder<std::ofstream>>(move(ofs))) {}
+    log_output_stream(std::ostream& os): _holder(make_unique<log_dtls::holder<std::ostream&>>(os)) {}
+    //log_output_stream(std::stringstream ss): _holder(make_unique<holder<std::stringstream>>(move(ss))) {}
+    log_output_stream(std::weak_ptr<std::ostream> os):
+        _holder(make_unique<log_dtls::holder<std::weak_ptr<std::ostream>>>(move(os))) {}
+
+    /**
+     * @brief Creates the log stream with with stdout
+     *
+     * @return the log stream
+     */
+    static log_output_stream std_out() {
+        return log_output_stream(std::cout);
+    }
+
+    /**
+     * @brief Writes a string to the stream
+     *
+     * @param data - the string to be written
+     */
+    void write(string_view data) {
+        _holder->write(data);
+    }
+
+    /**
+     * @brief Flush the stream
+     */
+    void flush() {
+        _holder->flush();
+    }
+
+    /**
+     * @brief Casts the stream to the string if it possible
+     *
+     * @return the optional with the stream data or nullopt
+     */
+    [[nodiscard]]
+    optional<string> to_string() const {
+        return _holder->to_string();
+    }
+
 private:
-    unique_ptr<holder_base> _holder;
+    unique_ptr<log_dtls::holder_base> _holder;
 };
 
 
 /**
  * @brief Represetns a logger
  *
- * All member functions is thread-safe
+ * That implementation sucks and will be refactored or replaced by some external lib
+ *
+ * All member functions is thread-safe (mutex blocking)
  */
 class logger {
     SINGLETON_IMPL(logger);
@@ -119,7 +148,7 @@ public:
      * @brief Constructs logger with std::cout stream
      */
     logger() {
-        add_output_stream("stantard output", std::cout);
+        add_output_stream("stdout", std::cout);
     }
 
     ~logger() = default;
@@ -177,6 +206,10 @@ public:
 
     /**
      * @brief Add or replace the output stream by the key
+     *
+     * Supports fstreams, stdout and weak_ptr<stringstream>
+     *
+     * You can't safely read from weak_ptr<stringstring> if logger used in multiple threads :)
      *
      * @tparam Ts - types of arguments to log_output_stream constructor
      * @param key - the key

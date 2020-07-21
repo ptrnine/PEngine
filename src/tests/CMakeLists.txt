@@ -17,6 +17,7 @@ add_executable(
         base64.cpp
         match_syntax.cpp
         md5.cpp
+        log.cpp
         )
 
 target_link_libraries(
