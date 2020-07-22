@@ -6,6 +6,7 @@ BUILD_TYPE=release
 ENABLE_ASAN=OFF
 ENABLE_UBSAN=OFF
 ENABLE_TSAN=OFF
+ENABLE_NATIVE_ARCH=OFF
 EXEC_PATH=""
 GEN_DB=false
 NPROCS=$(($(grep -c ^processor /proc/cpuinfo) - 0))
@@ -18,6 +19,7 @@ $0 [<options> ...]
 --asan          - enable address sanitizer
 --ubsan         - enable undefined behavior sanitizer
 --tsan          - enable thread sanitizer
+--native        - build for current architecture
 --exec NAME     - execute specified program after build
 --jobs N        - set jobs count
 --gendb         - no building, generate compile_commands.json and put into ./
@@ -48,6 +50,10 @@ while [[ $1 == --* ]]; do
         "--tsan")
             shift
             ENABLE_TSAN=ON
+        ;;
+        "--native")
+            shift
+            ENABLE_NATIVE_ARCH=ON
         ;;
         "--exec")
             shift
@@ -88,6 +94,7 @@ cmake . -Bbuild-"$BUILD_TYPE"-"$C_COMPILER" \
     -DENABLE_ASAN="$ENABLE_ASAN" \
     -DENABLE_UBSAN="$ENABLE_UBSAN" \
     -DENABLE_TSAN="$ENABLE_TSAN" \
+    -DENABLE_NATIVE_ARCH="$ENABLE_NATIVE_ARCH" \
     -DMAKE_NPROCS="$NPROCS"
 
 [ $? -eq 0 ] && make -j "$NPROCS" -C build-"$BUILD_TYPE"-"$C_COMPILER"

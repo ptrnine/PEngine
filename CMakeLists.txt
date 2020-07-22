@@ -47,6 +47,11 @@ if(ENABLE_TSAN)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread")
 endif()
 
+option(ENABLE_NATIVE_ARCH "Build for current arch" OFF)
+if(ENABLE_NATIVE_ARCH)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
+endif()
+
 set(CMAKE_PREFIX_PATH "${CMAKE_BINARY_DIR}/3rd")
 include_directories(SYSTEM "${CMAKE_BINARY_DIR}/3rd/include")
 link_directories("${CMAKE_BINARY_DIR}/3rd/lib")
