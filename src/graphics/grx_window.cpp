@@ -60,8 +60,23 @@ grx::grx_window::grx_window(
         render_target :
         grx_window_render_target::create_shared(size);
 
-    auto shader_section = config_section::direct_read("shader_passthrough_screen_quad", cfg_reentry("basic_shaders"));
-    _screen_quad_passthrough = grx_shader_program::create_shared(shader_section);
+    grx_shader<shader_type::vertex> vs(
+        "in vec3 position_ms;",
+        "out vec2 uv;",
+        "void main() {",
+        "    gl_Position = vec4(position_ms, 1.0);",
+        "    uv = (position_ms.xy + vec2(1.0, 1.0)) * 0.5;",
+        "}"
+    );
+    grx_shader<shader_type::fragment> fs(
+        "uniform sampler2D screen_quad_texture;",
+        "in vec2 uv;",
+        "out vec4 color;",
+        "void main() {",
+        "    color = texture(screen_quad_texture, uv);",
+        "}"
+    );
+    _screen_quad_passthrough = grx_shader_program::create_shared(fs, vs);
     _screen_quad_texture     = _screen_quad_passthrough->get_uniform_unwrap<int>("screen_quad_texture");
 
     window_map.insert_or_assign(_wnd, this);
