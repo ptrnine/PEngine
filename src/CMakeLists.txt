@@ -1,5 +1,6 @@
 add_subdirectory(input)
 add_subdirectory(graphics)
 add_subdirectory(engine)
+add_subdirectory(samples)
 add_subdirectory(benchmarks)
 add_subdirectory(tests)

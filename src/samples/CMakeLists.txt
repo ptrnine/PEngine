@@ -1,0 +1,2 @@
+add_executable(textured_quad textured_quad.cpp)
+target_link_libraries(textured_quad pe_graphics pe_input)

@@ -2,8 +2,6 @@ git_submodule_build(Catch2 CMAKE_ARGS -DCATCH_INSTALL_DOCS=OFF -DCATCH_BUILD_TES
 find_package(Catch2 REQUIRED)
 enable_testing()
 
-message("flags : ${CMAKE_CXX_FLAGS}")
-
 add_executable(
         tests
         tests.cpp
