@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include "assert.hpp"
 #include "container_extensions.hpp"
 #include "core/log.hpp"
@@ -113,7 +114,27 @@ inline static string_view::size_type strsize_cast(T val) {
 }
 
 static inline string DEFAULT_CFG_PATH() {
-    return ::platform_dependent::get_exe_dir() / "../fs.cfg";
+    auto path = std::filesystem::path(platform_dependent::get_exe_dir());
+    auto search_entry = [](const std::filesystem::path& path) -> optional<std::filesystem::path> {
+        printline("{}", path.string());
+        for (auto& p : std::filesystem::directory_iterator(path)) {
+            if (p.is_regular_file()) {
+                auto filename = p.path().filename().string();
+                if (filename == "fs.cfg")
+                    return p;
+            }
+        }
+        return nullopt;
+    };
+
+    while (!path.empty()) {
+        auto result = search_entry(path);
+        if (result)
+            return result->string();
+        path = path.parent_path();
+    }
+
+    throw config_exception("Can't find entry config fs.cfg");
 }
 
 template <typename T>
