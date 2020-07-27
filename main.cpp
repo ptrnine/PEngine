@@ -91,7 +91,11 @@ int main() {
     grx::grx_texture_set<3> texset;
     texset.set(0, tmgr->load_async<grx::color_rgb>("/home/ptrnine/Рабочий стол/22.tga"));
 
-    wnd.push_postprocess(grx::grx_postprocess(cm, "shader_gamma_correction"));
+    //wnd.push_postprocess(grx::grx_postprocess(cm, "shader_gamma_correction"));
+    wnd.push_postprocess(grx::grx_postprocess(cm, "shader_vhs1", [](grx::grx_shader_program& prg) {
+        prg.get_uniform_unwrap<float>("time") =
+            static_cast<float>(core::global_timer().measure_count());
+    }));
     //wnd.push_postprocess({ m, cm, "shader_vhs2_texture", { "time" }, grx::postprocess_uniform_seconds()});
     //wnd.push_postprocess({ m, cm, "shader_vhs1_texture", { "time" }, grx::postprocess_uniform_seconds()});
     //wnd.push_postprocess({m, cm, "shader_gamma_correction", grx::uniform_pair{"gamma", 1/1.3f}});
