@@ -51,4 +51,4 @@ set(GRX_HEADERS
 )
 
 add_library(pe_graphics SHARED ${GRX_SOURCES})
-target_link_libraries(pe_graphics GL GLEW glfw3 assimp pe_input grx_asm)
+target_link_libraries(pe_graphics GL GLEW glfw3 assimp pe_input grx_asm Threads::Threads)
