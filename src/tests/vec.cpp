@@ -54,42 +54,44 @@ TEST_CASE("vec") {
         static_assert(std::is_same_v<vec4d, decltype(NAME##6)>)
 
 
-        #define CHECK(v, ...) \
-            REQUIRE(v.essentially_equal(__VA_ARGS__, 0.0001)); \
-            REQUIRE(v.approx_equal(__VA_ARGS__, 0.0001))
+        #define CHECK_(vvv, ...) do { \
+            using float_t_ = std::decay_t<decltype(vvv.v[0])>; \
+            REQUIRE(vvv.essentially_equal(__VA_ARGS__, static_cast<float_t_>(0.0001))); \
+            REQUIRE(vvv.approx_equal(__VA_ARGS__, static_cast<float_t_>(0.0001))); \
+            } while(false)
 
         GEN_OP_TEST(a, +);
         GEN_OP_TEST(b, -);
         GEN_OP_TEST(c, *);
         GEN_OP_TEST(d, /);
 
-        CHECK(a1, vec{2.0, 4.0});
-        CHECK(a2, vec{2.f, 4.f});
-        CHECK(a3, vec{2.0, 4.0});
-        CHECK(a4, vec{2.0, 4.0, 6.0, 8.0});
-        CHECK(a5, vec{2.f, 4.f, 6.f, 8.f});
-        CHECK(a6, vec{2.0, 4.0, 6.0, 8.0});
+        CHECK_(a1, vec{2.0, 4.0});
+        CHECK_(a2, vec{2.f, 4.f});
+        CHECK_(a3, vec{2.0, 4.0});
+        CHECK_(a4, vec{2.0, 4.0, 6.0, 8.0});
+        CHECK_(a5, vec{2.f, 4.f, 6.f, 8.f});
+        CHECK_(a6, vec{2.0, 4.0, 6.0, 8.0});
 
-        CHECK(b1, vec{0.0, 0.0});
-        CHECK(b2, vec{0.f, 0.f});
-        CHECK(b3, vec{0.0, 0.0});
-        CHECK(b4, vec{0.0, 0.0, 0.0, 0.0});
-        CHECK(b5, vec{0.f, 0.f, 0.f, 0.f});
-        CHECK(b6, vec{0.0, 0.0, 0.0, 0.0});
+        CHECK_(b1, vec{0.0, 0.0});
+        CHECK_(b2, vec{0.f, 0.f});
+        CHECK_(b3, vec{0.0, 0.0});
+        CHECK_(b4, vec{0.0, 0.0, 0.0, 0.0});
+        CHECK_(b5, vec{0.f, 0.f, 0.f, 0.f});
+        CHECK_(b6, vec{0.0, 0.0, 0.0, 0.0});
 
-        CHECK(c1, vec{1.0, 4.0});
-        CHECK(c2, vec{1.f, 4.f});
-        CHECK(c3, vec{1.0, 4.0});
-        CHECK(c4, vec{1.0, 4.0, 9.0, 16.0});
-        CHECK(c5, vec{1.f, 4.f, 9.f, 16.f});
-        CHECK(c6, vec{1.0, 4.0, 9.0, 16.0});
+        CHECK_(c1, vec{1.0, 4.0});
+        CHECK_(c2, vec{1.f, 4.f});
+        CHECK_(c3, vec{1.0, 4.0});
+        CHECK_(c4, vec{1.0, 4.0, 9.0, 16.0});
+        CHECK_(c5, vec{1.f, 4.f, 9.f, 16.f});
+        CHECK_(c6, vec{1.0, 4.0, 9.0, 16.0});
 
-        CHECK(d1, vec{1.0, 1.0});
-        CHECK(d2, vec{1.f, 1.f});
-        CHECK(d3, vec{1.0, 1.0});
-        CHECK(d4, vec{1.0, 1.0, 1.0, 1.0});
-        CHECK(d5, vec{1.f, 1.f, 1.f, 1.f});
-        CHECK(d6, vec{1.0, 1.0, 1.0, 1.0});
+        CHECK_(d1, vec{1.0, 1.0});
+        CHECK_(d2, vec{1.f, 1.f});
+        CHECK_(d3, vec{1.0, 1.0});
+        CHECK_(d4, vec{1.0, 1.0, 1.0, 1.0});
+        CHECK_(d5, vec{1.f, 1.f, 1.f, 1.f});
+        CHECK_(d6, vec{1.0, 1.0, 1.0, 1.0});
 
         #define GEN_OP2_TEST(NAME, OP) \
         NAME##1 OP v4; \
@@ -100,14 +102,14 @@ TEST_CASE("vec") {
         GEN_OP2_TEST(c, *=);
         GEN_OP2_TEST(d, /=);
 
-        CHECK(a1, vec{3.0, 6.0});
-        CHECK(a4, vec{3.0, 6.0, 9.0, 12.0});
-        CHECK(b1, vec{-1.0, -2.0});
-        CHECK(b4, vec{-1.0, -2.0, -3.0, -4.0});
-        CHECK(c1, vec{1.0, 8.0});
-        CHECK(c4, vec{1.0, 8.0, 27.0, 64.0});
-        CHECK(d1, vec{1.0, 0.5});
-        CHECK(d4, vec{1.0, 0.5, 0.33333, 0.25});
+        CHECK_(a1, vec{3.0, 6.0});
+        CHECK_(a4, vec{3.0, 6.0, 9.0, 12.0});
+        CHECK_(b1, vec{-1.0, -2.0});
+        CHECK_(b4, vec{-1.0, -2.0, -3.0, -4.0});
+        CHECK_(c1, vec{1.0, 8.0});
+        CHECK_(c4, vec{1.0, 8.0, 27.0, 64.0});
+        CHECK_(d1, vec{1.0, 0.5});
+        CHECK_(d4, vec{1.0, 0.5, 0.33333, 0.25});
     }
 
     SECTION("structured bindings") {
