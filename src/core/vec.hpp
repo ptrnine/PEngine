@@ -395,18 +395,7 @@ namespace core {
      * Non-floating point specific
      */
     template <typename T, size_t S, template <typename, size_t> class DerivedT, typename Enable = void>
-    struct vec_specific : vec_base<T, S, DerivedT> {
-        template <typename TT>
-        bool operator== (const vec_base<TT, S, DerivedT>& vec) const {
-            return vec_integer_equal(this->v, vec.v, std::make_index_sequence<S>());
-        }
-
-        template <typename TT>
-        bool operator!= (const vec_base<TT, S, DerivedT>& vec) const {
-            return !(*this == vec);
-        }
-    };
-
+    struct vec_specific : vec_base<T, S, DerivedT> {};
 
     /*
      * Floating point specific
@@ -590,6 +579,17 @@ namespace core {
 
     template <typename T, size_t S>
     vec(std::array<T, S>) -> vec<T, S>;
+
+
+    template <Integral T1, Integral T2, size_t S>
+    bool operator==(const vec<T1, S>& rhs, const vec<T2, S>& lhs) {
+        return vec_integer_equal(rhs.v, lhs.v, std::make_index_sequence<S>());
+    }
+
+    template <Integral T1, Integral T2, size_t S>
+    bool operator!=(const vec<T1, S>& rhs, const vec<T2, S>& lhs) {
+        return !(rhs == lhs);
+    }
 
     /*
      * Aliases
