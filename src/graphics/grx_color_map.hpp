@@ -202,6 +202,9 @@ private:
     template <typename, size_t>
     friend class grx_color_map;
 
+    template <typename, size_t, bool>
+    friend class grx_color_row_view;
+
     grx_color_map_iterator(T* ptr) noexcept: _ptr(ptr) {}
 
 private:
