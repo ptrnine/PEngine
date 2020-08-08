@@ -74,13 +74,13 @@ int main() {
     });
 
     //auto tt = grx::grx_shader_tech(cm, "shader_tech_solid");
-    auto tt = grx::grx_shader_tech(cm, "shader_tech_solid");
+    auto tt = grx::grx_shader_tech(cm, "shader_tech_textured");
 
     grx::grx_mesh_mgr mm(cm);
     core::vector<grx::grx_mesh_instance> models;
     models.emplace_back(grx::grx_mesh_instance(mm, "cz805.dae"));
-    models.back().set_debug_bone_aabb_draw(true);
-    models.back().set_debug_aabb_draw(true);
+    //models.back().set_debug_bone_aabb_draw(true);
+    //models.back().set_debug_aabb_draw(true);
     //for (float pos = 0; auto& m : models)
     //    m.move({pos += 20.f, 20.f, -20.f});
 
@@ -89,13 +89,13 @@ int main() {
     //models.front().set_debug_aabb_draw(true);
 
     grx::grx_texture_set<3> texset;
-    texset.set(0, tmgr->load_async<grx::color_rgb>("/home/ptrnine/Рабочий стол/22.tga"));
+    texset.set(0, tmgr->load_async<grx::color_rgb>("/home/ptrnine/repo/PEngine/gamedata/models/CZ805.tga"));
 
     //wnd.push_postprocess(grx::grx_postprocess(cm, "shader_gamma_correction"));
-    wnd.push_postprocess(grx::grx_postprocess(cm, "shader_vhs1", [](grx::grx_shader_program& prg) {
-        prg.get_uniform_unwrap<float>("time") =
-            static_cast<float>(core::global_timer().measure_count());
-    }));
+    //wnd.push_postprocess(grx::grx_postprocess(cm, "shader_vhs1", [](grx::grx_shader_program& prg) {
+    //    prg.get_uniform_unwrap<float>("time") =
+    //        static_cast<float>(core::global_timer().measure_count());
+    //}));
     //wnd.push_postprocess({ m, cm, "shader_vhs2_texture", { "time" }, grx::postprocess_uniform_seconds()});
     //wnd.push_postprocess({ m, cm, "shader_vhs1_texture", { "time" }, grx::postprocess_uniform_seconds()});
     //wnd.push_postprocess({m, cm, "shader_gamma_correction", grx::uniform_pair{"gamma", 1/1.3f}});
