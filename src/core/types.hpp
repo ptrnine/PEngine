@@ -9,6 +9,7 @@
 #include <variant>
 #include <any>
 #include <memory>
+#include <list>
 #include <functional>
 #include <flat_hash_map.hpp>
 #include <glm/vec2.hpp>
@@ -61,6 +62,8 @@ namespace core
     using std::variant;
     using std::any;
     using std::copy;
+    using std::initializer_list;
+    using std::list;
 
     using std::unique_ptr;
     using std::make_unique;
