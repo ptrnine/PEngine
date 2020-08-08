@@ -26,28 +26,28 @@ namespace core
 template <typename size_type>
 class index_view_iterator : public std::iterator<std::bidirectional_iterator_tag, size_type> {
 public:
-    index_view_iterator(size_type init) noexcept: idx(init) {}
+    index_view_iterator(size_type init, size_type increment = 1) noexcept: idx(init), inc(increment) {}
     index_view_iterator() = default;
 
     inline index_view_iterator& operator++() noexcept {
-        ++idx;
+        idx+=inc;
         return *this;
     }
 
     inline index_view_iterator& operator--() noexcept {
-        --idx;
+        idx-=inc;
         return *this;
     }
 
     inline index_view_iterator operator++(int) noexcept {
         auto tmp = *this;
-        ++idx;
+        idx+=inc;
         return tmp;
     }
 
     inline index_view_iterator operator--(int) noexcept {
         auto tmp = *this;
-        --idx;
+        idx-=inc;
         return tmp;
     }
 
@@ -69,6 +69,7 @@ public:
 
 private:
     size_type idx = 0;
+    size_type inc = 1;
 };
 
 
@@ -286,6 +287,97 @@ template <Iterable T>
 auto index_view(T& container) {
     return index_view(container.begin(), container.end());
 }
+
+/**
+ * @brief Generate index sequence
+ *
+ * Usage:
+ * for (size_t i : index_view(100)) {
+ * }
+ *
+ * Equivalent of:
+ * for (size_t i = 0; i < 100; ++i) {
+ * }
+ *
+ * @tparam - type of index
+ * @param stop - an number specifying at which position to stop (not included)
+ * @return - sequence of indicies
+ *
+ */
+template <typename T = ptrdiff_t>
+auto index_seq(T stop) {
+    return iterator_view_proxy(index_view_iterator<T>(), index_view_iterator<T>(stop));
+}
+
+/**
+ * @brief Generate index sequence
+ *
+ * Usage:
+ * for (size_t i : index_view(100)) {
+ * }
+ *
+ * Equivalent of:
+ * for (size_t i = 0; i < 100; ++i) {
+ * }
+ *
+ * @param stop - an number specifying at which position to stop (not included)
+ * @return - sequence of indicies
+ *
+ */
+inline auto uindex_seq(size_t stop) {
+    return index_seq<size_t>(stop);
+}
+
+/**
+ * @brief Generate index sequence
+ *
+ * Usage:
+ * for (size_t i : index_view(0, 100, 2)) {
+ * }
+ *
+ * Equivalent of:
+ * for (size_t i = 0; i < 100; i+=2) {
+ * }
+ *
+ * @tparam T    - type of index
+ * @param start - an number specifying at which position to start
+ * @param stop  - an number specifying at which position to stop (not included)
+ * @param step  - an number specifying the incrementation, default is 1
+ * @return - sequence of indicies
+ *
+ */
+template <typename T = ptrdiff_t>
+auto index_seq(T start, T stop, T step = 1) {
+    T real_stop = stop - start;
+    if (real_stop % step != 0)
+        real_stop = stop - real_stop % step + step;
+    else
+        real_stop = stop;
+    return iterator_view_proxy(index_view_iterator<T>(start, step), index_view_iterator<T>(real_stop));
+}
+
+/**
+ * @brief Generate index sequence
+ *
+ * Usage:
+ * for (size_t i : index_view(0, 100, 2)) {
+ * }
+ *
+ * Equivalent of:
+ * for (size_t i = 0; i < 100; i+=2) {
+ * }
+ *
+ * @tparam T    - type of index
+ * @param start - an number specifying at which position to start
+ * @param stop  - an number specifying at which position to stop (not included)
+ * @param step  - an number specifying the incrementation, default is 1
+ * @return - sequence of indicies
+ *
+ */
+inline auto uindex_seq(size_t start, size_t stop, size_t step = 1) {
+    return index_seq<size_t>(start, stop, step);
+}
+
 
 /**
  * @brief Iterate over two or more containers
