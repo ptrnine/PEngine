@@ -20,6 +20,53 @@ TEST_CASE("For loop variations") {
         REQUIRE(v1 == v2);
     }
 
+    SECTION("Index sequence") {
+        std::string str;
+        for (auto i : index_seq(2, 10, 3))
+            str += std::to_string(i);
+        REQUIRE(str == "258");
+
+        str.clear();
+        for (auto i : index_seq(5, -10, -4))
+            str += std::to_string(i);
+        REQUIRE(str == "51-3-7");
+
+        str.clear();
+        for (auto i : index_seq(0, -7, -1))
+            str += std::to_string(i);
+        REQUIRE(str == "0-1-2-3-4-5-6");
+
+        str.clear();
+        for (auto i : index_seq(0, -8, -2))
+            str += std::to_string(i);
+        REQUIRE(str == "0-2-4-6");
+
+        str.clear();
+        for (auto i : index_seq(2, 10, 2))
+            str += std::to_string(i);
+        REQUIRE(str == "2468");
+
+        str.clear();
+        for (auto i : index_seq(0, 0))
+            str += std::to_string(i);
+        REQUIRE(str == "");
+
+        str.clear();
+        for (auto i : index_seq(0, 1))
+            str += std::to_string(i);
+        REQUIRE(str == "0");
+
+        str.clear();
+        for (auto i : index_seq(50, 50, 5))
+            str += std::to_string(i);
+        REQUIRE(str == "");
+
+        str.clear();
+        for (auto i : index_seq(-2, -3, -5))
+            str += std::to_string(i);
+        REQUIRE(str == "-2");
+    }
+
     SECTION("Value loop with index") {
         vector<size_t> v1(100);
         vector<size_t> v2(100);
