@@ -305,6 +305,7 @@ public:
      * @return the value with T type
      */
     template <typename T>
+    [[nodiscard]]
     auto cast(const cast_helper& helper = {}) const {
         return config_cast<T>(_value, helper);
     }
@@ -561,6 +562,7 @@ public:
      * @return the read value
      */
     template <typename T>
+    [[nodiscard]]
     T read_unwrap(const string& key) const {
         return read<T>(key).value();
     }
@@ -1029,6 +1031,16 @@ private:
 template <typename... ArgsT>
 void config_manager::read_cfg_values(ArgsT&... args) const {
     ((args.read(*this), ...));
+}
+
+inline string cfg_read_path(string_view section, const string& key) {
+    return DEFAULT_CFG_PATH() / ".." /
+        config_section::direct_read(section).read_unwrap<string>(key);
+}
+
+inline string cfg_read_path(const string& key) {
+    return DEFAULT_CFG_PATH() / ".." /
+        config_section::direct_read().read_unwrap<string>(key);
 }
 
 } // namespace core
