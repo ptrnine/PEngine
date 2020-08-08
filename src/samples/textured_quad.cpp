@@ -9,20 +9,21 @@
 #include <graphics/grx_texture.hpp>
 
 using namespace core;
+using namespace grx;
 
 int main() {
-    auto window = grx::grx_window("wnd", {800, 600}); // NOLINT
+    auto window = grx_window("wnd", {800, 600}); // NOLINT
     window.make_current();
 
-    auto camera = grx::grx_camera::make_shared({0.f, 0.f, 5.f}, 4.f/3.f);
-    camera->create_camera_manipulator<grx::grx_camera_manipulator_fly>();
+    auto camera = grx_camera::make_shared({0.f, 0.f, 5.f}, 4.f/3.f);
+    camera->create_camera_manipulator<grx_camera_manipulator_fly>();
     window.attach_camera(camera);
 
-    auto texture_path = DEFAULT_CFG_PATH() / ".." / config_section::direct_read().read_unwrap<string>("textures_dir");
+    auto texture_path = cfg_read_path("textures_dir");
 
-    auto texture = grx::load_texture_unwrap(texture_path / "cake.jpg");
-    auto shader  = grx::grx_shader_program::create_shared(
-        grx::grx_shader<grx::shader_type::vertex>(
+    deffered_resource texture = load_texture_async_unwrap(texture_path / "cake.jpg");
+    auto shader  = grx_shader_program::create_shared(
+        grx_shader<shader_type::vertex>(
             "uniform mat4 MVP;"
             "in vec3 position_ms;"
             "out vec2 uv;"
@@ -31,7 +32,7 @@ int main() {
             "    uv = (position_ms.xy + vec2(1.0, 1.0)) * 0.5;"
             "}"
         ),
-        grx::grx_shader<grx::shader_type::fragment>(
+        grx_shader<shader_type::fragment>(
             "uniform sampler2D sampler0;"
             "in vec2 uv;"
             "out vec4 color;"
@@ -40,9 +41,9 @@ int main() {
             "}"
         )
     );
-    auto MVP = shader->get_uniform_unwrap<glm::mat4>("MVP");
+    auto MVP = shader->get_uniform_unwrap<vec3f>("MVP");
 
-    grx::grx_vbo_tuple<grx::vbo_vector_vec3f> quad;
+    grx_vbo_tuple<vbo_vector_vec3f> quad;
     quad.set_data<0>({
         {0.f, 1.f, 0.f},
         {0.f, 0.f, 0.f},
@@ -58,8 +59,8 @@ int main() {
 
         quad.bind_vao();
         shader->activate();
-        MVP = camera->view_projection() * glm::mat4(1.f);
-        texture.bind_unit<0>();
+        MVP = vec{1.f, 1.f, 1.f};//camera->view_projection() * glm::mat4(1.f);
+        texture.get_unwrap().bind_unit<0>();
         quad.draw(18); // NOLINT
 
         window.present();
