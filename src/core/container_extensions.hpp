@@ -72,6 +72,53 @@ private:
     size_type inc = 1;
 };
 
+template <typename T, size_t S>
+class dimensional_index_iterator : public std::iterator<std::forward_iterator_tag, T> {
+public:
+    dimensional_index_iterator(array<T, S> end) noexcept: ends(end) {}
+    dimensional_index_iterator() noexcept: wrapped(true) {}
+
+    inline dimensional_index_iterator& operator++() noexcept {
+        increment();
+        return *this;
+    }
+
+    inline dimensional_index_iterator operator++(int) noexcept {
+        dimensional_index_iterator res = *this;
+        increment();
+        return res;
+    }
+
+    inline bool operator==(const dimensional_index_iterator& i) const noexcept {
+        return idxs == i.idxs && wrapped == i.wrapped;
+    }
+
+    inline bool operator!=(const dimensional_index_iterator& i) const noexcept {
+        return !(*this == i);
+    }
+
+    inline array<T, S> operator*() const noexcept {
+        return idxs;
+    }
+
+private:
+    void increment(size_t idx = 0) {
+        if (idx != S) {
+            ++idxs[idx];
+            if (idxs[idx] == ends[idx]) {
+                idxs[idx] = 0;
+                increment(idx + 1);
+            }
+        } else
+            wrapped = true;
+    }
+
+private:
+    array<T, S> idxs = {0};
+    array<T, S> ends;
+    bool wrapped = false;
+};
+
 
 template <typename... Ts>
 struct multi_view_tuple : tuple<Ts...> {
@@ -376,6 +423,32 @@ auto index_seq(T start, T stop, T step = 1) {
  */
 inline auto uindex_seq(size_t start, size_t stop, size_t step = 1) {
     return index_seq<size_t>(start, stop, step);
+}
+
+/**
+ * @brief Generate n-dimensional index sequence
+ *
+ * Usage:
+ * for (size_t [x, y] : dimensional_seq(10, 20)) {
+ * }
+ *
+ * Equivalent of:
+ * for (size_t y = 0; y < 20; ++y) {
+ *     for (size_t x = 0; x < 10; ++x) {
+ *     }
+ * }
+ *
+ * @tparam T    - type of index
+ * @param x_max - an number specifying at which position to stop for first dimension (not included)
+ * @param n_max - another numbers specifying at which position to stop (not included)
+ * @return      - n-dimensional index sequence
+ *
+ */
+template <typename T = size_t, typename... Ts>
+auto dimensional_seq(size_t x_max, Ts... n_max) {
+    return iterator_view_proxy(
+            dimensional_index_iterator(array<T, sizeof...(Ts) + 1>{x_max, static_cast<T>(n_max)...}),
+            dimensional_index_iterator<T, sizeof...(Ts) + 1>());
 }
 
 
