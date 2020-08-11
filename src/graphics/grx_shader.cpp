@@ -14,7 +14,8 @@ namespace grx::grx_shader_helper
 GLenum to_gl_type(shader_type type) {
     switch (type) {
     case shader_type::fragment: return GL_FRAGMENT_SHADER;
-    case shader_type::vertex: return GL_VERTEX_SHADER;
+    case shader_type::vertex:   return GL_VERTEX_SHADER;
+    case shader_type::compute:  return GL_COMPUTE_SHADER;
     }
     ABORT();
     return 0;
@@ -23,10 +24,15 @@ GLenum to_gl_type(shader_type type) {
 uint compile(shader_type type, string_view code) {
     auto name = GL_TRACE(glCreateShader, to_gl_type(type));
 
-    auto data   = array{SHADER_GL_CORE.data(), code.data()};
-    auto length = array{static_cast<int>(SHADER_GL_CORE.size()), static_cast<int>(code.length())};
+    auto data   = vector{SHADER_GL_CORE.data(), code.data()};
+    auto length = vector{static_cast<int>(SHADER_GL_CORE.size()), static_cast<int>(code.length())};
 
-    GL_TRACE(glShaderSource, name, 2, data.data(), length.data());
+    if (type == shader_type::compute) {
+        data.insert(data.begin() + 1, SHADER_GL_COMPUTE_VARIABLE_GROUP.data());
+        length.insert(length.begin() + 1, static_cast<int>(SHADER_GL_COMPUTE_VARIABLE_GROUP.size()));
+    }
+
+    GL_TRACE(glShaderSource, name, static_cast<int>(data.size()), data.data(), length.data());
     GL_TRACE(glCompileShader, name);
 
     int rc = GL_FALSE;
@@ -58,8 +64,17 @@ uint compile_tmpl(shader_type type, const vector<StrT>& code_lines) {
     lines.front()   = SHADER_GL_CORE.data();
     lengths.front() = static_cast<int>(SHADER_GL_CORE.size());
 
-    std::transform(code_lines.begin(), code_lines.end(), lines.begin() + 1, [](auto& s) { return s.data(); });
-    std::transform(code_lines.begin(), code_lines.end(), lengths.begin() + 1, [](auto& s) { return s.size(); });
+    int line_start_num = 1;
+    if (type == shader_type::compute) {
+        lines.push_back(nullptr);
+        lines[1] = SHADER_GL_COMPUTE_VARIABLE_GROUP.data();
+        lengths.push_back(0);
+        lengths[1] = static_cast<int>(SHADER_GL_COMPUTE_VARIABLE_GROUP.size());
+        ++line_start_num;
+    }
+
+    std::transform(code_lines.begin(), code_lines.end(), lines.begin() + line_start_num, [](auto& s) { return s.data(); });
+    std::transform(code_lines.begin(), code_lines.end(), lengths.begin() + line_start_num, [](auto& s) { return s.size(); });
 
     GL_TRACE(glShaderSource, name, static_cast<GLsizei>(lines.size()), lines.data(), lengths.data());
     GL_TRACE(glCompileShader, name);
@@ -470,5 +485,16 @@ auto grx::grx_shader_program::create_shared(const config_section& section) -> sh
     pass_config_values_to_program(program, section);
 
     return program;
+}
+
+void grx::grx_shader_program::dispatch_compute(
+        uint num_groups_x,      uint num_groups_y,      uint num_groups_z,
+        uint work_group_size_x, uint work_group_size_y, uint work_group_size_z
+) {
+    GL_TRACE(glDispatchComputeGroupSizeARB,
+            num_groups_x,      num_groups_y,      num_groups_z,
+            work_group_size_x, work_group_size_y, work_group_size_z);
+    //if (barrier)
+    //    GL_TRACE(glMemoryBarrier, GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
 }
 

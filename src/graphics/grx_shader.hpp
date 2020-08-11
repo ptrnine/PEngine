@@ -14,7 +14,7 @@ class config_section;
 namespace grx
 {
 constexpr inline core::string_view SHADER_GL_CORE = "#version 430 core\n";
-
+constexpr inline core::string_view SHADER_GL_COMPUTE_VARIABLE_GROUP = "#extension GL_ARB_compute_variable_group_size: enable\n";
 
 class shader_exception : public std::exception {
 public:
@@ -30,12 +30,13 @@ private:
 };
 
 
-enum class shader_type { vertex = 0, fragment };
+enum class shader_type { vertex = 0, fragment, compute };
 
 
 inline constexpr auto shader_type_name_pairs =
     core::array{core::pair{shader_type::vertex,   core::string_view("vertex")},
-                core::pair{shader_type::fragment, core::string_view("fragment")}};
+                core::pair{shader_type::fragment, core::string_view("fragment")},
+                core::pair{shader_type::compute,  core::string_view("compute")}};
 
 inline bool is_shader_type_name(core::string_view name) {
     return shader_type_name_pairs / core::any_of([name](auto& p) { return p.second == name; });
@@ -515,6 +516,12 @@ public:
     void activate() const {
         grx_shader_helper::activate_program(_gl_name);
     }
+
+    /**
+     * @brief Run compute shader
+     */
+    void dispatch_compute(uint num_groups_x,      uint num_groups_y,      uint num_groups_z,
+                          uint work_group_size_x, uint work_group_size_y, uint work_group_size_z);
 
 private:
     template <typename... Ts, size_t... Idxs>
