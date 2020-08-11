@@ -34,7 +34,7 @@ public:
 
     template <typename T = string>
     optional<T> by_key_opt(string_view name) {
-        auto starts_with = [&](string_view v) { return name.starts_with(v); };
+        auto starts_with = [&](string_view v) { return v.starts_with(name); };
         auto found = std::find_if(_data.begin(), _data.end(), starts_with);
 
         if (found != _data.end()) {
@@ -151,6 +151,15 @@ public:
             return *arg;
         else
             return string(default_val);
+    }
+
+    void require_end(string_view error_message = {}) {
+        if (!_data.empty()) {
+            if (error_message.empty())
+                throw std::runtime_error("Unknown option " + _data.front());
+            else
+                throw std::runtime_error(string(error_message));
+        }
     }
 
 private:
