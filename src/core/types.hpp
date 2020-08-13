@@ -93,6 +93,8 @@ namespace core
     using gsl::zstring;
     using gsl::czstring;
 
+    template <typename T>
+    using numlim = std::numeric_limits<T>;
 
 // Concepts
     template<typename T, template <typename...> class TemplateT>
