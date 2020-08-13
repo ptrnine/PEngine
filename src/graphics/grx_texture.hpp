@@ -10,6 +10,10 @@
 
 namespace grx
 {
+    enum class texture_access {
+        read, write, readwrite
+    };
+
     namespace grx_texture_helper {
         uint create_texture();
         uint create_texture(uint w, uint h, uint channels);
@@ -23,11 +27,11 @@ namespace grx
 
         void get_texture(void* dst, uint src_name, uint x, uint y, uint channels, bool is_float);
 
-        void bind_unit     (uint name, uint number);
-        void active_texture(uint number);
-        void bind_texture  (uint name);
+        void bind_unit         (uint name, uint number);
+        void active_texture    (uint number);
+        void bind_texture      (uint name);
+        void bind_image_texture(uint unit, uint name, int level, texture_access access, uint channels);
     }
-
 
     /**
      * @brief Represents a texture in the video memory
@@ -267,7 +271,7 @@ namespace grx
          */
         template <uint N>
         void bind_unit() {
-            static_assert(N < 32, "N must be < 32");
+            static_assert(N < 32, "N must be < 32"); // NOLINT
             grx_texture_helper::bind_unit(_gl_name, N);
         }
 
@@ -281,6 +285,35 @@ namespace grx
         void bind_unit(uint number) {
             Expects(number < 32);
             grx_texture_helper::bind_unit(_gl_name, number);
+        }
+
+        /**
+         * @brief Bind a level of the texture
+         *
+         * Equivalent of glBindImageTexture call
+         *
+         * @param N      - number of texture (0 - GL_TEXTURE0, 1 - GL_TEXTURE1, etc.)
+         * @param level  - the level of the texture
+         * @param access - access specifier
+         */
+        template <uint N>
+        void bind_level(int level, texture_access access = texture_access::read) {
+            static_assert(N < 32, "N must be < 32"); // NOLINT
+            grx_texture_helper::bind_image_texture(N, _gl_name, level, access, static_cast<uint>(S));
+        }
+
+        /**
+         * @brief Bind a level of the texture
+         *
+         * Equivalent of glBindImageTexture call
+         *
+         * @param number - number of texture (0 - GL_TEXTURE0, 1 - GL_TEXTURE1, etc.)
+         * @param level  - the level of the texture
+         * @param access - access specifier
+         */
+        void bind_level(uint number, int level, texture_access access = texture_access::read) {
+            Expects(number < 32);
+            grx_texture_helper::bind_image_texture(number, _gl_name, level, access, static_cast<uint>(S));
         }
 
         /**
