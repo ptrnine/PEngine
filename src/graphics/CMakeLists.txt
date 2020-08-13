@@ -20,6 +20,7 @@ set(GRX_SOURCES
         grx_window.cpp
         grx_render_target.cpp
         grx_vbo_tuple.cpp
+        grx_ssbo.cpp
         grx_color_map.cpp
         grx_texture.cpp
         grx_texture_mgr.cpp
@@ -40,6 +41,7 @@ set(GRX_HEADERS
         grx_window.hpp
         grx_render_target.hpp
         grx_vbo_tuple.hpp
+        grx_ssbo.hpp
         grx_postprocess_mgr.hpp
         grx_texture.hpp
         grx_texture_mgr.hpp
