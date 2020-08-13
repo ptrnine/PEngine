@@ -20,7 +20,7 @@ int pe_main(args_view args) {
     fake_wnd.make_current();
 
     auto bs    = args.by_key_default<uint>({"--quad", "-q"}, 16);
-    auto path1 = args.next_unwrap("Missing path to target image");
+    auto path1 = args.next_unwrap("Missing path to sample image");
     auto path2 = args.next_unwrap("Missing path to source image");
     args.require_end();
 
