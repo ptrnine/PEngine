@@ -16,12 +16,18 @@ auto load_texture(const string& path, uint bs) {
 }
 
 int pe_main(args_view args) {
+    if (args.get("--help")) {
+        printline("Usage:\n{} [--quad=N]/[-q N] [path/to/source/image]"
+                  " [path/to/sample/image]", args.program_name());
+        return 0;
+    }
+
     auto fake_wnd = grx_window("fake", {100, 100});
     fake_wnd.make_current();
 
     auto bs    = args.by_key_default<uint>({"--quad", "-q"}, 16);
-    auto path1 = args.next_unwrap("Missing path to sample image");
-    auto path2 = args.next_unwrap("Missing path to source image");
+    auto path1 = args.next_unwrap("Missing path to source image");
+    auto path2 = args.next_unwrap("Missing path to sample image");
     args.require_end();
 
     auto txt1  = load_texture(path1, bs);

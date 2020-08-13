@@ -14,6 +14,12 @@ auto load_image(const string& path, uint bs) {
 }
 
 int pe_main(args_view args) {
+    if (args.get("--help")) {
+        printline("Usage:\n{} [--quad=N]/[-q N] [path/to/source/image]"
+                  " [path/to/sample/image]", args.program_name());
+        return 0;
+    }
+
     auto bs    = args.by_key_default<uint>({"--quad", "-q"}, 16);
     auto path1 = args.next_unwrap("Missing path to source image");
     auto path2 = args.next_unwrap("Missing path to sample image");
