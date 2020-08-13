@@ -21,6 +21,17 @@ GLenum to_gl_type(shader_type type) {
     return 0;
 }
 
+GLenum to_gl_type(shader_barrier type) {
+    switch (type) {
+    case shader_barrier::disabled:     return 0;
+    case shader_barrier::image_access: return GL_SHADER_IMAGE_ACCESS_BARRIER_BIT;
+    case shader_barrier::storage:      return GL_SHADER_STORAGE_BARRIER_BIT;
+    case shader_barrier::all:          return GL_ALL_BARRIER_BITS;
+    }
+    ABORT();
+    return 0;
+}
+
 uint compile(shader_type type, string_view code) {
     auto name = GL_TRACE(glCreateShader, to_gl_type(type));
 
@@ -489,12 +500,14 @@ auto grx::grx_shader_program::create_shared(const config_section& section) -> sh
 
 void grx::grx_shader_program::dispatch_compute(
         uint num_groups_x,      uint num_groups_y,      uint num_groups_z,
-        uint work_group_size_x, uint work_group_size_y, uint work_group_size_z
+        uint work_group_size_x, uint work_group_size_y, uint work_group_size_z,
+        shader_barrier barrier
 ) {
     GL_TRACE(glDispatchComputeGroupSizeARB,
             num_groups_x,      num_groups_y,      num_groups_z,
             work_group_size_x, work_group_size_y, work_group_size_z);
-    //if (barrier)
-    //    GL_TRACE(glMemoryBarrier, GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
+
+    if (barrier != shader_barrier::disabled)
+        GL_TRACE(glMemoryBarrier, grx_shader_helper::to_gl_type(barrier));
 }
 

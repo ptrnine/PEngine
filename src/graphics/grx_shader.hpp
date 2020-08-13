@@ -30,8 +30,8 @@ private:
 };
 
 
-enum class shader_type { vertex = 0, fragment, compute };
-
+enum class shader_type    { vertex = 0, fragment, compute };
+enum class shader_barrier { disabled = 0, image_access, storage, all };
 
 inline constexpr auto shader_type_name_pairs =
     core::array{core::pair{shader_type::vertex,   core::string_view("vertex")},
@@ -521,7 +521,8 @@ public:
      * @brief Run compute shader
      */
     void dispatch_compute(uint num_groups_x,      uint num_groups_y,      uint num_groups_z,
-                          uint work_group_size_x, uint work_group_size_y, uint work_group_size_z);
+                          uint work_group_size_x, uint work_group_size_y, uint work_group_size_z,
+                          shader_barrier barrier = shader_barrier::disabled);
 
 private:
     template <typename... Ts, size_t... Idxs>
