@@ -2,6 +2,7 @@
 #include "platform_dependent.hpp"
 #include "print.hpp"
 #include "ston.hpp"
+#include "vec.hpp"
 #include <fstream>
 #include <ranges>
 #include <utility>
@@ -97,8 +98,8 @@ public:
         return !(*this == i);
     }
 
-    inline array<T, S> operator*() const noexcept {
-        return idxs;
+    inline vec<T, S> operator*() const noexcept {
+        return {idxs};
     }
 
 private:
@@ -451,6 +452,31 @@ auto dimensional_seq(size_t x_max, Ts... n_max) {
             dimensional_index_iterator<T, sizeof...(Ts) + 1>());
 }
 
+/**
+ * @brief Generate n-dimensional index sequence
+ *
+ * Usage:
+ * for (int [x, y] : dimensional_seq(vec{10, 20})) {
+ * }
+ *
+ * Equivalent of:
+ * auto v = vec{10, 20};
+ * for (int y = 0; y < vec.y(); ++y) {
+ *     for (size_t x = 0; x < vec.x(); ++x) {
+ *     }
+ * }
+ *
+ * @tparam T  - type of index
+ * @param max - n-dimensional vector specifying at which positions to stop (not included)
+ * @return    - n-dimensional index sequence
+ *
+ */
+template <typename T = size_t, size_t S>
+auto dimensional_seq(vec<T, S> maxs) {
+    return iterator_view_proxy(
+            dimensional_index_iterator(maxs.v),
+            dimensional_index_iterator<T, S>());
+}
 
 /**
  * @brief Iterate over two or more containers
