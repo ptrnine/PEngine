@@ -672,6 +672,12 @@ namespace core {
 
     template <typename T>
     concept MathVector = requires { typename T::n_dimension_vector; };
+
+    template <MathVector T>
+    constexpr inline auto abs(const T& n_dim_vector) {
+        using value_t = typename T::value_type;
+        return vec_map(n_dim_vector, [](value_t v) { return static_cast<value_t>(std::abs(v)); });
+    }
 }
 
 namespace std {
