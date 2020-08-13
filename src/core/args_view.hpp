@@ -10,10 +10,16 @@ public:
     args_view() = delete;
 
     args_view(int argc, char** argv) {
+        _name = argv[0];
         std::copy(argv + 1, argv + argc, std::back_inserter(_data));
     }
 
-    bool get(const string& name) {
+    [[nodiscard]]
+    string_view program_name() const {
+        return _name;
+    }
+
+    bool get(string_view name) {
         auto found = std::find(_data.begin(), _data.end(), name);
         return found != _data.end() ? _data.erase(found), true : false;
     }
@@ -134,7 +140,7 @@ public:
         if (!empty()) {
             auto res = _data.front();
             _data.pop_front();
-            return res;
+            return string(res);
         }
         return {};
     }
@@ -156,14 +162,15 @@ public:
     void require_end(string_view error_message = {}) {
         if (!_data.empty()) {
             if (error_message.empty())
-                throw std::runtime_error("Unknown option " + _data.front());
+                throw std::runtime_error("Unknown option "s + string(_data.front()));
             else
                 throw std::runtime_error(string(error_message));
         }
     }
 
 private:
-    list<string> _data;
+    string_view       _name;
+    list<string_view> _data;
 };
 
 } // namespace core
