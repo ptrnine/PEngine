@@ -314,6 +314,16 @@ public:
         return grx_color_row_view<T, NPP>(_data.get() + row_num * _size.x() * NPP, _size.x());
     }
 
+    template <typename IdxT>
+    grx_color_pixel_view<T, NPP, true> operator[](vec<IdxT, 2> pos) const noexcept {
+        return (*this)[pos.y()][pos.x()];
+    }
+
+    template <typename IdxT>
+    grx_color_pixel_view<T, NPP, false> operator[](vec<IdxT, 2> pos) noexcept {
+        return (*this)[pos.y()][pos.x()];
+    }
+
     template <typename TT>
     [[nodiscard]]
     explicit operator grx_color_map<TT, NPP>() const {
