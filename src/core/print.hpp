@@ -228,6 +228,12 @@ void printline(string_view fmt, ArgsT&&... args) {
 }
 
 template <typename... ArgsT>
+void printfl(string_view fmt, ArgsT&&... args) {
+    print_base(std::cout, fmt, forward<ArgsT>(args)...);
+    std::cout.flush();
+}
+
+template <typename... ArgsT>
 string format(string_view fmt, ArgsT&&... args) {
     std::stringstream ss;
     ss << std::setprecision(print_float_precision);
