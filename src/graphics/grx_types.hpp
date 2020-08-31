@@ -9,6 +9,23 @@
 #include <core/helper_macros.hpp>
 
 namespace grx {
+    using core::vec;
+    using core::vec2f;
+    using core::vec2d;
+    using core::vec2i;
+    using core::vec2u;
+    using core::vec3f;
+    using core::vec3d;
+    using core::vec3i;
+    using core::vec3u;
+    using core::vec4f;
+    using core::vec4d;
+    using core::vec4i;
+    using core::vec4u;
+    using core::vec2;
+    using core::vec3;
+    using core::vec4;
+
     enum class shader_program_id_t : int  {};
     enum class shader_effect_id_t  : int  {};
     enum class uniform_id_t        : int  {};
