@@ -41,7 +41,7 @@ int main() {
             "}"
         )
     );
-    auto MVP = shader->get_uniform_unwrap<vec3f>("MVP");
+    auto MVP = shader->get_uniform_unwrap<glm::mat4>("MVP");
 
     grx_vbo_tuple<vbo_vector_vec3f> quad;
     quad.set_data<0>({
@@ -59,7 +59,7 @@ int main() {
 
         quad.bind_vao();
         shader->activate();
-        MVP = vec{1.f, 1.f, 1.f};//camera->view_projection() * glm::mat4(1.f);
+        MVP = camera->view_projection() * glm::mat4(1.f);
         texture.get_unwrap().bind_unit<0>();
         quad.draw(18); // NOLINT
 
