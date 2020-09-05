@@ -4,3 +4,8 @@ build-*/
 compile_commands.json
 gamedata/models/
 gamedata/textures/
+conaninfo.txt
+graph_info.json
+conanbuildinfo.txt
+conanbuildinfo.cmake
+conan.lock
