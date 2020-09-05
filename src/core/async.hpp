@@ -6,6 +6,7 @@
 #include "container_extensions.hpp"
 #include "failure_opt.hpp"
 #include "time.hpp"
+#include "fiber_pool.hpp"
 
 namespace core {
     using std::future;
@@ -16,12 +17,23 @@ namespace core {
     using std::future_status;
 
     template <typename T>
+    concept FutureStatus = std::convertible_to<T, std::future_status> || std::convertible_to<T, job_future_status>;
+
+    template <typename T>
     concept FutureLike = requires (T f) {
         {f.valid()} -> std::convertible_to<bool>;
         {f.get()};
-        {f.wait_for(seconds(1))} -> std::convertible_to<std::future_status>;
-        {f.wait_until(time_point<seconds>())} -> std::convertible_to<std::future_status>;
+        {f.wait_for(seconds(1))} -> FutureStatus;
+        {f.wait_until(time_point<seconds>())} -> FutureStatus;
     };
+
+    inline bool is_ready__(future_status fs) {
+        return fs == future_status::ready;
+    }
+
+    inline bool is_ready__(job_future_status fs) {
+        return fs == job_future_status::ready;
+    }
 
     template <typename F, typename... ArgsT>
     auto async_call(F&& function, ArgsT&&... arguments) {
@@ -37,7 +49,7 @@ namespace core {
 
         template <FutureLike T>
         bool operator()(const T& f) const {
-            return f.valid() && f.wait_for(std::chrono::seconds(0)) == future_status::ready;
+            return f.valid() && is_ready__(f.wait_for(std::chrono::seconds(0)));
         }
     };
 
