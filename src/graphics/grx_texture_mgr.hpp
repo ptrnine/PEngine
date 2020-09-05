@@ -455,7 +455,7 @@ namespace grx {
         using color_map_t  = typename texture_future_id_details::image_s<S, Optional>::color_map;
         using texture_t    = typename texture_future_id_details::image_s<S, Optional>::texture;
         using texture_id_t = typename texture_future_id_details::image_s<S, Optional>::texture_id;
-        using future_t     = core::future<color_map_t>;
+        using future_t     = core::job_future<color_map_t>;
 
         grx_texture_id_future(const grx_texture_id_future&) = delete;
         grx_texture_id_future& operator=(const grx_texture_id_future&) = delete;
@@ -557,21 +557,21 @@ namespace grx {
         }
 
         template <typename Rep, typename Period>
-        std::future_status wait_for(const core::duration<Rep, Period>& duration) const {
+        core::job_future_status wait_for(const core::duration<Rep, Period>& duration) const {
             if (_storage.index() == 0)
                 return std::get<future_t>(_storage).wait_for(duration);
             else if (_storage.index() == 1)
-                return std::future_status::ready;
+                return core::job_future_status::ready;
             else
                 throw std::future_error(std::future_errc::future_already_retrieved);
         }
 
         template <typename Clock, typename Duration>
-        std::future_status wait_until(const core::time_point<Clock, Duration>& time_point) const {
+        core::job_future_status wait_until(const core::time_point<Clock, Duration>& time_point) const {
             if (_storage.index() == 0)
                 return std::get<future_t>(_storage).wait_until(time_point);
             else if (_storage.index() == 1)
-                return std::future_status::ready;
+                return core::job_future_status::ready;
             else
                 throw std::future_error(std::future_errc::future_already_retrieved);
         }

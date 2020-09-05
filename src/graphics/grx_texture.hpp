@@ -586,7 +586,7 @@ namespace grx
     template <size_t S, typename T>
     class grx_texture_future {
     public:
-        using future_t = std::future<T>;
+        using future_t = core::job_future<T>;
 
         grx_texture_future(future_t&& init) noexcept: _future(std::move(init)) {}
 
@@ -615,12 +615,12 @@ namespace grx
         }
 
         template <typename Rep, typename Period>
-        std::future_status wait_for(const core::duration<Rep, Period>& duration) const {
+        core::job_future_status wait_for(const core::duration<Rep, Period>& duration) const {
             return _future.wait_for(duration);
         }
 
         template <typename Clock, typename Duration>
-        std::future_status wait_until(const core::time_point<Clock, Duration>& time_point) const {
+        core::job_future_status wait_until(const core::time_point<Clock, Duration>& time_point) const {
             return _future.wait_until(time_point);
         }
 

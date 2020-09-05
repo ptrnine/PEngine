@@ -10,6 +10,7 @@ extern "C" {
 
 #include "grx_types.hpp"
 #include <core/async.hpp>
+#include <core/fiber_pool.hpp>
 #include <core/container_extensions.hpp>
 #include <core/math.hpp>
 #include <core/types.hpp>
@@ -486,9 +487,9 @@ load_color_map_unwrap(const core::string& file_path) {
  */
 template <core::MathVector T = color_rgb>
 [[nodiscard]]
-std::future<core::failure_opt<grx_color_map<typename T::value_type, T::size()>>>
+core::job_future<core::failure_opt<grx_color_map<typename T::value_type, T::size()>>>
 load_color_map_async(const core::string& file_path) {
-    return std::async(std::launch::async, load_color_map<T>, file_path);
+    return core::submit_job(load_color_map<T>, file_path);
 }
 
 /**
@@ -503,9 +504,9 @@ load_color_map_async(const core::string& file_path) {
  */
 template <core::MathVector T = color_rgb>
 [[nodiscard]]
-std::future<grx_color_map<typename T::value_type, T::size()>>
+core::job_future<grx_color_map<typename T::value_type, T::size()>>
 load_color_map_async_unwrap(const core::string& file_path) {
-    return std::async(std::launch::async, load_color_map_unwrap<T>, file_path);
+    return core::submit_job(load_color_map_unwrap<T>, file_path);
 }
 
 namespace color_map_save_bytes_helper
@@ -660,9 +661,9 @@ void save_color_map_unwrap(const grx_color_map<T, S>& color_map, const core::str
  */
 template <typename T, size_t S>
 [[nodiscard]]
-std::future<core::failure_opt<bool>>
+core::job_future<core::failure_opt<bool>>
 save_color_map_async(const grx_color_map<T, S>& color_map, const core::string& file_path) {
-    return std::async(std::launch::async, save_color_map<T, S>, color_map, file_path);
+    return core::job_future(save_color_map<T, S>, color_map, file_path);
 }
 } // namespace grx
 
