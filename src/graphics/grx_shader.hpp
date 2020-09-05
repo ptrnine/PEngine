@@ -498,10 +498,10 @@ public:
      * @tparam U - the type of the uniform value
      * @param name - name of the uniform
      *
-     * @return the uniform or exception in failure_opt
+     * @return the uniform or exception in try_opt
      */
     template <UniformVal U>
-    core::failure_opt<grx_uniform<U>> get_uniform(const core::string& name) {
+    core::try_opt<grx_uniform<U>> get_uniform(const core::string& name) {
         try {
             return get_uniform_unwrap<U>(name);
         }
@@ -649,10 +649,10 @@ grx_uniform<U> grx_shader_program::get_uniform_unwrap(const core::string& name) 
  * @tparam T - the type of new shader
  * @param shader_path - the path to shader file
  *
- * @return created shader or exception_ptr in failure_opt
+ * @return created shader or exception_ptr in try_opt
  */
 template <shader_type T>
-core::failure_opt<grx_shader<T>> load_shader(const core::string& shader_path) {
+core::try_opt<grx_shader<T>> load_shader(const core::string& shader_path) {
     auto file = core::read_file(shader_path);
 
     if (file) {

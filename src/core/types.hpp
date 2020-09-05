@@ -15,7 +15,7 @@
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 
-#include "failure_opt.hpp"
+#include "try_opt.hpp"
 
 namespace core
 {

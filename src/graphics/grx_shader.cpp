@@ -310,12 +310,12 @@ GEN_UNIFORM_MAT_FUNCS(const double*, dv)
  */
 
 template <typename T>
-failure_opt<T> read_cfg_value(const pair<const config_manager&, string_view> mgr_section_pair, string_view key) {
+try_opt<T> read_cfg_value(const pair<const config_manager&, string_view> mgr_section_pair, string_view key) {
     return mgr_section_pair.first.read<T>(mgr_section_pair.second, key);
 }
 
 template <typename T>
-failure_opt<T> read_cfg_value(const config_section& section, string_view key) {
+try_opt<T> read_cfg_value(const config_section& section, string_view key) {
     return section.read<T>(string(key));
 }
 

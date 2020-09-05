@@ -516,13 +516,13 @@ public:
      *
      * @param key - the key of value
      *
-     * @return the failure_opt with the value or with the config_exception, if value was not found
+     * @return the try_opt with the value or with the config_exception, if value was not found
      */
     [[nodiscard]]
-    failure_opt<config_value> raw_value(string_view key) const {
+    try_opt<config_value> raw_value(string_view key) const {
         auto found = _map.find(string(key));
-        return found != _map.end() ? failure_opt(found->second)
-                                   : failure_opt<config_value>(
+        return found != _map.end() ? try_opt(found->second)
+                                   : try_opt<config_value>(
                                          config_exception(format("Can't find key '{}' in section [{}]", key, _name)));
     }
 
@@ -532,11 +532,11 @@ public:
      * @tparam T - the type of the value
      * @param key - the key of the value
      *
-     * @return the failure_opt with the value or with the config_exception, if the value was not found
+     * @return the try_opt with the value or with the config_exception, if the value was not found
      */
     template <typename T>
     [[nodiscard]]
-    failure_opt<T> read(const string& key) const {
+    try_opt<T> read(const string& key) const {
         auto found = _map.find(key);
         if (found != _map.end()) {
             try {
@@ -674,10 +674,10 @@ public:
      * @tparam T - the type of the value
      * @param key - the key of the value
      *
-     * @return the failure_opt with the value or with the config_exception, if the value was not found
+     * @return the try_opt with the value or with the config_exception, if the value was not found
      */
     template <typename T>
-    failure_opt<T> read(string_view key) const {
+    try_opt<T> read(string_view key) const {
         return read<T>("__global", key);
     }
 
@@ -688,10 +688,10 @@ public:
      * @param section - the section
      * @param key - the key of the value
      *
-     * @return the failure_opt with the value or with the config_exception, if the value or the section was not found
+     * @return the try_opt with the value or with the config_exception, if the value or the section was not found
      */
     template <typename T>
-    failure_opt<T> read(string_view section, string_view key) const {
+    try_opt<T> read(string_view section, string_view key) const {
         auto found = _sections.find(string(section));
         if (found != _sections.end()) {
             try {
@@ -848,7 +848,7 @@ public:
 
 private:
     [[nodiscard]]
-    failure_opt<string> raw_str(string_view section, string_view key) const {
+    try_opt<string> raw_str(string_view section, string_view key) const {
         auto sect = _sections.find(string(section));
         if (sect != _sections.end()) {
             if (auto value = sect->second.raw_value(key))

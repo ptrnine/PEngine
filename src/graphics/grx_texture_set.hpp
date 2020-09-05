@@ -26,12 +26,12 @@ public:
     }
 
     [[nodiscard]]
-    core::failure_opt<grx_texture_id<S>>& get(size_t index) {
+    core::try_opt<grx_texture_id<S>>& get(size_t index) {
         return textures_.at(index).get();
     }
 
     [[nodiscard]]
-    const core::failure_opt<grx_texture_id<S>>& get(size_t index) const {
+    const core::try_opt<grx_texture_id<S>>& get(size_t index) const {
         return textures_.at(index).get();
     }
 

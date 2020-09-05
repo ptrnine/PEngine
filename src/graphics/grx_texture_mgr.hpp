@@ -88,7 +88,7 @@ namespace grx {
          * @return result texture_id if on success or exception
          */
         template <core::MathVector T>
-        core::failure_opt<grx_texture_id<T::size()>>
+        core::try_opt<grx_texture_id<T::size()>>
         load(core::string_view file_path) {
             auto path = core::path_eval(file_path);
             return try_load<T::size(), false>(path);
@@ -237,7 +237,7 @@ namespace grx {
                     auto texture_opt = load_texture<core::vec<uint8_t, S>>(path);
 
                     if (!texture_opt)
-                        return core::failure_opt<grx_texture_id<S>>(texture_opt.exception_ptr());
+                        return core::try_opt<grx_texture_id<S>>(texture_opt.exception_ptr());
 
                     auto  raw_id   = texture_opt->raw_id();
                     auto& data_map = id_to_data_map<S>();
@@ -436,9 +436,9 @@ namespace grx {
 
         template <size_t S>
         struct image_s<S, true> {
-            using color_map  = core::failure_opt<grx_color_map<uint8_t, S>>;
-            using texture    = core::failure_opt<grx_texture<S>>;
-            using texture_id = core::failure_opt<grx_texture_id<S>>;
+            using color_map  = core::try_opt<grx_color_map<uint8_t, S>>;
+            using texture    = core::try_opt<grx_texture<S>>;
+            using texture_id = core::try_opt<grx_texture_id<S>>;
         };
         template <size_t S>
         struct image_s<S, false> {
@@ -483,7 +483,7 @@ namespace grx {
     private:
         template <typename T>
         static auto& unwrap_if_optional(T& v) {
-            if constexpr (core::is_specialization<T, core::failure_opt>::value)
+            if constexpr (core::is_specialization<T, core::try_opt>::value)
                 return v.value();
             else
                 return v;

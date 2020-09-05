@@ -406,10 +406,10 @@ using grx_float_color_map_rgba = grx_color_map<float, 4>;
  * @tparam T - the type of the color
  * @param bytes - bytes data
  *
- * @return the color map or exception in failure_opt
+ * @return the color map or exception in try_opt
  */
 template <core::MathVector T = color_rgb>
-core::failure_opt<grx_color_map<typename T::value_type, T::size()>>
+core::try_opt<grx_color_map<typename T::value_type, T::size()>>
 load_color_map_from_bytes(core::span<core::byte> bytes) {
     static_assert(T::size() <= 4 && T::size() > 0,
                   "Wrong color type. T must be uint8_t or float, Size must be 1 "
@@ -448,11 +448,11 @@ load_color_map_from_bytes(core::span<core::byte> bytes) {
  * @tparam T - the color type
  * @param file_path - a path to the image file
  *
- * @return the read color map or exception in failure_opt
+ * @return the read color map or exception in try_opt
  */
 template <core::MathVector T = color_rgb>
 [[nodiscard]]
-core::failure_opt<grx_color_map<typename T::value_type, T::size()>>
+core::try_opt<grx_color_map<typename T::value_type, T::size()>>
 load_color_map(const core::string& file_path) {
     if (auto file = core::read_binary_file(core::path_eval(file_path)))
         return load_color_map_from_bytes<T>(*file);
@@ -483,11 +483,11 @@ load_color_map_unwrap(const core::string& file_path) {
  * @tparam T - the color type
  * @param file_path - a path to the image file
  *
- * @return the future to the color_map or exception in the failure_opt
+ * @return the future to the color_map or exception in the try_opt
  */
 template <core::MathVector T = color_rgb>
 [[nodiscard]]
-core::job_future<core::failure_opt<grx_color_map<typename T::value_type, T::size()>>>
+core::job_future<core::try_opt<grx_color_map<typename T::value_type, T::size()>>>
 load_color_map_async(const core::string& file_path) {
     return core::submit_job(load_color_map<T>, file_path);
 }
@@ -529,11 +529,11 @@ static constexpr int default_jpeg_quality = 95;
  * @param color_map - the color map to be saved
  * @param extension - the image extension
  *
- * @return byte vector with image or exception in failure_opt
+ * @return byte vector with image or exception in try_opt
  */
 template <typename T, size_t S>
 [[nodiscard]]
-core::failure_opt<core::vector<core::byte>>
+core::try_opt<core::vector<core::byte>>
 save_color_map_to_bytes(const grx_color_map<T, S>& color_map, core::string_view extension = "png") {
     core::vector<core::byte> result;
 
@@ -606,11 +606,11 @@ save_color_map_to_bytes_unwrap(const grx_color_map<T, S>& color_map, core::strin
  * @param color_map - the color map to be saved
  * @param file_path - a path to new file with extension
  *
- * @return the failure_opt with bool value if save successfull or exception_ptr
+ * @return the try_opt with bool value if save successfull or exception_ptr
  */
 template <typename T, size_t S>
 [[nodiscard]]
-core::failure_opt<bool>
+core::try_opt<bool>
 save_color_map(const grx_color_map<T, S>& color_map, const core::string& file_path) {
     constexpr size_t minimal_len = 5; // a.bmp, c.jpg, ...
 
@@ -657,11 +657,11 @@ void save_color_map_unwrap(const grx_color_map<T, S>& color_map, const core::str
  * @param color_map - the color map to be saved
  * @param file_path - a path to new file with extension
  *
- * @return the future with failure_opt with bool value if save successfull or exception_ptr
+ * @return the future with try_opt with bool value if save successfull or exception_ptr
  */
 template <typename T, size_t S>
 [[nodiscard]]
-core::job_future<core::failure_opt<bool>>
+core::job_future<core::try_opt<bool>>
 save_color_map_async(const grx_color_map<T, S>& color_map, const core::string& file_path) {
     return core::job_future(save_color_map<T, S>, color_map, file_path);
 }

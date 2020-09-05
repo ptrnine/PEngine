@@ -4,7 +4,7 @@
 #include <thread>
 #include "types.hpp"
 #include "container_extensions.hpp"
-#include "failure_opt.hpp"
+#include "try_opt.hpp"
 #include "time.hpp"
 #include "fiber_pool.hpp"
 
@@ -57,12 +57,12 @@ namespace core {
     using future_type_t = std::decay_t<decltype(std::declval<T>().get())>;
 
     template <typename T>
-    struct unwrap_type_if_failure_opt {
+    struct unwrap_type_if_try_opt {
         using type = T;
     };
 
     template <typename T>
-    struct unwrap_type_if_failure_opt<failure_opt<T>> {
+    struct unwrap_type_if_try_opt<try_opt<T>> {
         using type = T;
     };
 
@@ -74,7 +74,7 @@ namespace core {
     template <FutureLike F>
     class deffered_resource {
     public:
-        using value_type = typename unwrap_type_if_failure_opt<future_type_t<F>>::type;
+        using value_type = typename unwrap_type_if_try_opt<future_type_t<F>>::type;
 
         /**
          * @brief Default constructor
@@ -156,27 +156,27 @@ namespace core {
         }
 
         /**
-         * @brief Gets failure_opt with the nested resource
+         * @brief Gets try_opt with the nested resource
          *
          * Awaits for resource if it is not ready
          *
-         * @return reference to failure_opt with the nested resource
+         * @return reference to try_opt with the nested resource
          */
         [[nodiscard]]
-        failure_opt<value_type>& get() & {
+        try_opt<value_type>& get() & {
             wait();
             return storage_;
         }
 
         /**
-         * @brief Gets failure_opt with the nested resource
+         * @brief Gets try_opt with the nested resource
          *
          * Awaits for resource if it is not ready
          *
-         * @return const reference to failure_opt with the nested resource
+         * @return const reference to try_opt with the nested resource
          */
         [[nodiscard]]
-        const failure_opt<value_type>& get() const& {
+        const try_opt<value_type>& get() const& {
             wait();
             return storage_;
         }
@@ -212,14 +212,14 @@ namespace core {
         }
 
         /**
-         * @brief Gets failure_opt with the nested resource
+         * @brief Gets try_opt with the nested resource
          *
          * Awaits for resource if it is not ready
          *
-         * @return rvalue reference to failure_opt with the nested resource
+         * @return rvalue reference to try_opt with the nested resource
          */
         [[nodiscard]]
-        failure_opt<value_type>&& get() && {
+        try_opt<value_type>&& get() && {
             wait();
             return move(storage_);
         }
@@ -260,8 +260,8 @@ namespace core {
         }
 
     private:
-        mutable optional<F>             future_;
-        mutable failure_opt<value_type> storage_;
+        mutable optional<F>         future_;
+        mutable try_opt<value_type> storage_;
     };
 
 } // namespace core

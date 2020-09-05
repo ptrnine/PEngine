@@ -12,21 +12,21 @@ namespace core
  * @tparam T - type of stored value
  */
 template <typename T>
-class failure_opt {
+class try_opt {
 public:
     static_assert(!std::is_base_of_v<std::exception, T>,
-                  "Constructing failure_opt from exception require explicit type specifying");
+                  "Constructing try_opt from exception require explicit type specifying");
 
-    failure_opt() = default;
+    try_opt() = default;
 
     template <typename E> requires std::is_base_of_v<std::exception, E>
-    failure_opt(E exception) noexcept:
+    try_opt(E exception) noexcept:
         _exception_ptr(std::make_exception_ptr(exception)) {}
 
-    failure_opt(std::exception_ptr ptr): _exception_ptr(std::move(ptr)) {}
+    try_opt(std::exception_ptr ptr): _exception_ptr(std::move(ptr)) {}
 
-    failure_opt(const T& value): _opt(value) {}
-    failure_opt(T&& value) noexcept(noexcept(T(std::declval<T>()))): _opt(std::move(value)) {}
+    try_opt(const T& value): _opt(value) {}
+    try_opt(T&& value) noexcept(noexcept(T(std::declval<T>()))): _opt(std::move(value)) {}
 
     /**
      * @brief Access to stored value
@@ -40,7 +40,7 @@ public:
             if (_exception_ptr)
                 std::rethrow_exception(_exception_ptr);
             else
-                throw std::runtime_error("failure_opt was not set");
+                throw std::runtime_error("try_opt was not set");
         }
 
         return *_opt;
@@ -58,7 +58,7 @@ public:
             if (_exception_ptr)
                 std::rethrow_exception(_exception_ptr);
             else
-                throw std::runtime_error("failure_opt was not set");
+                throw std::runtime_error("try_opt was not set");
         }
 
         return *_opt;
@@ -76,7 +76,7 @@ public:
             if (_exception_ptr)
                 std::rethrow_exception(_exception_ptr);
             else
-                throw std::runtime_error("failure_opt was not set");
+                throw std::runtime_error("try_opt was not set");
         }
 
         return std::move(*_opt);
@@ -94,7 +94,7 @@ public:
             if (_exception_ptr)
                 std::rethrow_exception(_exception_ptr);
             else
-                throw std::runtime_error("failure_opt was not set");
+                throw std::runtime_error("try_opt was not set");
         }
 
         return std::move(*_opt);
@@ -156,8 +156,8 @@ public:
     }
     template <typename F, typename R = std::invoke_result_t<F, T>>
     [[nodiscard]]
-    constexpr failure_opt<R> map(F callback) const {
-        return has_value() ? failure_opt<R>(callback(*_opt)) : failure_opt<R>(_exception_ptr);
+    constexpr try_opt<R> map(F callback) const {
+        return has_value() ? try_opt<R>(callback(*_opt)) : try_opt<R>(_exception_ptr);
     }
 
     constexpr explicit operator bool() const noexcept {
