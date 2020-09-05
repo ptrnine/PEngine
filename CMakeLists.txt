@@ -117,7 +117,11 @@ endif()
 
 find_package(Threads REQUIRED)
 
+include(conanbuildinfo.cmake)
+set(CONAN_SYSTEM_INCLUDES ON)
+conan_basic_setup(TARGETS NO_OUTPUT_DIRS)
+
 add_subdirectory(src)
 
 add_executable(PEngine main.cpp)
-target_link_libraries(PEngine pe_graphics Threads::Threads)
+target_link_libraries(PEngine pe_graphics Threads::Threads CONAN_PKG::boost_fiber)
