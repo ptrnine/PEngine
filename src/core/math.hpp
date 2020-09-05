@@ -34,12 +34,18 @@ namespace core {
         return std::clamp(val, T(0), T(1));
     }
 
+    template <typename T>
+    T constraint(T number, T min, T max) {
+        T distance = max - min;
+        return std::fmod(distance + std::fmod(number - min, distance), distance) + min;
+    }
+
     namespace angle {
         /// Constraint angle [0 ; 2PI]
         template <FloatingPoint T>
         T constraint_2pi(T angle) {
-            angle = std::fmod(angle + T(M_PIf64), T(2) * T(M_PIf64));
-            return angle < 0 ? angle + T(M_PIf64) : angle - T(M_PIf64);
+            angle = std::fmod(angle, T(2) * T(M_PIf64));
+            return angle < 0 ? angle + T(2) * T(M_PIf64) : angle;
         }
         template <FloatingPoint T, size_t S>
         vec<T, S> constraint_2pi(const vec<T, S>& angles) {
