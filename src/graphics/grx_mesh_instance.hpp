@@ -112,6 +112,11 @@ public:
     DECLARE_VAL_GET_SET(debug_aabb_draw)
     DECLARE_VAL_GET_SET(debug_bone_aabb_draw)
 
+    [[nodiscard]]
+    const grx_mesh& mesh() const {
+        return *_mesh;
+    }
+
     void set_rotation(const core::vec3f& degrees) {
         _rotation = glm::quat(glm::radians(core::to_glm(degrees)));
     }

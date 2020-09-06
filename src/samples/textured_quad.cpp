@@ -8,10 +8,12 @@
 #include <graphics/grx_camera_manipulator_fly.hpp>
 #include <graphics/grx_texture.hpp>
 
+#include <core/main.cpp>
+
 using namespace core;
 using namespace grx;
 
-int main() {
+int pe_main(args_view) {
     auto window = grx_window("wnd", {800, 600}); // NOLINT
     window.make_current();
 

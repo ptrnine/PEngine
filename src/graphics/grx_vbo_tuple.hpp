@@ -138,6 +138,11 @@ protected:
         _rebind_buffers(std::make_index_sequence<sizeof...(Ts)>());
     }
 
+    template <size_t... Idxs>
+    void _set_data(const core::tuple<Ts...>& data, std::index_sequence<Idxs...>) {
+        (set_data<Idxs>(std::get<Idxs>(data)), ...);
+    }
+
 public:
     template <size_t S>
     using vbo_type = std::tuple_element_t<S, std::tuple<Ts...>>;
@@ -178,7 +183,9 @@ public:
     }
 
     template <VboData T, size_t C = 0, size_t I = 0>
+    //template <VboData T, size_t... Idxs>
     static constexpr size_t _vbo_type_count_iter() {
+        //return ((std::is_same_v<std::tuple_element_t<Idxs, std::tuple<Ts...>>> ? 1U : 0U) + ...);
         if constexpr (I < sizeof...(Ts)) {
             if constexpr (std::is_same_v<T, std::tuple_element_t<I, std::tuple<Ts...>>>)
                 return _vbo_type_count_iter<T, C + 1, I + 1>();
@@ -194,7 +201,18 @@ public:
     }
 
     static constexpr bool has_indices_vbo() {
-        return _vbo_type_count_iter<vbo_vector_indices>();
+        return vbo_type_count<vbo_vector_indices>();
+    }
+
+    template <VboData T, size_t I = 0>
+    static constexpr size_t first_type_idx() {
+        if constexpr (I < sizeof...(Ts)) {
+            if constexpr (std::is_same_v<T, std::tuple_element_t<I, std::tuple<Ts...>>>)
+                return I;
+            else
+                return first_type_idx<T, I + 1>();
+        }
+        return core::numlim<size_t>::max();
     }
 
     template <VboData T, size_t ArrayPos = 0, size_t Idx = 0, size_t ArraySize>
@@ -224,20 +242,17 @@ public:
         _setup_matrices_iter();
     }
 
-    grx_vbo_tuple(grx_vbo_tuple&& vbo_tuple) noexcept:
-        _vbo_ids(vbo_tuple._vbo_ids), _win_vao_map(std::move(vbo_tuple._win_vao_map)) {}
-
-    grx_vbo_tuple& operator=(grx_vbo_tuple&& vbo_tuple) noexcept {
-        _vbo_ids     = vbo_tuple._vbo_ids;
-        _win_vao_map = std::move(vbo_tuple._win_vao_map);
-
-        return *this;
-    }
+    grx_vbo_tuple(grx_vbo_tuple&& vbo_tuple) noexcept = default;
+    grx_vbo_tuple& operator=(grx_vbo_tuple&& vbo_tuple) noexcept = default;
 
     ~grx_vbo_tuple() {
         // if (_vao_id != std::numeric_limits<uint>::max())
         if (!_win_vao_map.empty())
             _grx_delete_vao_and_vbos(_win_vao_map, _vbo_ids.data(), _vbo_ids.size());
+    }
+
+    void set_data(const core::tuple<Ts...>& data) {
+        _set_data(data, std::make_index_sequence<sizeof...(Ts)>());
     }
 
     template <size_t I>
@@ -264,11 +279,11 @@ public:
     }
 
     template <size_t I>
-    auto get_data() -> std::tuple_element_t<I, std::tuple<Ts...>> {
+    auto get_data() const -> std::tuple_element_t<I, std::tuple<Ts...>> {
         using DataT = std::tuple_element_t<I, std::tuple<Ts...>>;
         static_assert(VboVectorVec2f<DataT> || VboVectorVec3f<DataT> || VboVectorIndices<DataT> ||
                       VboVectorMatrix4<DataT> || VboVectorBone<DataT>);
-        
+
         uint id   = _vbo_ids[I];
         uint size = _vbo_sizes[I];
 
@@ -282,6 +297,11 @@ public:
             return _get_vector_bone(id, size);
         else if constexpr (VboVectorMatrix4<DataT>)
             return _get_vector_matrix4(id, size);
+    }
+
+    template <size_t I>
+    size_t get_size() const {
+        return std::get<I>(_vbo_sizes);
     }
 
     void bind_vao() const {
@@ -298,6 +318,13 @@ public:
 
     void bind_vbo(size_t pos, uint gl_target) const {
         _grx_bind_vbo(gl_target, _vbo_ids.at(pos));
+    }
+
+    core::optional<size_t> indices_count() const {
+        if (has_indices_vbo())
+            return std::get<first_type_idx<vbo_vector_indices>()>(_vbo_sizes);
+        else
+            return {};
     }
 
     void draw(size_t indices_count, size_t start_vertex_pos = 0, [[maybe_unused]] size_t start_index_pos = 0) const {
@@ -389,17 +416,40 @@ public:
     }
 
     template <typename T>
-    T& cast() {
+    T* try_cast() {
         auto res = dynamic_cast<holder<T>*>(_holder.get());
-        RASSERTF(res, "{}", "Invalid cast. (Maybe you try draw_instanced on not instanced mesh?)");
-        return res->val;
+        return res ? &res->val : nullptr;
+    }
+
+    template <typename T>
+    const T* try_cast() const {
+        auto res = dynamic_cast<holder<T>*>(_holder.get());
+        return res ? &res->val : nullptr;
     }
 
     template <typename T>
     const T& cast() const {
-        auto res = dynamic_cast<holder<T>*>(_holder.get());
-        RASSERTF(res, "{}", "Invalid cast. (Maybe you try draw_instanced on not instanced mesh?)");
-        return res->val;
+        const T* v = try_cast<T>();
+        if (!v)
+            throw std::runtime_error("Invalid cast (Maybe you try draw_instanced on not instanced mesh?)");
+        return *v;
+    }
+
+    template <typename T>
+    T& cast() {
+        T* v = try_cast<T>();
+        if (!v)
+            throw std::runtime_error("Invalid cast (Maybe you try draw_instanced on not instanced mesh?)");
+        return *v;
+    }
+
+    template <typename... Ts>
+    bool try_set_data(const core::tuple<Ts...>& data) {
+        if (auto v = cast<grx_vbo_tuple<Ts...>>()) {
+            v->set_data(data);
+            return true;
+        }
+        return false;
     }
 };
 } // namespace grx

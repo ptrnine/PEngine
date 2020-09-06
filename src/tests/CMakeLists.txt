@@ -10,7 +10,7 @@ add_executable(
         vec.cpp
         serialization.cpp
         container_extensions.cpp
-        failure_opt.cpp
+        try_opt.cpp
         async.cpp
         base64.cpp
         match_syntax.cpp

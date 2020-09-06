@@ -50,6 +50,13 @@ using mesh_vbo_t = grx_vbo_tuple<vbo_vector_indices, // Index buffer
                                //vbo_vector_vec3f    // Bitangent buffer
                                  >;
 
+using mesh_buf_t = tuple<vbo_vector_indices, // Index buffer
+                         vbo_vector_vec3f,   // Position buffer
+                         vbo_vector_vec2f    // UV buffer
+                       //vbo_vector_vec3f,   // Normal buffer
+                       //vbo_vector_vec3f,   // Tangent buffer
+                       //vbo_vector_vec3f    // Bitangent buffer
+                         >;
 
 /**
  * @brief Simple mesh, instanced rendering (no skeleton)

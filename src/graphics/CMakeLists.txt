@@ -25,6 +25,7 @@ set(GRX_SOURCES
         grx_texture.cpp
         grx_texture_mgr.cpp
         grx_mesh_mgr.cpp
+        grx_mesh_gen.cpp
         grx_camera.cpp
         grx_camera_manipulator.cpp
         grx_camera_manipulator_fly.cpp

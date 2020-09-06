@@ -23,7 +23,9 @@
 
 #include <core/async.hpp>
 
-int main() {
+#include <core/main.cpp>
+
+int pe_main(core::args_view) {
     std::ios_base::sync_with_stdio(false);
     core::config_manager cm;
     //grx::grx_shader_program_mgr m;
@@ -73,12 +75,15 @@ int main() {
         {1.f, 1.f}
     });
 
+    core::submit_job([]{});
     //auto tt = grx::grx_shader_tech(cm, "shader_tech_solid");
     auto tt = grx::grx_shader_tech(cm, "shader_tech_textured");
 
     grx::grx_mesh_mgr mm(cm);
     core::vector<grx::grx_mesh_instance> models;
-    models.emplace_back(grx::grx_mesh_instance(mm, "cz805.dae"));
+    models.emplace_back(grx::grx_mesh_instance(mm, "cz805/cz805.dae"));
+    models.emplace_back(grx::grx_mesh_instance(mm, "basic/cube.dae"));
+
     //models.back().set_debug_bone_aabb_draw(true);
     //models.back().set_debug_aabb_draw(true);
     //for (float pos = 0; auto& m : models)
@@ -89,7 +94,7 @@ int main() {
     //models.front().set_debug_aabb_draw(true);
 
     grx::grx_texture_set<3> texset;
-    texset.set(0, tmgr->load_async<grx::color_rgb>("/home/ptrnine/repo/PEngine/gamedata/models/CZ805.tga"));
+    texset.set(0, tmgr->load_async<grx::color_rgb>("/home/ptrnine/repo/PEngine/gamedata/models/cz805/CZ805.tga"));
 
     //wnd.push_postprocess(grx::grx_postprocess(cm, "shader_gamma_correction"));
     //wnd.push_postprocess(grx::grx_postprocess(cm, "shader_vhs1", [](grx::grx_shader_program& prg) {
@@ -115,6 +120,8 @@ int main() {
     core::timer texdelay;
 
     while (!wnd.should_close()) {
+        // reset_frame_statistics();
+
         //if (texture2.is_ready()) {
         //    tx = texture2.get();
         //    core::printline("size: {}", tx.size());
@@ -179,6 +186,6 @@ int main() {
 
         //us.smooth();
     }
-
+    
     return 0;
 }
