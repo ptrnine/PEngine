@@ -145,23 +145,23 @@ namespace grx_shader_helper
     }
 
     template <core::Number T>
-    bool uniform(uint program, int location, core::span<T> v) {
-        return uniform1(program, location, v.size(), v.data());
+    bool uniform(uint program, int location, core::span<const T> v) {
+        return uniform1(program, location, static_cast<size_t>(v.size()), v.data());
     }
 
     template <core::MathVector T>
-    requires(T::size() == 2) bool uniform(uint program, int location, core::span<T> v) {
-        return uniform2(program, location, v.size(), v.data());
+    requires(T::size() == 2) bool uniform(uint program, int location, core::span<const T> v) {
+        return uniform2(program, location, static_cast<size_t>(v.size()), v.data());
     }
 
     template <core::MathVector T>
-    requires(T::size() == 3) bool uniform(uint program, int location, core::span<T> v) {
-        return uniform3(program, location, v.size(), v.data());
+    requires(T::size() == 3) bool uniform(uint program, int location, core::span<const T> v) {
+        return uniform3(program, location, static_cast<size_t>(v.size()), v.data());
     }
 
     template <core::MathVector T>
-    requires(T::size() == 4) bool uniform(uint program, int location, core::span<T> v) {
-        return uniform4(program, location, v.size(), v.data());
+    requires(T::size() == 4) bool uniform(uint program, int location, core::span<const T> v) {
+        return uniform4(program, location, static_cast<size_t>(v.size()), v.data());
     }
 
     template <glm::length_t C, glm::length_t R, core::FloatingPoint T, glm::qualifier Q>
@@ -184,11 +184,6 @@ namespace grx_shader_helper
             return uniform4x3(program, location, static_cast<size_t>(m.size()), false, &(m.at(0)[0][0]));
         else if constexpr (C == 4 && R == 4)
             return uniform4x4(program, location, static_cast<size_t>(m.size()), false, &(m.at(0)[0][0]));
-    }
-
-    template <glm::length_t C, glm::length_t R, core::FloatingPoint T, glm::qualifier Q>
-    bool uniform(uint program, int location, core::span<glm::mat<C, R, T, Q>> m) {
-        return uniform(program, location, core::span<const glm::mat<C, R, T, Q>>(m.data(), m.size()));
     }
 
     template <glm::length_t C, glm::length_t R, core::FloatingPoint T, glm::qualifier Q>
@@ -550,6 +545,17 @@ private:
     uint _gl_name = no_name;
 };
 
+
+template <typename T>
+struct grx_add_const_to_span_element_type__ {
+    using type = T;
+};
+
+template <typename T>
+struct grx_add_const_to_span_element_type__<core::span<T>> {
+    using type = core::span<const T>;
+};
+
 /**
  * @brief Represents a shader uniform
  *
@@ -558,6 +564,8 @@ private:
 template <UniformVal T>
 class grx_uniform {
 public:
+    using element_type = typename grx_add_const_to_span_element_type__<T>::type;
+
     grx_uniform() = default;
 
     grx_uniform(core::weak_ptr<grx_shader_program> parent_program, core::string name):
@@ -581,10 +589,11 @@ public:
      *
      * @return *this
      */
-    auto& operator=(const T& value) {
-        push_unwrap(value);
-        return *this;
-    }
+    //template <typename TT>
+    //auto& operator=(const TT& value) {
+    //    push_unwrap(T(value));
+    //    return *this;
+    //}
 
     /**
      * @brief Push a value to the uniform
@@ -595,7 +604,7 @@ public:
      *
      * @return *this
      */
-    auto& operator=(const T& value) const {
+    auto& operator=(const element_type& value) const {
         push_unwrap(value);
         return *this;
     }
@@ -608,7 +617,7 @@ public:
      * @return true if successful, false otherwise
      */
     [[nodiscard]]
-    bool push(const T& value) const {
+    bool push(const element_type& value) const {
         if (auto program = _parent.lock())
             return grx_shader_helper::uniform(program->raw_id(), _gl_loc, value);
         else
@@ -622,7 +631,7 @@ public:
      *
      * @param value - the value to be pushed
      */
-    void push_unwrap(const T& value) const {
+    void push_unwrap(const element_type& value) const {
         if (auto program = _parent.lock()) {
             if (!grx_shader_helper::uniform(program->raw_id(), _gl_loc, value))
                 throw shader_exception("Can't push a value to the uniform \"" + _name + '"');

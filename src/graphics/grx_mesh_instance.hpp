@@ -24,7 +24,9 @@ private:
 public:
     grx_mesh_instance(grx_mesh_mgr& mesh_manager, core::string_view path): _mesh(mesh_manager.load(path, false)) {}
 
-    void draw(const glm::mat4& view_projection, const grx_shader_tech& tech) {
+    template <typename T>
+        requires std::same_as<T, grx_shader_tech> || std::same_as<T, core::shared_ptr<grx_shader_program>>
+    void draw(const glm::mat4& view_projection, const T& tech) {
         auto result_aabb = _mesh->aabb();
 
         if (auto& skeleton = _mesh->skeleton()) {

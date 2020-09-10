@@ -30,6 +30,7 @@ set(GRX_SOURCES
         grx_camera_manipulator.cpp
         grx_camera_manipulator_fly.cpp
         grx_cascaded_shadow_mapping_tech.cpp
+        grx_forward_renderer_light.cpp
 )
 
 set(GRX_HEADERS

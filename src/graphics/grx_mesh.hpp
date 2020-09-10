@@ -44,18 +44,18 @@ struct texture_path_pack {
  */
 using mesh_vbo_t = grx_vbo_tuple<vbo_vector_indices, // Index buffer
                                  vbo_vector_vec3f,   // Position buffer
-                                 vbo_vector_vec2f    // UV buffer
-                               //vbo_vector_vec3f,   // Normal buffer
-                               //vbo_vector_vec3f,   // Tangent buffer
-                               //vbo_vector_vec3f    // Bitangent buffer
+                                 vbo_vector_vec2f,   // UV buffer
+                                 vbo_vector_vec3f,   // Normal buffer
+                                 vbo_vector_vec3f,   // Tangent buffer
+                                 vbo_vector_vec3f    // Bitangent buffer
                                  >;
 
 using mesh_buf_t = tuple<vbo_vector_indices, // Index buffer
                          vbo_vector_vec3f,   // Position buffer
-                         vbo_vector_vec2f    // UV buffer
-                       //vbo_vector_vec3f,   // Normal buffer
-                       //vbo_vector_vec3f,   // Tangent buffer
-                       //vbo_vector_vec3f    // Bitangent buffer
+                         vbo_vector_vec2f,   // UV buffer
+                         vbo_vector_vec3f,   // Normal buffer
+                         vbo_vector_vec3f,   // Tangent buffer
+                         vbo_vector_vec3f    // Bitangent buffer
                          >;
 
 /**
@@ -64,9 +64,9 @@ using mesh_buf_t = tuple<vbo_vector_indices, // Index buffer
 using mesh_instanced_vbo_t = grx_vbo_tuple<vbo_vector_indices, // Index buffer
                                            vbo_vector_vec3f,   // Position buffer
                                            vbo_vector_vec2f,   // UV buffer
-                                         //vbo_vector_vec3f,   // Normal buffer
-                                         //vbo_vector_vec3f,   // Tangent buffer
-                                         //vbo_vector_vec3f,   // Bitangent buffer
+                                           vbo_vector_vec3f,   // Normal buffer
+                                           vbo_vector_vec3f,   // Tangent buffer
+                                           vbo_vector_vec3f,   // Bitangent buffer
                                            vbo_vector_matrix4, // ModelViewProjection matrix
                                            vbo_vector_matrix4  // Model matrix
                                            >;
@@ -77,9 +77,9 @@ using mesh_instanced_vbo_t = grx_vbo_tuple<vbo_vector_indices, // Index buffer
 using mesh_vbo_skeleton_t = grx_vbo_tuple<vbo_vector_indices, // Index buffer
                                           vbo_vector_vec3f,   // Position buffer
                                           vbo_vector_vec2f,   // UV buffer
-                                        //vbo_vector_vec3f,   // Normal buffer
-                                        //vbo_vector_vec3f,   // Tangent buffer
-                                        //vbo_vector_vec3f,   // Bitangent buffer
+                                          vbo_vector_vec3f,   // Normal buffer
+                                          vbo_vector_vec3f,   // Tangent buffer
+                                          vbo_vector_vec3f,   // Bitangent buffer
                                           vbo_vector_bone>;
 
 /**
@@ -91,9 +91,9 @@ namespace mesh_vbo_types
         INDEX_BUF = 0,
         POSITION_BUF,
         UV_BUF,
-      //NORMAL_BUF,
-      //TANGENT_BUF,
-      //BITANGENT_BUF,
+        NORMAL_BUF,
+        TANGENT_BUF,
+        BITANGENT_BUF,
         MVP_MAT,
         MODEL_MAT
     };
@@ -108,9 +108,9 @@ namespace mesh_vbo_skeleton_types
         INDEX_BUF = 0,
         POSITION_BUF,
         UV_BUF,
-      //NORMAL_BUF,
-      //TANGENT_BUF,
-      //BITANGENT_BUF,
+        NORMAL_BUF,
+        TANGENT_BUF,
+        BITANGENT_BUF,
         BONE_BUF
     };
 }

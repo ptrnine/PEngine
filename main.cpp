@@ -20,6 +20,8 @@
 #include <graphics/grx_shader_tech.hpp>
 #include <graphics/grx_config_ext.hpp>
 #include <core/keyboard_fuzzy_search.hpp>
+#include <graphics/grx_forward_renderer_light.hpp>
+#include <graphics/grx_cascaded_shadow_mapping_tech.hpp>
 
 #include <core/async.hpp>
 
@@ -56,47 +58,35 @@ int pe_main(core::args_view) {
     //    textures.emplace_back(grx::load_texture_unwrap("/home/ptrnine/Рабочий стол/22.jpg"));
     //}
 
-    grx::grx_vbo_tuple<
-        grx::vbo_vector_indices,
-        grx::vbo_vector_vec3f,
-        grx::vbo_vector_vec2f
-    > vbo;
-    vbo.set_data<0>({0, 3, 1, 2, 1, 3});
-    vbo.set_data<1>({
-        {-1.f, -1.f, 0.f},
-        {-1.f,  1.f, 0.f},
-        { 1.f,  1.f, 0.f},
-        { 1.f, -1.f, 0.f}
-    });
-    vbo.set_data<2>({
-        {0.f, 1.f},
-        {0.f, 0.f},
-        {1.f, 0.f},
-        {1.f, 1.f}
-    });
-
-    core::submit_job([]{});
     //auto tt = grx::grx_shader_tech(cm, "shader_tech_solid");
     auto tt = grx::grx_shader_tech(cm, "shader_tech_textured");
 
+    auto shadow_sp     = grx::grx_shader_program::create_shared(cm, "shader_csm_fr_geometry");
+    auto light_sp_tech = grx::grx_shader_tech(cm, "shader_tech_csm_fr_textured");
+    auto csm           = grx::grx_cascade_shadow_map_tech(static_cast<core::vec2u>(wnd.size()));
+    auto light_mgr     = grx::grx_forward_light_mgr::create_shared();
+    auto dir_light     = light_mgr->create_dir_light();
+    light_sp_tech.skeleton()->get_uniform_unwrap<int>("texture0") = 0;
+    light_sp_tech.skeleton()->get_uniform_unwrap<int>("texture1") = 1;
+
     grx::grx_mesh_mgr mm(cm);
     core::vector<grx::grx_mesh_instance> models;
-    models.emplace_back(grx::grx_mesh_instance(mm, "cz805/cz805.dae"));
-    models.emplace_back(grx::grx_mesh_instance(mm, "basic/cube.dae"));
+    for (auto _ : core::index_seq(40))
+        models.emplace_back(grx::grx_mesh_instance(mm, "cz805/cz805.dae"));
 
     //models.back().set_debug_bone_aabb_draw(true);
     //models.back().set_debug_aabb_draw(true);
-    //for (float pos = 0; auto& m : models)
-    //    m.move({pos += 20.f, 20.f, -20.f});
+    for (float pos = 0; auto& m : models)
+        m.move({pos += 20.f, 20.f, -20.f});
 
-    //models.front().set_rotation({-90, 180, 30});
+    models.front().set_rotation({-90, 180, 0});
     //models.front().set_debug_bone_aabb_draw(true);
     //models.front().set_debug_aabb_draw(true);
 
     grx::grx_texture_set<3> texset;
     texset.set(0, tmgr->load_async<grx::color_rgb>("/home/ptrnine/repo/PEngine/gamedata/models/cz805/CZ805.tga"));
 
-    //wnd.push_postprocess(grx::grx_postprocess(cm, "shader_gamma_correction"));
+    wnd.push_postprocess(grx::grx_postprocess(cm, "shader_gamma_correction"));
     //wnd.push_postprocess(grx::grx_postprocess(cm, "shader_vhs1", [](grx::grx_shader_program& prg) {
     //    prg.get_uniform_unwrap<float>("time") =
     //        static_cast<float>(core::global_timer().measure_count());
@@ -119,6 +109,9 @@ int pe_main(core::args_view) {
     //core::failure_opt<grx::grx_texture_id<3>> texopt;
     core::timer texdelay;
 
+    dir_light.direction(core::vec{0.9f, 0.41f, -0.13f}.normalize());
+    dir_light.ambient_intensity(0.05f);
+
     while (!wnd.should_close()) {
         // reset_frame_statistics();
 
@@ -138,54 +131,36 @@ int pe_main(core::args_view) {
         }
 
         if (timer.measure() > core::seconds(1)) {
-            core::printline("FPS: {}", counter.get());
+            core::printline("FPS: {}, cam: {.2f}", counter.get(), cam->position());
             timer.reset();
         }
 
         grx::grx_frustum_mgr().calculate_culling(cam->extract_frustum());
 
+        csm.cover_view(cam->view(), cam->projection(), cam->fov(), dir_light.direction());
+        csm.bind_framebuffer();
+        for (auto& m : models)
+            csm.draw(tt.skeleton(), m);
+
         wnd.make_current();
         wnd.bind_and_clear_render_target();
 
-        //if (tex.is_ready())
-        //    texid = tex.get();
+        csm.bind_shadow_maps();
+        light_mgr->setup_to(light_sp_tech.skeleton());
 
-        //auto texxx = tmgr->load_unwrap<grx::color_rgb>("/home/ptrnine/Рабочий стол/kek.png");
-        //texxx.set_load_significance(grx::texture_load_significance::high);
-
-        vbo.bind_vao();
-        tech->activate();
-        tmvp = cam->view_projection();
-        ttexture = 0;
-
-        if (texset.get_resource(0).is_ready())
-            texset.get_unwrap(0).bind_unit(0);
-        //if (tex.is_ready()) {
-        //    texdelay.reset();
-        //    texopt = tex.get();
-        //}
-
-        //if (texopt) {
-        //    texopt->bind_unit(0);
-        //    texopt->set_load_significance(grx::texture_load_significance::low);
-        //}
-
-        //if (texopt && texdelay.measure_count() > 1.0) {
-        //    texopt.reset();
-        //    tex = tmgr->load_async<grx::color_rgb>("/home/ptrnine/Рабочий стол/22.tga");
-        //}
-
-        vbo.draw(6);
-
-        for (auto& m : models)
-            m.draw(cam->view_projection(), tt);
+        for (auto& m : models) {
+            csm.setup(light_sp_tech.skeleton(), m.model_matrix());
+            m.draw(cam->view_projection(), light_sp_tech);
+        }
 
         wnd.present();
 
         wnd.update_input();
 
+
+
         //us.smooth();
     }
-    
+
     return 0;
 }

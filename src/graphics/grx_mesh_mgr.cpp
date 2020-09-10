@@ -365,9 +365,9 @@ pair<VboT, vector<grx_mesh_entry>> load_mesh_vbo(const aiScene* scene) {
     mesh_vbo.template set_data<mesh_vbo_types::INDEX_BUF>(indices);
     mesh_vbo.template set_data<mesh_vbo_types::POSITION_BUF>(positions);
     mesh_vbo.template set_data<mesh_vbo_types::UV_BUF>(uvs);
-    //        mesh_vbo.template set_data<mesh_vbo_types::NORMAL_BUF   >(normals);
-    //        mesh_vbo.template set_data<mesh_vbo_types::TANGENT_BUF  >(tangents);
-    //        mesh_vbo.template set_data<mesh_vbo_types::BITANGENT_BUF>(bitangents);
+    mesh_vbo.template set_data<mesh_vbo_types::NORMAL_BUF>(normals);
+    mesh_vbo.template set_data<mesh_vbo_types::TANGENT_BUF>(tangents);
+    mesh_vbo.template set_data<mesh_vbo_types::BITANGENT_BUF>(bitangents);
 
     return {std::move(mesh_vbo), std::move(mesh_entries)};
 }
@@ -656,6 +656,8 @@ void grx::grx_mesh::draw(const glm::mat4& vp, const glm::mat4& model, const shar
     if (_cached_program != program.get() || !_cached_program) {
         _cached_program = program.get();
         _cached_uniform_mvp.emplace(_cached_program->get_uniform_unwrap<glm::mat4>("MVP"));
+        if (auto model_mat = _cached_program->get_uniform<glm::mat4>("M"))
+            _cached_uniform_model.emplace(*model_mat);
 
         if (_bone_data)
             _bone_data->cached_bone_matrices_uniform.emplace(
@@ -664,6 +666,9 @@ void grx::grx_mesh::draw(const glm::mat4& vp, const glm::mat4& model, const shar
 
     if (_cached_uniform_mvp)
         *_cached_uniform_mvp = vp * model;
+
+    if (_cached_uniform_model)
+        *_cached_uniform_model = model;
 
     if (_bone_data && _bone_data->cached_bone_matrices_uniform)
         *_bone_data->cached_bone_matrices_uniform = core::span<glm::mat4>(_bone_data->final_transforms);
@@ -675,6 +680,10 @@ void grx::grx_mesh::draw(const glm::mat4& vp, const glm::mat4& model, const shar
             auto& texture_resource = _texture_sets[entry.material_index].get_resource(0); // 0 is diffuse
             if (texture_resource.is_ready())
                 texture_resource.get().value().bind_unit(0);
+
+            auto& normal_resource = _texture_sets[entry.material_index].get_resource(1); // 1 is normal
+            if (normal_resource.is_ready())
+                normal_resource.get().value().bind_unit(1);
         }
 
         _mesh_vbo.draw(entry.indices_count, entry.start_vertex_pos, entry.start_index_pos);
@@ -705,9 +714,9 @@ void grx::grx_mesh::draw_instanced(const glm::mat4&                      vp,
         }
 
         if (entry.material_index != std::numeric_limits<uint>::max()) {
-            auto& texture_resource = _texture_sets[entry.material_index].get_resource(0); // 0 is diffuse
+            auto& texture_resource = _texture_sets[entry.material_index].get_resource(1); // 0 is normal
             if (texture_resource.is_ready())
-                texture_resource.get().value().bind_unit(0);
+                texture_resource.get().value().bind_unit(1);
         }
 
         vbo_tuple.draw_instanced(models.size(), entry.indices_count, entry.start_vertex_pos, entry.start_index_pos);
