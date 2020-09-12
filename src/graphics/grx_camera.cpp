@@ -3,6 +3,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <core/math.hpp>
 
+#include "graphics/grx_types.hpp"
 #include "grx_window.hpp"
 #include "grx_camera_manipulator.hpp"
 
@@ -64,10 +65,8 @@ void grx::grx_camera::update(grx_window* window) {
     calc_view_projection();
 }
 
-auto grx::grx_camera::extract_frustum() const -> grx_aabb_frustum_planes_fast {
-    auto vp = view_projection();
-
-    grx_aabb_frustum_planes_fast planes;
+auto extract_frustum_helper(const glm::mat4& vp) -> grx::grx_aabb_frustum_planes_fast {
+    grx::grx_aabb_frustum_planes_fast planes; // NOLINT
 
     planes.as_names.left.x() = vp[0][3] + vp[0][0];
     planes.as_names.left.y() = vp[1][3] + vp[1][0];
@@ -100,5 +99,14 @@ auto grx::grx_camera::extract_frustum() const -> grx_aabb_frustum_planes_fast {
     planes.as_names.far.w() = vp[3][3] - vp[3][2];
 
     return planes;
+}
+
+auto grx::grx_camera::extract_frustum() const -> grx_aabb_frustum_planes_fast {
+    return extract_frustum_helper(view_projection());
+}
+
+auto grx::grx_camera::extract_frustum(float z_near, float z_far) const -> grx_aabb_frustum_planes_fast {
+    auto projection = glm::perspective(glm::radians(_fov), _aspect_ratio, z_near, z_far);
+    return extract_frustum_helper(projection * _view);
 }
 

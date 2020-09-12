@@ -35,7 +35,11 @@ namespace grx {
         void calc_orientation();
         void calc_view_projection();
         void update(class grx_window* window = nullptr);
+        [[nodiscard]]
         auto extract_frustum() const -> grx_aabb_frustum_planes_fast;
+
+        [[nodiscard]]
+        auto extract_frustum(float z_near, float z_far) const -> grx_aabb_frustum_planes_fast;
 
         template <typename T, typename... Ts>
         void create_camera_manipulator(Ts&&... args) {
