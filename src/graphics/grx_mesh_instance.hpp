@@ -25,8 +25,12 @@ public:
     grx_mesh_instance(grx_mesh_mgr& mesh_manager, core::string_view path): _mesh(mesh_manager.load(path, false)) {}
 
     template <typename T>
-        requires std::same_as<T, grx_shader_tech> || std::same_as<T, core::shared_ptr<grx_shader_program>>
-    void draw(const glm::mat4& view_projection, const T& tech) {
+        requires std::same_as<T, grx_shader_tech> ||
+        std::same_as<T, core::shared_ptr<grx_shader_program>>
+    void draw(const glm::mat4& view_projection,
+              const T&         tech,
+              frustum_bits culling_bits = frustum_bits::csm_near | frustum_bits::csm_middle | frustum_bits::csm_far)
+    {
         auto result_aabb = _mesh->aabb();
 
         if (auto& skeleton = _mesh->skeleton()) {
@@ -67,7 +71,7 @@ public:
 
         _aabb_proxy.aabb() = result_aabb;
 
-        if (_aabb_proxy.is_visible())
+        if (_aabb_proxy.is_visible(culling_bits))
             _mesh->draw(view_projection, model_matrix(), tech);
     }
 
