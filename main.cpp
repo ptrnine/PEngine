@@ -63,7 +63,7 @@ int pe_main(core::args_view) {
 
     auto shadow_sp     = grx::grx_shader_program::create_shared(cm, "shader_csm_fr_geometry");
     auto light_sp_tech = grx::grx_shader_tech(cm, "shader_tech_csm_fr_textured");
-    auto csm           = grx::grx_cascade_shadow_map_tech(static_cast<core::vec2u>(wnd.size()));
+    auto csm           = grx::grx_cascade_shadow_map_tech(static_cast<core::vec2u>(wnd.size() * 4));
     auto light_mgr     = grx::grx_forward_light_mgr::create_shared();
     auto dir_light     = light_mgr->create_dir_light();
     light_sp_tech.skeleton()->get_uniform_unwrap<int>("texture0") = 0;
@@ -71,7 +71,7 @@ int pe_main(core::args_view) {
 
     grx::grx_mesh_mgr mm(cm);
     core::vector<grx::grx_mesh_instance> models;
-    for (auto _ : core::index_seq(40))
+    for (auto _ : core::index_seq(50))
         models.emplace_back(grx::grx_mesh_instance(mm, "cz805/cz805.dae"));
 
     //models.back().set_debug_bone_aabb_draw(true);
@@ -135,12 +135,14 @@ int pe_main(core::args_view) {
             timer.reset();
         }
 
-        grx::grx_frustum_mgr().calculate_culling(cam->extract_frustum());
+        //grx::grx_frustum_mgr().calculate_culling(cam->extract_frustum());
+        csm.culling_stage(*cam);
 
         csm.cover_view(cam->view(), cam->projection(), cam->fov(), dir_light.direction());
         csm.bind_framebuffer();
-        for (auto& m : models)
-            csm.draw(tt.skeleton(), m);
+        csm.shadow_path(models, tt.skeleton());
+        //for (auto& m : models)
+        //    csm.draw(tt.skeleton(), m);
 
         wnd.make_current();
         wnd.bind_and_clear_render_target();

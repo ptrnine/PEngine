@@ -7,6 +7,7 @@
 namespace grx
 {
     class grx_mesh_instance;
+    class grx_camera;
 
     class grx_cascade_shadow_map_tech {
     public:
@@ -27,7 +28,7 @@ namespace grx
         };
 
         grx_cascade_shadow_map_tech(const core::vec2u& size, size_t maps_count, const core::vector<float>& z_bounds);
-        grx_cascade_shadow_map_tech(const core::vec2u& size): grx_cascade_shadow_map_tech(size, 3, {1.1f, 40.f, 120.f, 300.f}) {}
+        grx_cascade_shadow_map_tech(const core::vec2u& size): grx_cascade_shadow_map_tech(size, 3, {1.1f, 70.f, 200.f, 1006.f}) {}
         ~grx_cascade_shadow_map_tech();
 
         void set_z_bounds(const core::vector<float>& values);
@@ -39,6 +40,10 @@ namespace grx
         void bind_framebuffer();
         void bind_shadow_maps(int start = 2);
         void setup(const core::shared_ptr<grx_shader_program>& shader_program, const glm::mat4& object_matrix);
+
+        void culling_stage(const grx_camera& camera) const;
+        void shadow_path(core::span<grx_mesh_instance>               objects,
+                         const core::shared_ptr<grx_shader_program>& shader) const;
 
     private:
         core::vec2u                    _size;

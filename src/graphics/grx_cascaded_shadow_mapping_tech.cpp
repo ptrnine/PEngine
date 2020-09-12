@@ -6,7 +6,9 @@
 #include <glm/ext/matrix_transform.hpp>
 #include <GL/glew.h>
 
+#include "algorithms/grx_frustum_culling.hpp"
 #include "grx_mesh_instance.hpp"
+#include "grx_camera.hpp"
 
 using namespace core;
 
@@ -183,6 +185,28 @@ void grx_cascade_shadow_map_tech::setup(const shared_ptr<grx_shader_program>& sh
     u.light_mvps  = light_mvps;
     u.shadow_maps = _gl_texture_nums;
     u.csm_end_cs  = _csm_end_cs;
+}
+
+void grx_cascade_shadow_map_tech::culling_stage(const grx_camera& camera) const {
+    grx::grx_frustum_mgr().calculate_culling(camera.extract_frustum(_z_bounds[0], _z_bounds[1]),
+                                             frustum_bits::csm_near);
+    grx::grx_frustum_mgr().calculate_culling(camera.extract_frustum(_z_bounds[1], _z_bounds[2]),
+                                             frustum_bits::csm_middle);
+    grx::grx_frustum_mgr().calculate_culling(camera.extract_frustum(_z_bounds[2], _z_bounds[3]),
+                                             frustum_bits::csm_far);
+}
+
+void grx_cascade_shadow_map_tech::shadow_path(core::span<grx_mesh_instance>         objects,
+                                              const shared_ptr<grx_shader_program>& sp) const
+{
+    auto bits = array{frustum_bits::csm_near, frustum_bits::csm_middle, frustum_bits::csm_far};
+
+    for (auto& [shadow_map, light_projection, bit] : zip_view(_shadow_maps, _light_projections, bits)) {
+        glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadow_map, 0);
+
+        for (auto& object : objects)
+            object.draw(light_projection * _light_view, sp, bit);
+    }
 }
 
 } // namespace grx
