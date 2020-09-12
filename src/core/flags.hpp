@@ -48,12 +48,16 @@ public:
     template <Type flag>
     inline static constexpr Type def = _define_helper<flag>::def;
 
+    flag_tmpl() = default;
+    flag_tmpl(Type flags): _data(flags) {}
+
 public:
-    constexpr void set    (Type flags) noexcept       { _data |= flags; }
-    constexpr void set_if (Type flags, bool expr)     { if (expr) set(flags); }
-    constexpr bool test   (Type flags) const noexcept { return _data & flags; }
-    constexpr void reset  () noexcept                 { _data = 0; }
-    constexpr Type data   () const noexcept           { return _data; }
+    constexpr void set     (Type flags) noexcept            { _data |= flags; }
+    constexpr void set_if  (Type flags, bool expr) noexcept { if (expr) set(flags); }
+    constexpr bool test_or (Type flags) const noexcept      { return _data & flags; }
+    constexpr bool test    (Type flags) const noexcept      { return _data == (_data | flags); }
+    constexpr void reset   () noexcept                      { _data = 0; }
+    constexpr Type data    () const noexcept                { return _data; }
 
 private:
     Type _data = 0;
@@ -69,8 +73,10 @@ using flag_t   = flag_tmpl<unsigned int>;
 
 #define DEF_FLAG_TYPE(NAME, TYPE, ...) /*NOLINT*/ \
 struct NAME : TYPE {                              \
-    NAME() : TYPE() {}                            \
-    enum : TYPE::value_type {                     \
+    using t____ = TYPE;                           \
+    using t____::t____;                           \
+    NAME() : t____() {}                           \
+    enum : t____::value_type {                    \
         __VA_ARGS__                               \
     };                                            \
 }
