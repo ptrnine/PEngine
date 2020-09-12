@@ -77,10 +77,11 @@ global x86_64_avx_frustum_culling
 %endmacro
 
 
-; rdi - pointer to output array of tests results
+; rdi - pointer to output array of tests results (uint32_t*)
 ; rsi - pointer to input AABBs values as: [xyzw(min), xyzw(max)], [xyzw(min), xyzw(max)]...
 ; rdx - pointer to frustum planes as floats array [6][4][4]
 ; rcx - count of AABBs and output array AND loop counter (decrement)
+; r8d - 32bit mask
 
 x86_64_avx_frustum_culling:
 %ifdef WIN64
@@ -92,6 +93,7 @@ x86_64_avx_frustum_culling:
     mov rsi, rdx
     mov rdx, r8
     mov rcx, r9
+    ; TODO: bit position
 %endif
 
     vxorps ymm14, ymm14 ; ymm14: zero
@@ -139,10 +141,15 @@ main_loop:
                     ymm6,  ymm7,   ymm8,   ymm9, ymm10, ymm11, \
                     ymm14, ymm15,  rdx,    plane_f
 
-    vmovdqa [rdi], ymm15  ; write result to result array
+    pxor         xmm1,  xmm1         ; make zero
+    movd         xmm1,  r8d          ; load 32 bit mask
+    vpbroadcastd ymm2,  xmm1         ; broadcast bit mask for all int32
+    vpand        ymm15, ymm2         ; apply bit mask for current result
 
-    ;vpand    ymm0, ymm15 ; TODO: update result with and instead of rewriting them
-    ;vmovdqa [rdi], ymm0  ;       its useful when you
+    vmovdqa      ymm0,  [rdi]        ; load previous result
+    vpandn       ymm2,  ymm0         ; reset bits of previous by mask
+    vpor         ymm2,  ymm15        ; set result
+    vmovdqa      [rdi], ymm2         ; write results to results buffer
 
     add      rdi,  32     ; increment result array address
     add      rsi,  256    ; increment AABBs array address

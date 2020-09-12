@@ -17,7 +17,7 @@ grx::frustum_storage::frustum_storage() {
 size_t grx::frustum_storage::new_get_id(const grx_aabb_fast& aabb) {
     if (free_aabbs.empty()) {
         aabbs.emplace_back(aabb);
-        results.emplace_back(0);
+        results.emplace_back(0U);
         return aabbs.size() - 1;
     } else {
         auto id = free_aabbs.back();
@@ -30,7 +30,7 @@ size_t grx::frustum_storage::new_get_id(const grx_aabb_fast& aabb) {
 size_t grx::frustum_storage::new_get_id() {
     if (free_aabbs.empty()) {
         aabbs.emplace_back();
-        results.emplace_back(0);
+        results.emplace_back(0U);
         return aabbs.size() - 1;
     } else {
         auto id = free_aabbs.back();
@@ -48,12 +48,13 @@ void grx::frustum_storage::remove_id(size_t id) {
 }
 
 void grx::frustum_storage::frustum_test_mt(
-    std::function<void(void*, void*, void*, std::size_t)> func,
-    void*  results,
-    void*  aabbs,
-    void*  frustum,
-    size_t count,
-    size_t nprocs
+    std::function<void(void*, void*, void*, std::size_t, uint32_t)> func,
+    void*        results,
+    void*        aabbs,
+    void*        frustum,
+    size_t       count,
+    frustum_bits bits,
+    size_t       nprocs
 ) {
     std::vector<std::future<void>> futures;
 
@@ -62,18 +63,20 @@ void grx::frustum_storage::frustum_test_mt(
             std::async(
                 std::launch::async,
                 func,
-                static_cast<int32_t*>(results) + i * count,
+                static_cast<uint32_t*>(results) + i * count,
                 static_cast<float*>(aabbs) + i * 8 * count, // NOLINT
                 frustum,
-                count));
+                count,
+                bits.data()));
 
-    func(static_cast<int32_t*>(results) + (nprocs - 1) * count,
+    func(static_cast<uint32_t*>(results) + (nprocs - 1) * count,
          static_cast<float*>(aabbs) + (nprocs - 1) * 8 * count, // NOLINT
          frustum,
-         count);
+         count,
+         bits.data());
 }
 
-void grx::frustum_storage::calculate_culling(const grx_aabb_frustum_planes_fast& frustum) {
+void grx::frustum_storage::calculate_culling(const grx_aabb_frustum_planes_fast& frustum, frustum_bits bits) {
     size_t nprocs = std::thread::hardware_concurrency();
     constexpr size_t st_threshold = 12000;
 
@@ -101,21 +104,24 @@ void grx::frustum_storage::calculate_culling(const grx_aabb_frustum_planes_fast&
                             aabbs.data(),
                             &frustum_8x_unpacked[0][0][0],
                             count_per_thread,
+                            bits,
                             nprocs);
 
-            frustum_test(remainder_pos, frustum);
+            frustum_test(remainder_pos, frustum, bits);
         } else {
             auto count = (aabbs.size() / 8) * 8; // NOLINT
 
-            if (count != 0)
+            if (count != 0) {
                 frustum_test_mt(x86_64_avx_frustum_culling,
                                 results.data(),
                                 aabbs.data(),
                                 &frustum_8x_unpacked[0][0][0],
                                 count,
+                                bits,
                                 1);
+            }
 
-            frustum_test(count, frustum);
+            frustum_test(count, frustum, bits);
         }
     }
     // SSE2
@@ -142,9 +148,10 @@ void grx::frustum_storage::calculate_culling(const grx_aabb_frustum_planes_fast&
                             aabbs.data(),
                             &frustum_4x_unpacked[0][0][0],
                             count_per_thread,
+                            bits,
                             nprocs);
 
-            frustum_test(remainder_pos, frustum);
+            frustum_test(remainder_pos, frustum, bits);
         } else {
             auto count = (aabbs.size() / 4) * 4;
 
@@ -154,13 +161,14 @@ void grx::frustum_storage::calculate_culling(const grx_aabb_frustum_planes_fast&
                                 aabbs.data(),
                                 &frustum_4x_unpacked[0][0][0],
                                 count,
+                                bits,
                                 1);
 
-            frustum_test(count, frustum);
+            frustum_test(count, frustum, bits);
         }
     }
     else {
-        frustum_test(0, frustum);
+        frustum_test(0, frustum, bits);
     }
 }
 

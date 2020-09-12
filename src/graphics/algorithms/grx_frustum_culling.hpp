@@ -9,9 +9,16 @@
 #include <core/vec.hpp>
 #include <core/helper_macros.hpp>
 #include <core/aligned_allocator.hpp>
+#include <core/flags.hpp>
 #include "../grx_types.hpp"
 
 namespace grx {
+    DEF_FLAG_TYPE(frustum_bits, core::flag32_t,
+        csm_near   = def<0>,
+        csm_middle = def<1>,
+        csm_far    = def<2>
+    );
+
     class frustum_storage {
         SINGLETON_IMPL(frustum_storage);
 
@@ -20,7 +27,7 @@ namespace grx {
 
         using aabb_fast_vec = core::vector<grx_aabb_fast, core::aligned_allocator<grx_aabb_fast, 32>>; // NOLINT
         using aabb_fast_ids = core::vector<size_t>;
-        using result_vec    = core::vector<int32_t, core::aligned_allocator<int32_t, 32>>; // NOLINT
+        using result_vec    = core::vector<uint32_t, core::aligned_allocator<uint32_t, 32>>; // NOLINT
 
         size_t new_get_id    (const grx_aabb_fast& aabb);
         size_t new_get_id    ();
@@ -39,7 +46,7 @@ namespace grx {
         }
 
         [[nodiscard]]
-        int32_t result_from_id(size_t id) const {
+        uint32_t result_from_id(size_t id) const {
             ASSERT(id < results.size());
             return results[id];
         }
@@ -50,28 +57,33 @@ namespace grx {
             free_aabbs.clear();
         }
 
-        void calculate_culling(const grx_aabb_frustum_planes_fast& frustum);
+        void calculate_culling(const grx_aabb_frustum_planes_fast& frustum,
+                               frustum_bits                        tested_bits = frustum_bits::csm_near);
 
     private:
         frustum_storage();
 
         static void frustum_test_mt(
-                core::function<void(void*, void*, void*, size_t)> func,
-                void*  results,
-                void*  aabbs,
-                void*  frustum,
-                size_t count,
-                size_t nprocs);
+                core::function<void(void*, void*, void*, size_t, uint32_t)> func,
+                void*        results,
+                void*        aabbs,
+                void*        frustum,
+                size_t       count,
+                frustum_bits bits,
+                size_t       nprocs);
 
-        void frustum_test(size_t start, const grx_aabb_frustum_planes_fast& frustum) {
+        void frustum_test(size_t start, const grx_aabb_frustum_planes_fast& frustum, frustum_bits bits) {
             for (size_t i = start; i < aabbs.size(); ++i) {
-                int32_t pass = 0;
+                uint32_t pass = 0;
 
                 for (auto& plane : frustum.as_array) // NOLINT
-                    pass |= (std::max(aabbs[i].min.x() * plane.x(), aabbs[i].max.x() * plane.x()) +
+                    pass = pass || (std::max(aabbs[i].min.x() * plane.x(), aabbs[i].max.x() * plane.x()) +
                              std::max(aabbs[i].min.y() * plane.y(), aabbs[i].max.y() * plane.y()) +
                              std::max(aabbs[i].min.z() * plane.z(), aabbs[i].max.z() * plane.z()) + plane.w()) <= 0;
-                results[i] = pass;
+
+                uint32_t res = pass ? bits.data() : 0;
+                results[i] &= ~bits.data();
+                results[i] |= res;
             }
         }
 
@@ -110,9 +122,13 @@ namespace grx {
             return grx_frustum_mgr().aabb_from_id(id);
         }
 
+        /**
+         * Combine is_visible of all tested_operations with OR
+         */
         [[nodiscard]]
-        bool is_visible() const {
-            return grx_frustum_mgr().result_from_id(id) == 0;
+        bool is_visible(frustum_bits tested_operations = frustum_bits::csm_near) const {
+            uint32_t res = grx_frustum_mgr().result_from_id(id);
+            return !frustum_bits(res).test(tested_operations.data());
         }
 
         grx_aabb_culling_proxy(const grx_aabb_culling_proxy& p) {

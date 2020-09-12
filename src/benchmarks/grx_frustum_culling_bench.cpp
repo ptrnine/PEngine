@@ -124,7 +124,7 @@ static void BM_sse_frustum_culling_##COUNT##_aabbs(benchmark::State& state) { \
                 res.data(), \
                 reinterpret_cast<float *>(aabbs.data()), \
                 &frustum_4x_unpacked[0][0][0], \
-                COUNT); \
+                COUNT, 1); \
     } \
 }
 DECL_SSE_FC(120)
@@ -157,7 +157,7 @@ static void BM_avx_frustum_culling_##COUNT##_aabbs(benchmark::State& state) { \
                 res.data(), \
                 reinterpret_cast<float*>(aabbs.data()), \
                 &frustum_8x_unpacked[0][0][0], \
-                COUNT); \
+                COUNT, 1); \
     } \
 }
 DECL_AVX_FC(120)
