@@ -188,11 +188,11 @@ void grx_cascade_shadow_map_tech::setup(const shared_ptr<grx_shader_program>& sh
 }
 
 void grx_cascade_shadow_map_tech::culling_stage(const grx_camera& camera) const {
-    grx::grx_frustum_mgr().calculate_culling(camera.extract_frustum(_z_bounds[0], _z_bounds[1]),
+    grx::grx_frustum_mgr().calculate_culling(camera.extract_frustum(_z_bounds[0], _z_bounds[1] + _z_camera_shift, -_z_camera_shift),
                                              frustum_bits::csm_near);
-    grx::grx_frustum_mgr().calculate_culling(camera.extract_frustum(_z_bounds[1], _z_bounds[2]),
+    grx::grx_frustum_mgr().calculate_culling(camera.extract_frustum(_z_bounds[1], _z_bounds[2] + _z_camera_shift, -_z_camera_shift),
                                              frustum_bits::csm_middle);
-    grx::grx_frustum_mgr().calculate_culling(camera.extract_frustum(_z_bounds[2], _z_bounds[3]),
+    grx::grx_frustum_mgr().calculate_culling(camera.extract_frustum(_z_bounds[2], _z_bounds[3] + _z_camera_shift, -_z_camera_shift),
                                              frustum_bits::csm_far);
 }
 

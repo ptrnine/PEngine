@@ -59,6 +59,13 @@ namespace grx
         glm::mat4                      _light_view;
 
         core::hash_map<grx_shader_program*, uniforms_t> _cached_uniforms;
+
+        float _z_camera_shift = 30.f;
+
+    public:
+        void  set_z_camera_shift(float value) { _z_camera_shift = value; }
+        [[nodiscard]]
+        float z_camera_shift() const { return _z_camera_shift; }
     };
 
 } // namespace grx

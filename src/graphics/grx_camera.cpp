@@ -105,8 +105,8 @@ auto grx::grx_camera::extract_frustum() const -> grx_aabb_frustum_planes_fast {
     return extract_frustum_helper(view_projection());
 }
 
-auto grx::grx_camera::extract_frustum(float z_near, float z_far) const -> grx_aabb_frustum_planes_fast {
+auto grx::grx_camera::extract_frustum(float z_near, float z_far, float z_shift) const -> grx_aabb_frustum_planes_fast {
     auto projection = glm::perspective(glm::radians(_fov), _aspect_ratio, z_near, z_far);
-    return extract_frustum_helper(projection * _view);
+    auto shift      = -_dir * z_shift;
+    return extract_frustum_helper(glm::translate(projection * _view, to_glm(shift)));
 }
-
