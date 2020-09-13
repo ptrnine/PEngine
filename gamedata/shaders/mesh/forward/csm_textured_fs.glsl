@@ -1,6 +1,11 @@
 const int MAX_POINT_LIGHTS = 16;
 const int MAX_SPOT_LIGHTS  = 16;
 const int CSM_MAPS_COUNT   = 3;
+const int PCF_STEPS = 3;
+
+const int PCF_LOW   = -PCF_STEPS/2;
+const int PCF_UP    = (PCF_STEPS + 1)/2;
+const float PCF_DIV = PCF_STEPS * PCF_STEPS;
 
 struct light_base_s {
     vec3  color;
@@ -53,14 +58,14 @@ float calc_shadow_factor(int csm_map_index, vec4 position_ls) {
     float shadow = 0.0;
     vec2  texel_size = 1.0 / textureSize(shadow_map[csm_map_index], 0);
 
-    for (int i = -1; i < 2; ++i) {
-        for (int j = -1; j < 2; ++j) {
+    for (int i = PCF_LOW; i < PCF_UP; ++i) {
+        for (int j = PCF_LOW; j < PCF_UP; ++j) {
             float pcf_depth = texture2D(shadow_map[csm_map_index], proj_coords.xy + vec2(i, j) * texel_size).r;
             shadow += depth - bias < pcf_depth ? 1.0 : 0.0;
         }
     }
 
-    shadow /= 9.0;
+    shadow /= PCF_DIV;
     return shadow;
 }
 
