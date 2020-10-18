@@ -1,11 +1,9 @@
-const int MAX_BONES = 128;
 const int MAX_POINT_LIGHTS = 16;
 const int MAX_SPOT_LIGHTS  = 16;
 const int CSM_MAPS_COUNT = 3;
 
 uniform mat4 M;
 uniform mat4 MVP;
-uniform mat4 bone_matrices[MAX_BONES];
 uniform mat4 light_MVP[CSM_MAPS_COUNT];
 uniform mat4 spot_MVP[MAX_SPOT_LIGHTS];
 
@@ -27,18 +25,13 @@ out vec4  spot_pos_ls[MAX_SPOT_LIGHTS];
 out float z_pos_cs;
 
 void main() {
-    mat4 bone_transform = bone_matrices[bone_ids[0]] * weights[0];
-    bone_transform     += bone_matrices[bone_ids[1]] * weights[1];
-    bone_transform     += bone_matrices[bone_ids[2]] * weights[2];
-    bone_transform     += bone_matrices[bone_ids[3]] * weights[3];
-
-    vec4 pos = (bone_transform * vec4(position_ms, 1.0));
+    vec4 pos = vec4(position_ms, 1.0);
     gl_Position  = MVP * pos;
     uv           = in_uv;
     position_ws  = (M * pos).xyz;
-    normal_cs    = (M * (bone_transform * vec4(normal_ms, 0.0))).xyz;
-    tangent_ws   = (M * (bone_transform * vec4(tangent_ms, 0.0))).xyz;
-    bitangent_ws = (M * (bone_transform * vec4(bitangent_ms, 0.0))).xyz;
+    normal_cs    = (M * vec4(normal_ms, 0.0)).xyz;
+    tangent_ws   = (M * vec4(tangent_ms, 0.0)).xyz;
+    bitangent_ws = (M * vec4(bitangent_ms, 0.0)).xyz;
 
     for (int i = 0; i < CSM_MAPS_COUNT; ++i)
         position_ls[i] = light_MVP[i] * pos;
