@@ -3,6 +3,7 @@
 #include <core/helper_macros.hpp>
 #include "grx_shader_tech.hpp"
 #include "grx_types.hpp"
+#include "grx_cascaded_shadow_mapping_tech.hpp"
 
 #define PE_FORWARD_MAX_POINT_LIGHTS 16
 #define PE_FORWARD_MAX_SPOT_LIGHTS  16
@@ -84,6 +85,12 @@ struct grx_point_light_uniform : grx_light_base_uniform {
 struct grx_spot_light : grx_point_light {
     vec3f direction = {0.f, 0.f, -1.f};
     float cutoff    = 0.4f;
+    glm::mat4 VP; // NOLINT
+
+    /**
+     * @brief Build VP matrix from position and direction
+     */
+    void update_view_projection();
 };
 
 struct grx_spot_light_uniform : grx_point_light_uniform {
@@ -91,6 +98,8 @@ struct grx_spot_light_uniform : grx_point_light_uniform {
         grx_point_light_uniform(sp, "spot_lights[" + std::to_string(num) + "].base") {
         direction = sp.get_uniform_unwrap<vec3f>(core::format("spot_lights[{}].direction", num));
         cutoff    = sp.get_uniform_unwrap<float>(core::format("spot_lights[{}].cutoff", num));
+        MVP       = sp.get_uniform_unwrap<glm::mat4>("spot_MVP[" + std::to_string(num) + "]");
+        texture   = sp.get_uniform_unwrap<int>(core::format("spot_shadow_map[{}]", num));
     }
 
     grx_spot_light_uniform& operator=(const grx_spot_light& l) {
@@ -102,6 +111,8 @@ struct grx_spot_light_uniform : grx_point_light_uniform {
 
     grx_uniform<vec3f> direction;
     grx_uniform<float> cutoff;
+    grx_uniform<glm::mat4> MVP;
+    grx_uniform<int>       texture;
 };
 
 class grx_forward_light_mgr;
@@ -115,6 +126,7 @@ struct grx_fr_light_param_uniform {
         specular_power     = sp.get_uniform_unwrap<float>("specular_power");
         specular_intensity = sp.get_uniform_unwrap<float>("specular_intensity");
         eye_pos_ws         = sp.get_uniform_unwrap<vec3f>("eye_pos_ws");
+        dir_light_enabled  = sp.get_uniform_unwrap<int>("dir_light_enabled");
     }
 
     grx_fr_light_param_uniform& operator=(const grx_forward_light_mgr&);
@@ -126,6 +138,59 @@ struct grx_fr_light_param_uniform {
     grx_uniform<float>           specular_power;
     grx_uniform<float>           specular_intensity;
     grx_uniform<vec3f>           eye_pos_ws;
+    grx_uniform<int>             dir_light_enabled;
+};
+
+
+class grx_mesh_instance;
+class grx_mesh_pack;
+
+
+/**
+ * @brief Shadow mapping tech for spot and point lights
+ */
+class grx_fr_shadow_map_mgr {
+public:
+    grx_fr_shadow_map_mgr(core::vec2u size);
+
+    /**
+     * @brief Shadow path for all lights
+     *
+     * @param objects - objects for rendering
+     * @param shader  - shadow path shader
+     * @param spot_light_idxs - indices of spot lights
+     * @param spot_lights - spot lights
+     */
+    void shadow_path(core::span<grx_mesh_instance> objects,
+                     const grx_shader_tech&        shader,
+                     core::span<const int>         spot_light_idxs,
+                     core::span<grx_spot_light>    spot_lights) const;
+
+    /**
+     * @brief Shadow path for all lights
+     *
+     * @param mesh_pack - objects for rendering
+     * @param shader  - shadow path shader
+     * @param spot_light_idxs - indices of spot lights
+     * @param spot_lights - spot lights
+     */
+    void shadow_path(grx_mesh_pack&             objects,
+                     const grx_shader_tech&     shader,
+                     core::span<const int>      spot_light_idxs,
+                     core::span<grx_spot_light> spot_lights) const;
+
+
+    /**
+     * @brief Bind all textures
+     *
+     * @param start_id - if for first texture (start_id+1 for second, start_id+2, ...)
+     */
+    void bind_shadow_map_textures(int start_id);
+
+private:
+    core::vec2u       size_;
+    uint              fbo_;
+    std::vector<uint> spot_maps_ = std::vector<uint>(PE_FORWARD_MAX_SPOT_LIGHTS);
 };
 
 
@@ -140,21 +205,111 @@ public:
     friend class  grx_spot_light_provider;
     //TODO: check this: friend struct core::constructor_accessor<grx_forward_light_mgr>;
 
-    grx_forward_light_mgr(core::constructor_accessor<grx_forward_light_mgr>::cref):
-        free_point_lights_(PE_FORWARD_MAX_POINT_LIGHTS), free_spot_lights_(PE_FORWARD_MAX_SPOT_LIGHTS) {
+    grx_forward_light_mgr(core::constructor_accessor<grx_forward_light_mgr>::cref,
+                          core::vec2u csm_shadow_maps_size,
+                          core::vec2u spot_shadow_maps_size):
+        csm_mgr_          (csm_shadow_maps_size),
+        shadow_map_mgr_   (spot_shadow_maps_size),
+        free_point_lights_(PE_FORWARD_MAX_POINT_LIGHTS),
+        free_spot_lights_ (PE_FORWARD_MAX_SPOT_LIGHTS)
+    {
         std::iota(free_point_lights_.begin(), free_point_lights_.end(), 0);
         std::iota(free_spot_lights_.begin(), free_spot_lights_.end(), 0);
     }
 
-    static core::shared_ptr<grx_forward_light_mgr> create_shared() {
-        return core::make_shared<grx_forward_light_mgr>(core::constructor_accessor<grx_forward_light_mgr>());
+    static core::shared_ptr<grx_forward_light_mgr> create_shared(core::vec2u csm_shadow_maps_size,
+                                                                 core::vec2u spot_shadow_maps_size) {
+        return core::make_shared<grx_forward_light_mgr>(core::constructor_accessor<grx_forward_light_mgr>(),
+                csm_shadow_maps_size, spot_shadow_maps_size);
     }
 
     grx_dir_light_provider   create_dir_light();
     grx_point_light_provider create_point_light();
     grx_spot_light_provider  create_spot_light();
 
-    void setup_to(core::shared_ptr<grx_shader_program>& shader);
+    /**
+     * @brief Setup shadow maps to shader
+     *
+     * @param shader - shader program
+     */
+    void setup_shadow_maps_to(core::shared_ptr<grx_shader_program>& shader);
+
+    /**
+     * @brief Setup shadow maps to shader tech
+     *
+     * @param tech - shader tech
+     */
+    void setup_shadow_maps_to(grx_shader_tech& tech);
+
+    /**
+     * @brief Shadow path for all lights
+     *
+     * @param objects - objects for rendering
+     * @param shader_program - shader program
+     */
+    void shadow_path(const core::shared_ptr<grx_camera>& camera,
+                     core::span<grx_mesh_instance>       objects,
+                     const grx_shader_tech&              shader_tech);
+
+    /**
+     * @brief Shadow path for all lights
+     *
+     * @param mesh_pack - objects for rendering
+     * @param shader_program - shader program
+     */
+    void shadow_path(const core::shared_ptr<grx_camera>& camera,
+                     grx_mesh_pack&                      mesh_pack,
+                     const grx_shader_tech&              shader_tech);
+
+    /**
+     * @brief Setup spot and point light's MVPs
+     *
+     * @param model - model matrix of object
+     * @param shader_program - shader program
+     */
+    void setup_mvps(const glm::mat4& model, const core::shared_ptr<grx_shader_program>& shader_program) {
+        csm_mgr_.setup(shader_program, model);
+        for (auto i : spot_lights_idxs_) {
+            auto idx = static_cast<size_t>(i);
+            cached_uniforms_.find(shader_program.get())->second.
+                spot_lights[idx].MVP = spot_lights_[idx].VP * model; // NOLINT
+        }
+    }
+
+     /**
+     * @brief Setup spot and point light's VP's for instanced rendering
+     *
+     * @param shader_program - shader program
+     */
+    void setup_vps_instanced(const core::shared_ptr<grx_shader_program>& shader_program) {
+        csm_mgr_.setup_instanced(shader_program);
+        for (auto i : spot_lights_idxs_) {
+            auto idx = static_cast<size_t>(i);
+            cached_uniforms_.find(shader_program.get())->second.
+                spot_lights[idx].MVP = spot_lights_[idx].VP; // NOLINT
+        }
+    }
+
+    /**
+     * @brief Setup spot and point light's MVPs
+     *
+     * @param model - model matrix of object
+     * @param tech - shader tech
+     */
+    void setup_mvps(const glm::mat4& model, const grx_shader_tech& tech) {
+        setup_mvps(model, tech.base());
+        setup_mvps(model, tech.skeleton());
+        //setup_mvps(model, tech.instanced());
+    }
+
+    /**
+     * @brief Setup spot and point light's VP's for instanced rendering
+     *
+     * @param tech - shader tech
+     */
+    void setup_vps_instanced(const grx_shader_tech& tech) {
+        setup_vps_instanced(tech.instanced());
+    }
 
 private:
     void put_back_dir_light() {
@@ -187,6 +342,9 @@ private:
         core::vector<grx_spot_light_uniform>  spot_lights;
     };
 
+    grx_cascade_shadow_map_tech csm_mgr_;
+    grx_fr_shadow_map_mgr       shadow_map_mgr_;
+
     core::hash_map<grx_shader_program*, uniforms_t>           cached_uniforms_;
     grx_dir_light                                             dir_light_;
     core::array<grx_point_light, PE_FORWARD_MAX_POINT_LIGHTS> point_lights_;
@@ -206,7 +364,6 @@ private:
 public:
     void  specular_power    (float value) { specular_power_ = value; }
     void  specular_intensity(float value) { specular_intensity_ = value; }
-    void  eye_position      (vec3f value) { eye_position_ = value; }
     float specular_power    () const { return specular_power_; }
     float specular_intensity() const { return specular_intensity_; }
     vec3f eye_position      () const { return eye_position_; }
@@ -344,13 +501,13 @@ public:
 #define _DEF_GETSET(FIELD_TYPE, FIELD_NAME)                                                                            \
     void FIELD_NAME(FIELD_TYPE value) {                                                                                \
         if (auto mgr = mgr_.lock())                                                                                    \
-            mgr->point_light(num_).FIELD_NAME = value;                                                             \
+            mgr->point_light(num_).FIELD_NAME = value;                                                                 \
         else                                                                                                           \
             throw std::runtime_error("Forward light manager was destroyed!");                                          \
     }                                                                                                                  \
     [[nodiscard]] std::decay_t<FIELD_TYPE> FIELD_NAME() const {                                                        \
         if (auto mgr = mgr_.lock())                                                                                    \
-            return mgr->point_light(num_).FIELD_NAME;                                                              \
+            return mgr->point_light(num_).FIELD_NAME;                                                                  \
         else                                                                                                           \
             throw std::runtime_error("Forward light manager was destroyed!");                                          \
     }                                                                                                                  \
@@ -395,13 +552,13 @@ public:
 #define _DEF_GETSET(FIELD_TYPE, FIELD_NAME)                                                                            \
     void FIELD_NAME(FIELD_TYPE value) {                                                                                \
         if (auto mgr = mgr_.lock())                                                                                    \
-            mgr->spot_light(num_).FIELD_NAME = value;                                                              \
+            mgr->spot_light(num_).FIELD_NAME = value;                                                                  \
         else                                                                                                           \
             throw std::runtime_error("Forward light manager was destroyed!");                                          \
     }                                                                                                                  \
     [[nodiscard]] std::decay_t<FIELD_TYPE> FIELD_NAME() const {                                                        \
         if (auto mgr = mgr_.lock())                                                                                    \
-            return mgr->spot_light(num_).FIELD_NAME;                                                               \
+            return mgr->spot_light(num_).FIELD_NAME;                                                                   \
         else                                                                                                           \
             throw std::runtime_error("Forward light manager was destroyed!");                                          \
     }                                                                                                                  \
@@ -415,14 +572,61 @@ public:
     }
 
     _DEF_GETSET(const vec3f&, color)
-    _DEF_GETSET(const vec3f&, position)
-    _DEF_GETSET(const vec3f&, direction)
     _DEF_GETSET(float, ambient_intensity)
     _DEF_GETSET(float, diffuse_intensity)
     _DEF_GETSET(float, attenuation_constant)
     _DEF_GETSET(float, attenuation_linear)
     _DEF_GETSET(float, attenuation_quadratic)
     _DEF_GETSET(float, cutoff)
+
+    void position(const vec3f& value) {
+        if (auto mgr = mgr_.lock()) {
+            mgr->spot_light(num_).position = value;
+            mgr->spot_light(num_).update_view_projection();
+        } else
+            throw std::runtime_error("Forward light manager was destroyed!");
+    }
+
+    [[nodiscard]]
+    vec3f position() const {
+        if (auto mgr = mgr_.lock())
+            return mgr->spot_light(num_).position;
+        else
+            throw std::runtime_error("Forward light manager was destroyed!");
+    }
+
+    [[nodiscard]]
+    core::try_opt<vec3f> try_position() const {
+        try {
+            return position();
+        } catch (...) {
+            return std::current_exception();
+        }
+    }
+    void direction(const vec3f& value) {
+        if (auto mgr = mgr_.lock()) {
+            mgr->spot_light(num_).direction = value;
+            mgr->spot_light(num_).update_view_projection();
+        } else
+            throw std::runtime_error("Forward light manager was destroyed!");
+    }
+
+    [[nodiscard]]
+    vec3f direction() const {
+        if (auto mgr = mgr_.lock())
+            return mgr->spot_light(num_).direction;
+        else
+            throw std::runtime_error("Forward light manager was destroyed!");
+    }
+
+    [[nodiscard]]
+    core::try_opt<vec3f> try_direction() const {
+        try {
+            return direction();
+        } catch (...) {
+            return std::current_exception();
+        }
+    }
 
 #undef _DEF_GETSET
 

@@ -1,3 +1,5 @@
+#pragma once
+
 #include <core/helper_macros.hpp>
 #include <core/types.hpp>
 #include <core/vec.hpp>
@@ -7,7 +9,9 @@
 namespace grx
 {
     class grx_mesh_instance;
+    class grx_mesh_pack;
     class grx_camera;
+    class grx_shader_tech;
 
     class grx_cascade_shadow_map_tech {
     public:
@@ -32,18 +36,18 @@ namespace grx
         ~grx_cascade_shadow_map_tech();
 
         void set_z_bounds(const core::vector<float>& values);
-        void cover_view(const glm::mat4&   camera_view,
-                        const glm::mat4&   camera_projection,
-                        float              field_of_view,
-                        const core::vec3f& light_direction);
+        void cover_view(const core::shared_ptr<grx_camera>& camera, const core::vec3f& light_direction);
         void draw(const core::shared_ptr<grx_shader_program>& shader, grx_mesh_instance& mesh_instance);
         void bind_framebuffer();
         void bind_shadow_maps(int start = 2);
         void setup(const core::shared_ptr<grx_shader_program>& shader_program, const glm::mat4& object_matrix);
+        void setup_instanced(const core::shared_ptr<grx_shader_program>& shader_program);
 
         void culling_stage(const grx_camera& camera) const;
-        void shadow_path(core::span<grx_mesh_instance>               objects,
-                         const core::shared_ptr<grx_shader_program>& shader) const;
+        void shadow_path(core::span<grx_mesh_instance> objects,
+                         const grx_shader_tech&        tech) const;
+        void shadow_path(grx_mesh_pack&         mesh_pack,
+                         const grx_shader_tech& tech) const;
 
     private:
         core::vec2u                    _size;
@@ -60,7 +64,7 @@ namespace grx
 
         core::hash_map<grx_shader_program*, uniforms_t> _cached_uniforms;
 
-        float _z_camera_shift = 30.f;
+        float _z_camera_shift = 100.f;
 
     public:
         void  set_z_camera_shift(float value) { _z_camera_shift = value; }
