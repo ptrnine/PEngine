@@ -96,8 +96,6 @@ namespace grx::grx_texture_helper {
 
         GL_TRACE(glGenerateTextureMipmap, name);
 
-        //GL_TRACE(glTextureParameteri, name, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        //GL_TRACE(glTextureParameteri, name, GL_TEXTURE_WRAP_T, GL_REPEAT);
         GL_TRACE(glTextureParameteri, name, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         GL_TRACE(glTextureParameteri, name, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     }
