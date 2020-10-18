@@ -52,8 +52,9 @@ private:
 
         auto shader_fs = grx_shader<shader_type::fragment>(
             "uniform vec3 aabb_color;",
-            "out vec4 color;",
-            "void main() { color = vec4(aabb_color, 1.0); }");
+            "layout(location = 0) out vec4 color;",
+            "layout(location = 1) out vec4 n;",
+            "void main() { color = vec4(aabb_color, 1.0); n.w = 1.0; }");
 
         _program = grx_shader_program::create_shared(shader_vs, shader_fs);
 
@@ -90,6 +91,27 @@ public:
 
         constexpr size_t rectangle_vertices_count = 36;
         _box.draw(rectangle_vertices_count);
+
+        grx_ctx().set_wireframe_enabled(false);
+        grx_ctx().set_cull_face_enabled(true);
+    }
+
+    template <typename... Ts>
+    void draw(grx_vbo_tuple<vbo_vector_indices, Ts...>& drawable,
+              const glm::mat4&                          view_projection,
+              const glm::mat4&                          model,
+              const core::vec3f&                        color)
+    {
+        drawable.bind_vao();
+
+        _program->activate();
+        _mvp = view_projection * model;
+        _color = color;
+
+        grx_ctx().set_cull_face_enabled(false);
+        grx_ctx().set_wireframe_enabled(true);
+
+        drawable.draw(drawable.indices_count().value());
 
         grx_ctx().set_wireframe_enabled(false);
         grx_ctx().set_cull_face_enabled(true);
