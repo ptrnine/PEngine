@@ -16,7 +16,9 @@ namespace grx {
     DEF_FLAG_TYPE(frustum_bits, core::flag32_t,
         csm_near   = def<0>,
         csm_middle = def<1>,
-        csm_far    = def<2>
+        csm_far    = def<2>,
+        spot_light = def<3>,
+        _next_shit = def<19>
     );
 
     class frustum_storage {
