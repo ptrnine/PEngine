@@ -22,37 +22,15 @@ private:
     };
 
 public:
-    grx_mesh_instance(grx_mesh_mgr& mesh_manager, core::string_view path): _mesh(mesh_manager.load(path, false)) {}
+    grx_mesh_instance(grx_mesh_mgr& mesh_manager, core::string_view path): _mesh(mesh_manager.load(path, false)) {
+        if (auto& skeleton = _mesh->skeleton())
+            _bone_transforms = skeleton->final_transforms;
+    }
 
-    template <typename T>
-        requires std::same_as<T, grx_shader_tech> ||
-        std::same_as<T, core::shared_ptr<grx_shader_program>>
-    void draw(const glm::mat4& view_projection,
-              const T&         tech,
-              frustum_bits culling_bits = frustum_bits::csm_near | frustum_bits::csm_middle | frustum_bits::csm_far)
-    {
+    void _debug_draw(const glm::mat4& view_projection) {
         auto result_aabb = _mesh->aabb();
 
         if (auto& skeleton = _mesh->skeleton()) {
-            if (_anim_data.current_animation) {
-                auto& anim_name = _anim_data.current_animation.value();
-                auto& anim      = skeleton->animations[anim_name];
-                auto& spec      = _anim_data.specs[anim_name];
-                auto  ticks     = spec.timer.measure_count() * anim.ticks_per_second;
-
-                if (!spec.stop_on_end || ticks < anim.duration) {
-                    ticks = std::fmod(ticks, anim.duration);
-                    grx_mesh_mgr::anim_traverse(*skeleton, anim, ticks, skeleton->root_node.get());
-                }
-                else {
-                    _anim_data.current_animation = std::nullopt;
-                }
-            }
-            else {
-                auto& transforms = skeleton->final_transforms;
-                std::fill(transforms.begin(), transforms.end(), glm::mat4(1.f));
-            }
-
             for (auto [bone_aabb, transform] : core::zip_view(skeleton->aabbs, skeleton->final_transforms)) {
                 bone_aabb.transform(transform);
                 result_aabb.merge(bone_aabb);
@@ -68,11 +46,85 @@ public:
 
         if (_debug_aabb_draw)
             grx_aabb_debug().draw(result_aabb, glm::mat4(1.f), view_projection, {0.f, 1.f, 0.f});
+    }
 
+    template <typename T>
+        requires std::same_as<T, grx_shader_tech> ||
+        std::same_as<T, core::shared_ptr<grx_shader_program>>
+    void draw(const glm::mat4& view_projection,
+              const T&         tech,
+              bool             enable_textures = true,
+              frustum_bits culling_bits = frustum_bits::csm_near | frustum_bits::csm_middle | frustum_bits::csm_far)
+    {
+        if (_debug_aabb_draw || _debug_bone_aabb_draw)
+            _debug_draw(view_projection);
+
+        if (_aabb_proxy.is_visible(culling_bits)) {
+            /* Top 10 anime poor optimizations TODO: do something about it */
+            if (has_skeleton())
+                _bone_transforms.swap(_mesh->skeleton()->final_transforms);
+
+            _mesh->draw(view_projection, model_matrix(), tech, enable_textures);
+
+            if (has_skeleton())
+                _bone_transforms.swap(_mesh->skeleton()->final_transforms);
+        }
+    }
+
+    template <typename T>
+        requires std::same_as<T, grx_shader_tech> ||
+        std::same_as<T, core::shared_ptr<grx_shader_program>>
+    void draw(size_t           instances_count,
+              const glm::mat4& view_projection,
+              const T&         tech,
+              bool             enable_textures = true,
+              frustum_bits culling_bits = frustum_bits::csm_near | frustum_bits::csm_middle | frustum_bits::csm_far)
+    {
+        if (_debug_aabb_draw || _debug_bone_aabb_draw)
+            _debug_draw(view_projection);
+
+        if (_aabb_proxy.is_visible(culling_bits)) {
+            /* Top 10 anime poor optimizations TODO: do something about it */
+            if (has_skeleton())
+                _bone_transforms.swap(_mesh->skeleton()->final_transforms);
+
+            _mesh->draw(instances_count, view_projection, model_matrix(), tech, enable_textures);
+
+            if (has_skeleton())
+                _bone_transforms.swap(_mesh->skeleton()->final_transforms);
+        }
+    }
+
+    void update_animation_transforms() {
+        auto result_aabb = _mesh->aabb();
+
+        if (auto& skeleton = _mesh->skeleton()) {
+            if (_anim_data.current_animation) {
+                auto& anim_name = _anim_data.current_animation.value();
+                auto& anim      = skeleton->animations[anim_name];
+                auto& spec      = _anim_data.specs[anim_name];
+                auto  ticks     = spec.timer.measure_count() * anim.ticks_per_second;
+
+                if (!spec.stop_on_end || ticks < anim.duration) {
+                    ticks = std::fmod(ticks, anim.duration);
+                    grx_mesh_mgr::anim_traverse(_bone_transforms, *skeleton, anim, ticks, skeleton->root_node.get());
+                }
+                else {
+                    _anim_data.current_animation = std::nullopt;
+                }
+            }
+            else {
+                std::fill(_bone_transforms.begin(), _bone_transforms.end(), glm::mat4(1.f));
+            }
+
+            for (auto [bone_aabb, transform] : core::zip_view(skeleton->aabbs, _bone_transforms)) {
+                bone_aabb.transform(transform);
+                result_aabb.merge(bone_aabb);
+            }
+        }
+
+        result_aabb.transform(model_matrix());
         _aabb_proxy.aabb() = result_aabb;
-
-        if (_aabb_proxy.is_visible(culling_bits))
-            _mesh->draw(view_projection, model_matrix(), tech);
     }
 
     void play_animation(const core::string& name, bool stop_on_end = true) {
@@ -106,10 +158,12 @@ private:
     core::vec3f                _scale    = {1.f, 1.f, 1.f};
     glm::quat                  _rotation = {glm::vec3(0.f, 0.f, 0.f)};
     // glm::mat4                  _model_matrix = glm::mat4(1.f);
-    animation_data         _anim_data;
-    grx_aabb_culling_proxy _aabb_proxy;
-    bool                   _debug_aabb_draw      = false;
-    bool                   _debug_bone_aabb_draw = false;
+    animation_data          _anim_data;
+    core::vector<glm::mat4> _bone_transforms;
+    grx_aabb_culling_proxy  _aabb_proxy;
+    grx_shader_program*     _cached_program = nullptr;
+    bool                    _debug_aabb_draw      = false;
+    bool                    _debug_bone_aabb_draw = false;
 
 public:
     DECLARE_GET_SET(position)
@@ -132,35 +186,100 @@ public:
         return glm::translate(glm::mat4(1.f), core::to_glm(_position)) * glm::mat4(_rotation) *
                glm::scale(glm::mat4(1.f), core::to_glm(_scale));
     }
+
+    [[nodiscard]]
+    grx_mesh_type type() const {
+        return _mesh->type();
+    }
+
+    [[nodiscard]]
+    bool is_visible(frustum_bits tested_bits = frustum_bits::csm_near | frustum_bits::csm_middle | frustum_bits::csm_far) {
+        return _aabb_proxy.is_visible(tested_bits);
+    }
 };
 
 class grx_mesh_pack {
 public:
-    grx_mesh_pack(grx_mesh_mgr& mesh_manager, core::string_view path, size_t start_count):
-        _mesh(mesh_manager.load(path, true)), _matrices(start_count, glm::mat4(1.f)) {}
+    struct instance {
+        [[nodiscard]]
+        glm::mat4 calc_matrix() const {
+            return glm::translate(glm::mat4(1.f), core::to_glm(position)) * glm::mat4(rotation) *
+                   glm::scale(glm::mat4(1.f), core::to_glm(scale));
+        }
 
-    void draw(const glm::mat4& view_projection, const grx_shader_tech& tech) {
-        _mesh->draw_instanced(view_projection, _matrices, tech);
+        core::vec3f            position = {0.f, 0.f, 0.f};
+        core::vec3f            scale    = {1.f, 1.f, 1.f};
+        glm::quat              rotation = {glm::vec3(0.f, 0.f, 0.f)};
+        grx_aabb_culling_proxy aabb_proxy;
+        glm::mat4              model_matrix = glm::mat4(1.0f);
+        bool                   debug_aabb_draw      = false;
+        bool                   debug_bone_aabb_draw = false;
+    };
+
+    grx_mesh_pack(grx_mesh_mgr& mesh_manager, core::string_view path, size_t start_count):
+        _mesh(mesh_manager.load(path, true)), _instances(start_count) {}
+
+    void update_transforms() {
+        for (auto& i : _instances) {
+            auto result_aabb = _mesh->aabb();
+            i.model_matrix = i.calc_matrix();
+            result_aabb.transform(i.model_matrix);
+            i.aabb_proxy.aabb() = result_aabb;
+        }
     }
 
-    void set_position(size_t idx, const core::vec3f& position) {
-        _matrices[idx][3].x = position.x(); // NOLINT
-        _matrices[idx][3].y = position.y(); // NOLINT
-        _matrices[idx][3].z = position.z(); // NOLINT
+
+    template <typename T>
+        requires std::same_as<T, grx_shader_tech> ||
+        std::same_as<T, core::shared_ptr<grx_shader_program>>
+    void draw(const glm::mat4& view_projection,
+              const T&         tech,
+              bool             enable_textures = true,
+              frustum_bits culling_bits = frustum_bits::csm_near | frustum_bits::csm_middle | frustum_bits::csm_far)
+    {
+        core::vector<glm::mat4> model_matrices;
+
+        for (auto& i : _instances) {
+            if (i.debug_aabb_draw) {
+                /* TODO: debug draw */
+            }
+
+            if (i.aabb_proxy.is_visible(culling_bits))
+                model_matrices.emplace_back(i.model_matrix);
+        }
+
+        _mesh->draw_instanced(view_projection, model_matrices, tech, enable_textures);
+    }
+
+    void position(size_t idx, const core::vec3f& position) {
+        _instances[idx].position = position;
     }
 
     void move(size_t idx, const core::vec3f& displacement) {
-        set_position(idx, position(idx) + displacement);
+        position(idx, position(idx) + displacement);
+    }
+
+    void set_rotation(size_t idx, const core::vec3f& degrees) {
+        _instances[idx].rotation = glm::quat(glm::radians(core::to_glm(degrees)));
+    }
+
+    void scale(size_t idx, const core::vec3f& value) {
+        _instances[idx].scale = value;
     }
 
     [[nodiscard]]
-    core::vec3f position(size_t idx) const {
-        return core::vec3f{_matrices[idx][3].x, _matrices[idx][3].y, _matrices[idx][3].z}; // NOLINT
+    const core::vec3f& position(size_t idx) const {
+        return _instances[idx].position;
+    }
+
+    [[nodiscard]]
+    size_t count() const {
+        return _instances.size();
     }
 
 private:
     core::shared_ptr<grx_mesh> _mesh;
-    core::vector<glm::mat4>    _matrices;
+    core::vector<instance>     _instances;
 };
 
 } // namespace grx

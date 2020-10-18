@@ -27,11 +27,12 @@ public:
 
     shared_ptr<grx_mesh> load(string_view path, bool instanced = false);
 
-    static void anim_traverse(grx_bone_data&       bone_data,
-                              const grx_animation& anim,
-                              double               time,
-                              const bone_node*     node,
-                              const glm::mat4&     parent_transform = glm::mat4(1.f));
+    static void anim_traverse(core::span<glm::mat4> output_bone_transforms,
+                              grx_bone_data&        bone_data,
+                              const grx_animation&  anim,
+                              double                time,
+                              const bone_node*      node,
+                              const glm::mat4&      parent_transform = glm::mat4(1.f));
 
 private:
     static shared_ptr<grx_mesh> load_mesh(string_view path, bool instanced, grx_texture_mgr* texture_mgr);

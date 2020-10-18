@@ -139,18 +139,42 @@ public:
      * @param vp - (projection * view) matrix from camera
      * @param model - model matrix
      * @param program - shader program for rendering
+     * @param enable_textures - enable or disable textures setup
      */
-    void draw(const glm::mat4& vp, const glm::mat4& model, const shared_ptr<grx_shader_program>& program);
+    void draw(const glm::mat4&                      vp,
+              const glm::mat4&                      model,
+              const shared_ptr<grx_shader_program>& program,
+              bool                                  enable_textures = true);
 
     /**
      * @brief Renders many meshes in one OpenGL call
      *
+     * For instanced meshes only!
+     *
      * @param vp - (projection * view) matrix from camera
      * @param models - vector of model matrices
      * @param program - shader program for rendering
+     * @param enable_textures - enable or disable textures setup
      */
-    void
-    draw_instanced(const glm::mat4& vp, const vector<glm::mat4>& models, const shared_ptr<grx_shader_program>& program);
+    void draw_instanced(const glm::mat4&                      vp,
+                        const vector<glm::mat4>&              models,
+                        const shared_ptr<grx_shader_program>& program,
+                        bool                                  enable_textures = true);
+
+    /**
+     * @brief Renders one mesh in many instances
+     *
+     * @param instances_count - instances count
+     * @param vp - (projection * view) matrix from camera
+     * @param model - model matrix
+     * @param program - shader program for rendering
+     * @param enable_textures - enable or disable textures setup
+     */
+    void draw(size_t                                instances_count,
+              const glm::mat4&                      vp,
+              const glm::mat4&                      model,
+              const shared_ptr<grx_shader_program>& program,
+              bool                                  enable_textures = true);
 
     /**
      * @brief Renders mesh
@@ -158,17 +182,49 @@ public:
      * @param vp - (projection * view) matrix from camera
      * @param model - model matrix
      * @param tech - shader technique for rendering
+     * @param enable_textures - enable or disable textures setup
      */
-    void draw(const glm::mat4& vp, const glm::mat4& model, const class grx_shader_tech& tech);
+    void draw(const glm::mat4&             vp,
+              const glm::mat4&             model,
+              const class grx_shader_tech& tech,
+              bool                         enable_textures = true);
 
     /**
      * @brief Renders many meshes in one OpenGL call
      *
+     * For instanced meshes only!
+     *
      * @param vp - (projection * view) matrix from camera
      * @param models - vector of model matrices
      * @param tech - shader technique for rendering
+     * @param enable_textures - enable or disable textures setup
      */
-    void draw_instanced(const glm::mat4& vp, const vector<glm::mat4>& models, const class grx_shader_tech& tech);
+    void draw_instanced(const glm::mat4&             vp,
+                        const vector<glm::mat4>&     models,
+                        const class grx_shader_tech& tech,
+                        bool                         enable_textures = true);
+
+    /*
+     * @brief Gets the type of the mesh
+     *
+     * @return the type of the mesh
+     */
+    [[nodiscard]]
+    grx_mesh_type type() const {
+        if (_instanced)
+            return grx_mesh_type::Instanced;
+        else
+            return _bone_data ? grx_mesh_type::Skeleton : grx_mesh_type::Basic;
+    }
+
+private:
+    template <bool instanced>
+    friend void draw(grx_mesh&                             m,
+                     size_t                                count,
+                     const glm::mat4&                      vp,
+                     const glm::mat4&                      model,
+                     const shared_ptr<grx_shader_program>& program,
+                     bool                                  enable_textures);
 
 private:
     friend class grx_mesh_mgr;

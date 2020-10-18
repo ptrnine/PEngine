@@ -21,6 +21,8 @@
 #include "grx_shader_tech.hpp"
 #include "grx_utils.hpp"
 
+// TODO: use exceptions instead of asserts, load only valid meshes
+
 using namespace core;
 
 namespace grx
@@ -380,8 +382,9 @@ mesh_load_texture_sets(const aiScene* scene, const string& dir, grx_texture_mgr&
     auto load_if_valid = [&texture_mgr](auto& texture_set, const auto& path_opt, size_t index) {
         if (path_opt)
             texture_set.set(index, texture_mgr.load_async<color_rgba>(*path_opt));
-        else
-            texture_set.set(index);
+        /* Set default normal */
+        else if (index == grx_texture_set<4>::normal)
+            texture_set.set(index, texture_mgr.load_async<color_rgba>(texture_mgr.textures_dir() + "basic/dummy_normal.png"));
     };
 
     for (auto& [texset, texset_paths] : core::zip_view(texsets, texsets_paths)) {
@@ -488,7 +491,8 @@ bool is_scene_has_bones(const aiScene* scene) {
     return span(scene->mMeshes, scene->mNumMeshes) / any_of([](auto& v) { return v->HasBones(); });
 }
 
-void grx_mesh_mgr::anim_traverse(grx_bone_data&       bone_data,
+void grx_mesh_mgr::anim_traverse(span<glm::mat4>      output_bone_transforms,
+                                 grx_bone_data&       bone_data,
                                  const grx_animation& anim,
                                  double               time,
                                  const bone_node*     node,
@@ -540,12 +544,12 @@ void grx_mesh_mgr::anim_traverse(grx_bone_data&       bone_data,
     auto      transform_idx_pos = bone_data.bone_map.find(node->name);
 
     if (transform_idx_pos != bone_data.bone_map.end()) {
-        bone_data.final_transforms[transform_idx_pos->second] =
+        output_bone_transforms[transform_idx_pos->second] =
             bone_data.global_inverse_transform * global_transform * bone_data.offsets[transform_idx_pos->second];
     }
 
     for (auto& child : node->children)
-        anim_traverse(bone_data, anim, time, child.get(), global_transform);
+        anim_traverse(output_bone_transforms, bone_data, anim, time, child.get(), global_transform);
 }
 
 string collada_prepare(string_view path) {
@@ -650,49 +654,84 @@ auto grx::grx_mesh_mgr::load(string_view p, bool instanced) -> shared_ptr<grx_me
         return position->second = load_mesh(path, instanced, _texture_mgr.get());
 }
 
-void grx::grx_mesh::draw(const glm::mat4& vp, const glm::mat4& model, const shared_ptr<grx_shader_program>& program) {
+namespace grx {
+template <bool instanced>
+void draw(grx_mesh&                             m,
+          [[maybe_unused]] size_t               count,
+          const glm::mat4&                      vp,
+          const glm::mat4&                      model,
+          const shared_ptr<grx_shader_program>& program,
+          bool                                  enable_textures) {
     program->activate();
 
-    if (_cached_program != program.get() || !_cached_program) {
-        _cached_program = program.get();
-        _cached_uniform_mvp.emplace(_cached_program->get_uniform_unwrap<glm::mat4>("MVP"));
-        if (auto model_mat = _cached_program->get_uniform<glm::mat4>("M"))
-            _cached_uniform_model.emplace(*model_mat);
+    if (m._cached_program != program.get() || !m._cached_program) {
+        m._cached_program = program.get();
 
-        if (_bone_data)
-            _bone_data->cached_bone_matrices_uniform.emplace(
-                _cached_program->get_uniform_unwrap<core::span<glm::mat4>>("bone_matrices"));
+        if (auto mvp = m._cached_program->get_uniform<glm::mat4>("MVP"))
+            m._cached_uniform_mvp.emplace(*mvp);
+
+        if (auto model_mat = m._cached_program->get_uniform<glm::mat4>("M"))
+            m._cached_uniform_model.emplace(*model_mat);
+
+        if (m._bone_data)
+            m._bone_data->cached_bone_matrices_uniform.emplace(
+                m._cached_program->get_uniform_unwrap<core::span<glm::mat4>>("bone_matrices"));
     }
 
-    if (_cached_uniform_mvp)
-        *_cached_uniform_mvp = vp * model;
+    if (m._cached_uniform_mvp)
+        *m._cached_uniform_mvp = vp * model;
 
-    if (_cached_uniform_model)
-        *_cached_uniform_model = model;
+    if (m._cached_uniform_model)
+        *m._cached_uniform_model = model;
 
-    if (_bone_data && _bone_data->cached_bone_matrices_uniform)
-        *_bone_data->cached_bone_matrices_uniform = core::span<glm::mat4>(_bone_data->final_transforms);
+    if (m._bone_data && m._bone_data->cached_bone_matrices_uniform)
+        *m._bone_data->cached_bone_matrices_uniform = core::span<glm::mat4>(m._bone_data->final_transforms);
 
-    _mesh_vbo.bind_vao();
+    m._mesh_vbo.bind_vao();
 
-    for (auto& entry : _mesh_entries) {
-        if (entry.material_index != std::numeric_limits<uint>::max()) {
-            auto& texture_resource = _texture_sets[entry.material_index].get_resource(0); // 0 is diffuse
-            if (texture_resource.is_ready())
+    for (auto& entry : m._mesh_entries) {
+        if (enable_textures && entry.material_index != std::numeric_limits<uint>::max()) {
+            auto& texture_resource = m._texture_sets[entry.material_index].get_resource(0); // 0 is diffuse
+            if (texture_resource.is_ready()) {
                 texture_resource.get().value().bind_unit(0);
+                if (auto txtr = program->get_uniform<int>("texture0"))
+                    (*txtr) = 0;
+            }
 
-            auto& normal_resource = _texture_sets[entry.material_index].get_resource(1); // 1 is normal
-            if (normal_resource.is_ready())
+            auto& normal_resource = m._texture_sets[entry.material_index].get_resource(1); // 1 is normal
+            if (normal_resource.is_ready()) {
                 normal_resource.get().value().bind_unit(1);
+                if (auto txtr = program->get_uniform<int>("texture1"))
+                    (*txtr) = 1;
+            }
         }
-
-        _mesh_vbo.draw(entry.indices_count, entry.start_vertex_pos, entry.start_index_pos);
+        if constexpr (instanced)
+            m._mesh_vbo.draw_instanced(count, entry.indices_count, entry.start_vertex_pos, entry.start_index_pos);
+        else
+            m._mesh_vbo.draw(entry.indices_count, entry.start_vertex_pos, entry.start_index_pos);
     }
+}
+} // namespace grx
+
+void grx::grx_mesh::draw(const glm::mat4&                      vp,
+                         const glm::mat4&                      model,
+                         const shared_ptr<grx_shader_program>& program,
+                         bool                                  enable_textures) {
+    grx::draw<false>(*this, 1, vp, model, program, enable_textures);
+}
+
+void grx::grx_mesh::draw(size_t                                instances_count,
+                         const glm::mat4&                      vp,
+                         const glm::mat4&                      model,
+                         const shared_ptr<grx_shader_program>& program,
+                         bool                                  enable_textures) {
+    grx::draw<true>(*this, instances_count, vp, model, program, enable_textures);
 }
 
 void grx::grx_mesh::draw_instanced(const glm::mat4&                      vp,
                                    const vector<glm::mat4>&              models,
-                                   const shared_ptr<grx_shader_program>& program) {
+                                   const shared_ptr<grx_shader_program>& program,
+                                   bool                                  enable_textures) {
     program->activate();
 
     auto& vbo_tuple = _mesh_vbo.cast<mesh_instanced_vbo_t>();
@@ -707,30 +746,39 @@ void grx::grx_mesh::draw_instanced(const glm::mat4&                      vp,
     vbo_tuple.bind_vao();
 
     for (auto& entry : _mesh_entries) {
-        if (entry.material_index != std::numeric_limits<uint>::max()) {
+        if (enable_textures && entry.material_index != std::numeric_limits<uint>::max()) {
             auto& texture_resource = _texture_sets[entry.material_index].get_resource(0); // 0 is diffuse
-            if (texture_resource.is_ready())
+            if (texture_resource.is_ready()) {
                 texture_resource.get().value().bind_unit(0);
-        }
+                if (auto txtr = program->get_uniform<int>("texture0"))
+                    (*txtr) = 0;
+            }
 
-        if (entry.material_index != std::numeric_limits<uint>::max()) {
-            auto& texture_resource = _texture_sets[entry.material_index].get_resource(1); // 0 is normal
-            if (texture_resource.is_ready())
-                texture_resource.get().value().bind_unit(1);
+            auto& normal_resource = _texture_sets[entry.material_index].get_resource(1); // 1 is normal
+            if (normal_resource.is_ready()) {
+                normal_resource.get().value().bind_unit(1);
+                if (auto txtr = program->get_uniform<int>("texture1"))
+                    (*txtr) = 1;
+            }
         }
 
         vbo_tuple.draw_instanced(models.size(), entry.indices_count, entry.start_vertex_pos, entry.start_index_pos);
     }
 }
 
-void grx::grx_mesh::draw(const glm::mat4& vp, const glm::mat4& model, const grx_shader_tech& tech) {
+void grx::grx_mesh::draw(const glm::mat4&       vp,
+                         const glm::mat4&       model,
+                         const grx_shader_tech& tech,
+                         bool                   enable_textures) {
     if (_bone_data)
-        draw(vp, model, tech.skeleton());
+        draw(vp, model, tech.skeleton(), enable_textures);
     else
-        draw(vp, model, tech.base());
+        draw(vp, model, tech.base(), enable_textures);
 }
 
-void grx::grx_mesh::draw_instanced(const glm::mat4& vp, const vector<glm::mat4>& models, const grx_shader_tech& tech) {
-    draw_instanced(vp, models, tech.instanced());
+void grx::grx_mesh::draw_instanced(const glm::mat4&         vp,
+                                   const vector<glm::mat4>& models,
+                                   const grx_shader_tech&   tech,
+                                   bool                     enable_textures) {
+    draw_instanced(vp, models, tech.instanced(), enable_textures);
 }
-
