@@ -8,6 +8,7 @@ ENABLE_UBSAN=OFF
 ENABLE_TSAN=OFF
 ENABLE_NATIVE_ARCH=OFF
 EXEC_PATH=""
+GDB_EXEC=false
 GEN_DB=false
 NPROCS=$(($(grep -c ^processor /proc/cpuinfo) - 0))
 
@@ -21,6 +22,7 @@ $0 [<options> ...]
 --tsan          - enable thread sanitizer
 --native        - build for current architecture
 --exec NAME     - execute specified program after build
+--gdb           - execute program under gdb after build
 --jobs N        - set jobs count
 --gendb         - no building, generate compile_commands.json and put into ./
 --help          - show this help
@@ -58,6 +60,10 @@ while [[ $1 == --* ]]; do
         "--exec")
             shift
             EXEC_PATH="$1"; shift
+        ;;
+        "--gdb")
+            shift
+            GDB_EXEC=true
         ;;
         "--jobs")
             shift
@@ -100,6 +106,10 @@ cmake . -Bbuild-"$BUILD_TYPE"-"$C_COMPILER" \
 [ $? -eq 0 ] && make -j "$NPROCS" -C build-"$BUILD_TYPE"-"$C_COMPILER"
 
 if [ $? -eq 0 ] && [ ! -z "$EXEC_PATH" ]; then
-    build-"$BUILD_TYPE"-"$C_COMPILER"/"$EXEC_PATH"
+    if [ "$GDB_EXEC" == "true" ]; then
+        gdb build-"$BUILD_TYPE"-"$C_COMPILER"/"$EXEC_PATH"
+    else
+        build-"$BUILD_TYPE"-"$C_COMPILER"/"$EXEC_PATH"
+    fi
 fi
 
