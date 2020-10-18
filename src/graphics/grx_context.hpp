@@ -13,7 +13,10 @@ namespace grx {
         void bind_default_framebuffer();
         void set_wireframe_enabled(bool value);
         void set_depth_test_enabled(bool value);
+        void set_depth_mask_enabled(bool value);
         void set_cull_face_enabled(bool value);
+
+        //void enable_be
 
     private:
         grx_context();
@@ -23,6 +26,7 @@ namespace grx {
         bool _is_wireframe_enabled  = false;
         bool _is_depth_test_enabled = true;
         bool _is_cull_face_enabled  = true;
+        bool _is_depth_mask_enabled = true;
 
     public:
         DECLARE_VAL_GET(is_wireframe_enabled)

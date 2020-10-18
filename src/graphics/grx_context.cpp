@@ -88,12 +88,14 @@ void GLAPIENTRY gl_message_callback(
     else if (severity == GL_DEBUG_SEVERITY_HIGH)
         log_type = core::logger::Error;
 
-    core::log().write(log_type,
-        "{} [{}, {}]: {}",
-        gl_debug_source_str(source),
-        gl_severity_str    (severity),
-        gl_debug_type_str  (type),
-        message);
+    /* TODO: add option for enable 'notification' with 'other' */
+    if (severity != GL_DEBUG_SEVERITY_NOTIFICATION || type != GL_DEBUG_TYPE_OTHER)
+        core::log().write(log_type,
+            "{} [{}, {}]: {}",
+            gl_debug_source_str(source),
+            gl_severity_str    (severity),
+            gl_debug_type_str  (type),
+            message);
 }
 
 grx::grx_context::grx_context() {
@@ -101,8 +103,8 @@ grx::grx_context::grx_context() {
     RASSERTF(glfwInit(), "{}", "Failed to initialize glfw");
 
     // Antialiasing
-    glfwWindowHint(GLFW_SAMPLES, 4);
-    glEnable(GL_MULTISAMPLE);
+    //glfwWindowHint(GLFW_SAMPLES, 4);
+    glDisable(GL_MULTISAMPLE);
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
@@ -139,7 +141,17 @@ void grx::grx_context::set_depth_test_enabled(bool value) {
         _is_depth_test_enabled = true;
     } else {
         glDisable(GL_DEPTH_TEST);
-        _is_wireframe_enabled = false;
+        _is_depth_test_enabled = false;
+    }
+}
+
+void grx::grx_context::set_depth_mask_enabled(bool value) {
+    if (value) {
+        glDepthMask(GL_TRUE);
+        _is_depth_mask_enabled = true;
+    } else {
+        glDepthMask(GL_FALSE);
+        _is_depth_mask_enabled = false;
     }
 }
 
