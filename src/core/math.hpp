@@ -40,6 +40,11 @@ namespace core {
         return std::fmod(distance + std::fmod(number - min, distance), distance) + min;
     }
 
+    template <FloatingPoint T>
+    T luminance(const vec<T, 3>& color) {
+        return T(0.2126) * color.r() + T(0.7152) * color.g() + T(0.0722) * color.b(); // NOLINT
+    }
+
     namespace angle {
         /// Constraint angle [0 ; 2PI]
         template <FloatingPoint T>
