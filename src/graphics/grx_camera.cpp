@@ -4,6 +4,7 @@
 #include <core/math.hpp>
 
 #include "graphics/grx_types.hpp"
+#include "grx_utils.hpp"
 #include "grx_window.hpp"
 #include "grx_camera_manipulator.hpp"
 
@@ -65,48 +66,12 @@ void grx::grx_camera::update(grx_window* window) {
     calc_view_projection();
 }
 
-auto extract_frustum_helper(const glm::mat4& vp) -> grx::grx_aabb_frustum_planes_fast {
-    grx::grx_aabb_frustum_planes_fast planes; // NOLINT
-
-    planes.as_names.left.x() = vp[0][3] + vp[0][0];
-    planes.as_names.left.y() = vp[1][3] + vp[1][0];
-    planes.as_names.left.z() = vp[2][3] + vp[2][0];
-    planes.as_names.left.w() = vp[3][3] + vp[3][0];
-
-    planes.as_names.right.x() = vp[0][3] - vp[0][0];
-    planes.as_names.right.y() = vp[1][3] - vp[1][0];
-    planes.as_names.right.z() = vp[2][3] - vp[2][0];
-    planes.as_names.right.w() = vp[3][3] - vp[3][0];
-
-    planes.as_names.bottom.x() = vp[0][3] + vp[0][1];
-    planes.as_names.bottom.y() = vp[1][3] + vp[1][1];
-    planes.as_names.bottom.z() = vp[2][3] + vp[2][1];
-    planes.as_names.bottom.w() = vp[3][3] + vp[3][1];
-
-    planes.as_names.top.x() = vp[0][3] - vp[0][1];
-    planes.as_names.top.y() = vp[1][3] - vp[1][1];
-    planes.as_names.top.z() = vp[2][3] - vp[2][1];
-    planes.as_names.top.w() = vp[3][3] - vp[3][1];
-
-    planes.as_names.near.x() = vp[0][3] + vp[0][2];
-    planes.as_names.near.y() = vp[1][3] + vp[1][2];
-    planes.as_names.near.z() = vp[2][3] + vp[2][2];
-    planes.as_names.near.w() = vp[3][3] + vp[3][2];
-
-    planes.as_names.far.x() = vp[0][3] - vp[0][2];
-    planes.as_names.far.y() = vp[1][3] - vp[1][2];
-    planes.as_names.far.z() = vp[2][3] - vp[2][2];
-    planes.as_names.far.w() = vp[3][3] - vp[3][2];
-
-    return planes;
-}
-
 auto grx::grx_camera::extract_frustum() const -> grx_aabb_frustum_planes_fast {
-    return extract_frustum_helper(view_projection());
+    return grx_utils::extract_frustum(view_projection());
 }
 
 auto grx::grx_camera::extract_frustum(float z_near, float z_far, float z_shift) const -> grx_aabb_frustum_planes_fast {
     auto projection = glm::perspective(glm::radians(_fov), _aspect_ratio, z_near, z_far);
-    auto shift      = -_dir * z_shift;
-    return extract_frustum_helper(glm::translate(projection * _view, to_glm(shift)));
+    auto view       = _orientation * glm::translate(glm::mat4(1.f), to_glm(-(_pos + _dir * z_shift)));
+    return grx_utils::extract_frustum(projection * view);
 }

@@ -23,12 +23,12 @@ namespace grx {
         static core::shared_ptr<grx_camera>
         make_shared(const core::vec3f& pos = { 0.f, 0.f, 0.f },
                     float aspect_ratio = 16.f / 9.f,
-                    float fov = 73.f,
+                    float vertical_fov = 73.f,
                     float z_near = 1.1f,
                     float z_far = 1536.f)
         {
             return core::shared_ptr<grx_camera>(
-                    new grx_camera(pos, aspect_ratio, fov, z_near, z_far));
+                    new grx_camera(pos, aspect_ratio, vertical_fov, z_near, z_far));
         }
 
         void look_at(const core::vec3f& pos);
@@ -79,10 +79,27 @@ namespace grx {
         DECLARE_GET(view)
         DECLARE_GET(projection)
         DECLARE_GET(orientation)
-        DECLARE_VAL_GET(fov)
         DECLARE_VAL_GET(aspect_ratio)
         DECLARE_VAL_GET(z_near)
         DECLARE_VAL_GET(z_far)
+
+        [[nodiscard]]
+        float vertical_fov() const {
+            return _fov;
+        }
+
+        void vertical_fov(float value) {
+            _fov = value;
+        }
+
+        [[nodiscard]]
+        float horizontal_fov() const {
+            return _fov * _aspect_ratio;
+        }
+
+        void horizontal_fov(float value) {
+            _fov = value / _aspect_ratio;
+        }
 
         [[nodiscard]]
         core::vec3f ypr() const {
