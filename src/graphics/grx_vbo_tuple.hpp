@@ -321,7 +321,7 @@ public:
     }
 
     core::optional<size_t> indices_count() const {
-        if (has_indices_vbo())
+        if constexpr (has_indices_vbo())
             return std::get<first_type_idx<vbo_vector_indices>()>(_vbo_sizes);
         else
             return {};

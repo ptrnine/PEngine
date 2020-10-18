@@ -135,7 +135,7 @@ void _grx_set_data_vector_indices_ebo(uint vbo_id, const vbo_vector_indices& dat
 
 void _grx_set_data_vector_matrix_vbo(uint vbo_id, const glm::mat4* matrices, size_t size) {
     glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
-    glBufferData(GL_ARRAY_BUFFER, GLsizeiptr(sizeof(glm::mat4) * size), matrices, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, GLsizeiptr(sizeof(glm::mat4) * size), matrices, GL_STATIC_DRAW);
 }
 
 
