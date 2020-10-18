@@ -17,7 +17,7 @@ grx::frustum_storage::frustum_storage() {
 size_t grx::frustum_storage::new_get_id(const grx_aabb_fast& aabb) {
     if (free_aabbs.empty()) {
         aabbs.emplace_back(aabb);
-        results.emplace_back(0U);
+        results.emplace_back(0xffffffff);
         return aabbs.size() - 1;
     } else {
         auto id = free_aabbs.back();
@@ -30,7 +30,7 @@ size_t grx::frustum_storage::new_get_id(const grx_aabb_fast& aabb) {
 size_t grx::frustum_storage::new_get_id() {
     if (free_aabbs.empty()) {
         aabbs.emplace_back();
-        results.emplace_back(0U);
+        results.emplace_back(0xffffffff);
         return aabbs.size() - 1;
     } else {
         auto id = free_aabbs.back();
