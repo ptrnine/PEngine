@@ -22,6 +22,7 @@ target_link_libraries(
         tests
         Catch2::Catch2
         Threads::Threads
+        CONAN_PKG::boost_fiber
 )
 
 include(CTest)
