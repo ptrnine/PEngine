@@ -140,3 +140,40 @@ string grx_utils::collada_bake_bind_shape_matrix(string_view data) {
 
     return new_data;
 }
+
+grx::grx_aabb_frustum_planes_fast grx_utils::extract_frustum(const glm::mat4& vp) {
+    grx::grx_aabb_frustum_planes_fast planes; // NOLINT
+
+    planes.as_names.left.x() = vp[0][3] + vp[0][0];
+    planes.as_names.left.y() = vp[1][3] + vp[1][0];
+    planes.as_names.left.z() = vp[2][3] + vp[2][0];
+    planes.as_names.left.w() = vp[3][3] + vp[3][0];
+
+    planes.as_names.right.x() = vp[0][3] - vp[0][0];
+    planes.as_names.right.y() = vp[1][3] - vp[1][0];
+    planes.as_names.right.z() = vp[2][3] - vp[2][0];
+    planes.as_names.right.w() = vp[3][3] - vp[3][0];
+
+    planes.as_names.bottom.x() = vp[0][3] + vp[0][1];
+    planes.as_names.bottom.y() = vp[1][3] + vp[1][1];
+    planes.as_names.bottom.z() = vp[2][3] + vp[2][1];
+    planes.as_names.bottom.w() = vp[3][3] + vp[3][1];
+
+    planes.as_names.top.x() = vp[0][3] - vp[0][1];
+    planes.as_names.top.y() = vp[1][3] - vp[1][1];
+    planes.as_names.top.z() = vp[2][3] - vp[2][1];
+    planes.as_names.top.w() = vp[3][3] - vp[3][1];
+
+    planes.as_names.near.x() = vp[0][3] + vp[0][2];
+    planes.as_names.near.y() = vp[1][3] + vp[1][2];
+    planes.as_names.near.z() = vp[2][3] + vp[2][2];
+    planes.as_names.near.w() = vp[3][3] + vp[3][2];
+
+    planes.as_names.far.x() = vp[0][3] - vp[0][2];
+    planes.as_names.far.y() = vp[1][3] - vp[1][2];
+    planes.as_names.far.z() = vp[2][3] - vp[2][2];
+    planes.as_names.far.w() = vp[3][3] - vp[3][2];
+
+    return planes;
+}
+
