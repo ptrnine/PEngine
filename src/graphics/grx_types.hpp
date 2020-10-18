@@ -49,6 +49,10 @@ namespace grx {
         Linear = 0, Nearest
     };
 
+    enum class grx_mesh_type {
+        Basic = 0, Skeleton, Instanced
+    };
+
     struct grx_aabb {
         static grx_aabb maximized() {
             return grx_aabb{
@@ -100,6 +104,11 @@ namespace grx {
         grx_aabb_fast(const grx_aabb& aabb) {
             min.xyz(aabb.min);
             max.xyz(aabb.max);
+        }
+
+        [[nodiscard]]
+        grx_aabb aabb() const {
+            return grx_aabb{min.xyz(), max.xyz()};
         }
 
         core::vec4f min = {0.f, 0.f, 0.f, 0.f};
