@@ -1,3 +1,158 @@
+
+#define DEFERRED
+
+#ifdef DEFERRED
+
+#include "core/fps_counter.hpp"
+#include <core/main.cpp>
+#include <core/config_manager.hpp>
+#include <graphics/grx_window.hpp>
+#include <graphics/grx_camera.hpp>
+#include <graphics/grx_camera_manipulator_fly.hpp>
+#include <graphics/grx_shader_tech.hpp>
+#include <graphics/grx_mesh_mgr.hpp>
+#include <graphics/grx_mesh_instance.hpp>
+#include <input/inp_input_ctx.hpp>
+#include <graphics/grx_deferred_renderer_light.hpp>
+
+using namespace grx;
+using namespace core;
+
+int pe_main(args_view args) {
+    args.require_end();
+
+    std::ios_base::sync_with_stdio(false);
+    config_manager cm;
+
+    auto wnd = grx_window("wnd", {1600, 900});
+    wnd.set_pos({300, 0});
+    wnd.make_current();
+
+    wnd.push_postprocess(grx::grx_postprocess(cm, "shader_gamma_correction"));
+
+    auto input_map = wnd.create_input_map();
+    if (auto map = input_map.lock()) {
+        auto keyboard = wnd.keyboard_id();
+        map->MapBool('R', keyboard, gainput::KeyR);
+        map->MapBool('Z', keyboard, gainput::KeyZ);
+        map->MapBool('X', keyboard, gainput::KeyX);
+        map->MapBool('C', keyboard, gainput::KeyC);
+        map->MapBool('V', keyboard, gainput::KeyV);
+    }
+
+    auto cam = grx_camera::make_shared({0.f, 0.f, 5.f}, 16.f/9.f);
+    cam->create_camera_manipulator<grx_camera_manipulator_fly>();
+    cam->horizontal_fov(110.f);
+    wnd.attach_camera(cam);
+
+    auto ds_mgr = grx_ds_light_mgr::create_shared(wnd.size());
+    ds_mgr->enable_debug_draw();
+    //auto dir_light = ds_mgr->create_dir_light();
+    ds_mgr->specular_power(32.f);
+    ds_mgr->specular_intensity(4.f);
+    //dir_light.direction(vec{0.05807f, -0.182f, 0.9816f}.normalize());
+    //dir_light.ambient_intensity(0.00f);
+    //dir_light.diffuse_intensity(1.0f);
+
+    auto sl2 = ds_mgr->create_spot_light();
+    sl2.beam_angle(40.f);
+    sl2.ambient_intensity(0.f);
+    sl2.diffuse_intensity(1.f);
+    sl2.attenuation_constant(0.f);
+    sl2.attenuation_quadratic(0.01f);
+    sl2.color({0.8f, 0.1f, 0.4f});
+
+    /*
+    auto pl2 = ds_mgr->create_point_light();
+    pl2.position({-96.07f, 8.655f, -34.93f});
+    pl2.diffuse_intensity(1.0f);
+    pl2.color({1.f, 0.f, 0.f});
+    pl2.attenuation_constant(0.0f);
+    pl2.attenuation_quadratic(0.001f);
+    */
+
+    auto shadow_sp = grx_shader_tech(cm, "shader_tech_csm_fr_shadow");
+    auto geom_tech = grx_shader_tech(cm, "shader_tech_ds_geometry");
+    auto ds_prog   = grx_shader_program::create_shared(cm, "shader_csm_ds");
+    grx_mesh_mgr mm(cm);
+    grx_mesh_instance mesh(mm, "cz805/cz805.dae");
+    mesh.set_debug_aabb_draw(true);
+    //grx_mesh_instance mesh(mm, "skate/skate.dae");
+    //mesh.set_scale({3.f, 3.f, 3.f});
+    //mesh.set_debug_aabb_draw(true);
+    //mesh.set_debug_bone_aabb_draw(true);
+    mesh.set_rotation({-90.f, 180.f, 0.f});
+
+    sl2.position({-158.1f, -2.f, -10.f});
+    sl2.direction({1.0f, 0.f, 0.f});
+
+    timer timer;
+    fps_counter counter;
+    while (!wnd.should_close()) {
+        inp::inp_ctx().update();
+
+        if (auto map = input_map.lock()) {
+            if (map->GetBoolIsNew('R'))
+                mesh.play_animation("");
+            if (map->GetBool('Z'))
+                sl2.position(sl2.position() + vec3f{-0.2f, 0.f, 0.f});
+            if (map->GetBool('X'))
+                sl2.position(sl2.position() + vec3f{0.2f, 0.f, 0.f});
+            if (map->GetBool('C'))
+                sl2.beam_angle(sl2.beam_angle() - 0.2f);
+            if (map->GetBool('V'))
+                sl2.beam_angle(sl2.beam_angle() + 0.2f);
+        }
+
+        if (timer.measure() > core::seconds(1)) {
+            printline("ray len: {}", sl2.max_ray_length());
+            printline("FPS: {}, fov: {.3f} pos:{.4f} dir:{.4f}",
+                    counter.get(), cam->horizontal_fov(), cam->position(), cam->directory());
+            timer.reset();
+        }
+
+        sl2.position(cam->position());
+        sl2.direction(cam->directory());
+
+        mesh.update_animation_transforms();
+
+        grx::grx_frustum_mgr().calculate_culling(cam->extract_frustum());
+
+        ds_mgr->start_geometry_pass();
+        mesh.draw(cam->view_projection(), geom_tech);
+        //ds_mgr->debug_draw(cam->view_projection());
+        //sss->activate();
+        //sss->get_uniform_unwrap<glm::mat4>("MVP") = cam->view_projection() * spot_light.matttt();
+        //spot_light.test_draw();
+
+        ds_mgr->light_pass(ds_prog, cam->position(), cam->view_projection());
+
+        wnd.bind_and_clear_render_target();
+        ds_mgr->present(wnd.size());
+
+
+        /*
+        gbuf.start_geometry_pass();
+        mesh.draw(cam->view_projection(), geom_tech);
+
+        wnd.make_current();
+        wnd.bind_and_clear_render_target();
+        gbuf.start_lighting_pass();
+        ds_mgr->draw(gbuf, ds_prog, cam->position());
+        gbuf.end_lighting_pass();
+        //gbuf.draw(ds_prog);
+        */
+
+        wnd.present();
+        wnd.update_input();
+        counter.update();
+    }
+
+    return 0;
+}
+
+#else
+
 #include "graphics/grx_mesh_mgr.hpp"
 #include "src/core/config_manager.hpp"
 #include "src/core/time.hpp"
@@ -30,7 +185,6 @@
 int pe_main(core::args_view) {
     std::ios_base::sync_with_stdio(false);
     core::config_manager cm;
-    //grx::grx_shader_program_mgr m;
 
     auto wnd = grx::grx_window("wnd", {1600, 900});
     wnd.set_pos({300, 0});
@@ -44,125 +198,116 @@ int pe_main(core::args_view) {
 
     auto cam = grx::grx_camera::make_shared({0.f, 0.f, 5.f}, 16.f/9.f);
     cam->create_camera_manipulator<grx::grx_camera_manipulator_fly>();
+    cam->horizontal_fov(110.f);
     wnd.attach_camera(cam);
 
     auto tmgr = grx::grx_texture_mgr::create_shared(cm);
-    //auto tex1 = tmgr->load_unwrap<grx::color_rgb>("/home/ptrnine/Рабочий стол/22.jpg");
-    //auto tex2 = tmgr->load_unwrap<grx::color_rgba>("/home/ptrnine/Рабочий стол/22.jpg");
-    //auto tex3 = tmgr->load_unwrap<grx::color_rgb>("/home/ptrnine/Рабочий стол/22.jpg");
-    //auto tex4 = tmgr->load_unwrap<grx::color_rgba>("/home/ptrnine/Рабочий стол/unnamed.png");
-    //std::vector<grx::grx_texture<3>> textures;
 
-    //tex2.set_load_significance(grx::texture_load_significance::low);
-    //for (size_t i = 0; i < 1; ++i) {
-    //    textures.emplace_back(grx::load_texture_unwrap("/home/ptrnine/Рабочий стол/22.jpg"));
-    //}
-
-    //auto tt = grx::grx_shader_tech(cm, "shader_tech_solid");
-    auto tt = grx::grx_shader_tech(cm, "shader_tech_textured");
-
-    auto shadow_sp     = grx::grx_shader_program::create_shared(cm, "shader_csm_fr_geometry");
+    auto shadow_sp     = grx::grx_shader_tech(cm, "shader_tech_csm_fr_shadow");
     auto light_sp_tech = grx::grx_shader_tech(cm, "shader_tech_csm_fr_textured");
-    auto csm           = grx::grx_cascade_shadow_map_tech(static_cast<core::vec2u>(wnd.size() * 4));
-    auto light_mgr     = grx::grx_forward_light_mgr::create_shared();
+    auto light_mgr     = grx::grx_forward_light_mgr::create_shared(wnd.size() * 4U, {1024, 1024});
     auto dir_light     = light_mgr->create_dir_light();
-    light_sp_tech.skeleton()->get_uniform_unwrap<int>("texture0") = 0;
-    light_sp_tech.skeleton()->get_uniform_unwrap<int>("texture1") = 1;
+    //auto spot_light    = light_mgr->create_point_light();
+    //light_sp_tech.skeleton()->get_uniform_unwrap<int>("texture0") = 0;
+    //light_sp_tech.skeleton()->get_uniform_unwrap<int>("texture1") = 1;
+    light_mgr->specular_power(32.f);
+    light_mgr->specular_intensity(4.f);
 
     grx::grx_mesh_mgr mm(cm);
-    core::vector<grx::grx_mesh_instance> models;
-    for (auto _ : core::index_seq(50))
-        models.emplace_back(grx::grx_mesh_instance(mm, "cz805/cz805.dae"));
 
-    //models.back().set_debug_bone_aabb_draw(true);
-    //models.back().set_debug_aabb_draw(true);
-    for (float pos = 0; auto& m : models)
-        m.move({pos += 20.f, 20.f, -20.f});
+    grx::grx_mesh_instance mesh(mm, "cz805/cz805.dae");
+    mesh.set_rotation({-90.f, 180.f, 0.f});
+    grx::grx_mesh_pack mpack(mm, "basic/cube1.dae", 1000);
+    for (size_t i = 1; i < mpack.count(); ++i) {
+        mpack.move(i, {static_cast<float>(i) * 4.f, 0.f, 0.f});
+    }
 
-    models.front().set_rotation({-90, 180, 0});
-    //models.front().set_debug_bone_aabb_draw(true);
+    //core::vector<grx::grx_mesh_instance> models;
+    //bool flag = false;
+    //for (auto _ : core::index_seq(1000)) {
+        //models.emplace_back(grx::grx_mesh_instance(mm, "skate/skate.dae"));
+        //if (flag)
+    //        models.emplace_back(grx::grx_mesh_instance(mm, "basic/cube1.dae"));
+        //else
+        //    models.emplace_back(grx::grx_mesh_instance(mm, "cz805/cz805.dae"));
+        //flag = !flag;
+    //}
+
+    //for (float pos = 0; auto& m : core::skip_view(models, 1)) {
+        //m.set_debug_aabb_draw(true);
+        //m.set_debug_bone_aabb_draw(true);
+    //    m.move({pos += 3.5f, 0.f, 0.f});
+    //}
     //models.front().set_debug_aabb_draw(true);
-
-    grx::grx_texture_set<3> texset;
-    texset.set(0, tmgr->load_async<grx::color_rgb>("/home/ptrnine/repo/PEngine/gamedata/models/cz805/CZ805.tga"));
+    //models.front().set_debug_bone_aabb_draw(true);
+    //models.front().set_rotation({-90, 180, 0});
 
     wnd.push_postprocess(grx::grx_postprocess(cm, "shader_gamma_correction"));
     //wnd.push_postprocess(grx::grx_postprocess(cm, "shader_vhs1", [](grx::grx_shader_program& prg) {
     //    prg.get_uniform_unwrap<float>("time") =
     //        static_cast<float>(core::global_timer().measure_count());
     //}));
-    //wnd.push_postprocess({ m, cm, "shader_vhs2_texture", { "time" }, grx::postprocess_uniform_seconds()});
-    //wnd.push_postprocess({ m, cm, "shader_vhs1_texture", { "time" }, grx::postprocess_uniform_seconds()});
-    //wnd.push_postprocess({m, cm, "shader_gamma_correction", grx::uniform_pair{"gamma", 1/1.3f}});
 
-    auto tech = grx::grx_shader_program::create_shared(cm, "shader_textured_basic");
-    auto tmvp = tech->get_uniform_unwrap<glm::mat4>("MVP");
-    auto ttexture = tech->get_uniform_unwrap<int>("texture0");
-
-    core::update_smoother us(10, 0.8);
     core::fps_counter counter;
     core::timer timer;
 
-    //grx::grx_texture<3> tx({4000, 2300});
-
-    //auto tex = tmgr->load_async<grx::color_rgb>("/home/ptrnine/Рабочий стол/mabd2.png");
-    //core::failure_opt<grx::grx_texture_id<3>> texopt;
-    core::timer texdelay;
-
-    dir_light.direction(core::vec{0.9f, 0.41f, -0.13f}.normalize());
-    dir_light.ambient_intensity(0.05f);
+    dir_light.direction(core::vec{0.9987f, 0.01335f, -0.04827f}.normalize());
+    dir_light.ambient_intensity(0.00f);
+    dir_light.diffuse_intensity(1.0f);
 
     while (!wnd.should_close()) {
-        // reset_frame_statistics();
-
-        //if (texture2.is_ready()) {
-        //    tx = texture2.get();
-        //    core::printline("size: {}", tx.size());
-        //}
-        //auto texture2 = texture;
-
         counter.update();
         inp::inp_ctx().update();
 
         if (auto map = input_map.lock()) {
-            if (map->GetBoolIsNew('R'))
+            if (map->GetBoolIsNew('R')) {
                 //textures.clear();
-                models[0].play_animation("", true);
+                //for (auto& m : models)
+                    mesh.play_animation("", true);
+            }
         }
 
         if (timer.measure() > core::seconds(1)) {
-            core::printline("FPS: {}, cam: {.2f}", counter.get(), cam->position());
+            core::printline("FPS: {}, fov: {.3f} pos:{.4f} dir:{.4f}",
+                    counter.get(), cam->horizontal_fov(), cam->position(), cam->directory());
             timer.reset();
         }
 
-        //grx::grx_frustum_mgr().calculate_culling(cam->extract_frustum());
-        csm.culling_stage(*cam);
-
-        csm.cover_view(cam->view(), cam->projection(), cam->fov(), dir_light.direction());
-        csm.bind_framebuffer();
-        csm.shadow_path(models, tt.skeleton());
+        mpack.update_transforms();
+        mesh.update_animation_transforms();
         //for (auto& m : models)
-        //    csm.draw(tt.skeleton(), m);
+        //    m.update_animation_transforms();
 
-        wnd.make_current();
+        //spot_light.position(cam->position());
+        //spot_light.position({-29.2f, 5.792f, 23.87f});
+        //spot_light.direction(cam->directory());
+        //spot_light.direction({0.881f, -0.1505f, -0.4484f});
+        //spot_light.diffuse_intensity(1.0f);
+        //spot_light.cutoff(0.9f);
+
+        light_mgr->shadow_path(cam, core::span(&mesh, 1), shadow_sp);
+        light_mgr->shadow_path(cam, mpack, shadow_sp);
+
+        wnd.make_current(); // TODO: needless?
         wnd.bind_and_clear_render_target();
 
-        csm.bind_shadow_maps();
-        light_mgr->setup_to(light_sp_tech.skeleton());
+        light_mgr->setup_shadow_maps_to(light_sp_tech);
 
-        for (auto& m : models) {
-            csm.setup(light_sp_tech.skeleton(), m.model_matrix());
-            m.draw(cam->view_projection(), light_sp_tech);
-        }
+        light_mgr->setup_mvps(mesh.model_matrix(), light_sp_tech);
+        light_mgr->setup_vps_instanced(light_sp_tech);
+        mesh.draw(cam->view_projection(), light_sp_tech);
+        mpack.draw(cam->view_projection(), light_sp_tech);
+        //for (auto& m : models) {
+        //    light_mgr->setup_mvps(m.model_matrix(), light_sp_tech);
+        //    m.draw(cam->view_projection(), light_sp_tech);
+        //}
 
         wnd.present();
 
         wnd.update_input();
-
-
-
-        //us.smooth();
     }
 
     return 0;
 }
+
+#endif
