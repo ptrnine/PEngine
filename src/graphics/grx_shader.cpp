@@ -15,6 +15,7 @@ GLenum to_gl_type(shader_type type) {
     switch (type) {
     case shader_type::fragment: return GL_FRAGMENT_SHADER;
     case shader_type::vertex:   return GL_VERTEX_SHADER;
+    case shader_type::geometry: return GL_GEOMETRY_SHADER;
     case shader_type::compute:  return GL_COMPUTE_SHADER;
     }
     ABORT();

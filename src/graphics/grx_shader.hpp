@@ -30,12 +30,13 @@ private:
 };
 
 
-enum class shader_type    { vertex = 0, fragment, compute };
+enum class shader_type    { vertex = 0, fragment, geometry, compute };
 enum class shader_barrier { disabled = 0, image_access, storage, all };
 
 inline constexpr auto shader_type_name_pairs =
     core::array{core::pair{shader_type::vertex,   core::string_view("vertex")},
                 core::pair{shader_type::fragment, core::string_view("fragment")},
+                core::pair{shader_type::geometry, core::string_view("geometry")},
                 core::pair{shader_type::compute,  core::string_view("compute")}};
 
 inline bool is_shader_type_name(core::string_view name) {
