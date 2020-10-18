@@ -548,6 +548,12 @@ namespace core {
 
     template <typename T>
     struct vec<T, 3> : public vec3_base<T, 3, vec> {
+        constexpr vec() = default;
+        constexpr vec(const array<T, 3>& a): vec3_base<T, 3, vec>{a} {}
+        constexpr vec(T x, T y, T z) : vec3_base<T, 3, vec>{x, y, z} {}
+        constexpr vec(const vec<T, 2>& v, T z) : vec{v.x(), v.y(), z} {}
+        constexpr vec(T x, const vec<T, 2>& v) : vec{x, v.x(), v.y()} {}
+
         void set(T x, T y, T z) {
             this->x(x);
             this->y(y);
@@ -566,6 +572,15 @@ namespace core {
 
     template <typename T>
     struct vec<T, 4> : public vec4_base<T, 4, vec> {
+        constexpr vec() = default;
+        constexpr vec(const array<T, 4>& a): vec4_base<T, 4, vec>{a} {}
+        constexpr vec(T x, T y, T z, T w) : vec4_base<T, 4, vec>{x, y, z, w} {}
+        constexpr vec(const vec<T, 2>& v, T z, T w) : vec{v.x(), v.y(), z, w} {}
+        constexpr vec(T x, const vec<T, 2>& v, T w) : vec{x, v.x(), v.y(), w} {}
+        constexpr vec(T x, T y, const vec<T, 2>& v) : vec{x, y, v.x(), v.y()} {}
+        constexpr vec(const vec<T, 3>& v, T w) : vec{v.x(), v.y(), v.z(), w} {}
+        constexpr vec(T x, const vec<T, 3>& v) : vec{x, v.x(), v.y(), v.z()} {}
+
         void set(T x, T y, T z, T w) {
             this->x(x);
             this->y(y);
