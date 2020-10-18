@@ -8,7 +8,7 @@ namespace grx {
     // OpenGL backend
     void _grx_render_target_tuple_init(
             core::pair<grx_color_fmt, grx_filtering>* settings,
-            const core::vec2i& size,
+            const core::vec2u& size,
             uint* framebuffer_ids,
             uint* texture_ids,
             uint* depthbuffer_ids,
@@ -22,7 +22,7 @@ namespace grx {
             size_t count
     );
 
-    void _grx_render_target_tuple_bind(uint framebuffer_id, const core::vec2i& size);
+    void _grx_render_target_tuple_bind(uint framebuffer_id, const core::vec2u& size);
     void _grx_render_target_tuple_active_texture(uint texture_id);
     void _grx_render_target_tuple_clear();
 
@@ -34,11 +34,11 @@ namespace grx {
         }
 
         static core::shared_ptr<grx_render_target_tuple<Ts...>>
-        create_shared(const core::vec2i& isize) {
+        create_shared(const core::vec2u& isize) {
             return core::make_shared<grx_render_target_tuple<Ts...>>(isize);
         }
 
-        grx_render_target_tuple(const core::vec2i& isize): _size(isize) {
+        grx_render_target_tuple(const core::vec2u& isize): _size(isize) {
             core::array settings = {core::pair{Ts::color_fmt, Ts::filtering}...};
             _grx_render_target_tuple_init(
                 settings.data(),
@@ -129,6 +129,6 @@ namespace grx {
         core::array<uint, size()> _framebuffer_ids = { (Ts(), std::numeric_limits<uint>::max())... };
         core::array<uint, size()> _texture_ids     = { (Ts(), std::numeric_limits<uint>::max())... };
         core::array<uint, size()> _depthbuffer_ids = { (Ts(), std::numeric_limits<uint>::max())... };
-        core::vec2i _size;
+        core::vec2u _size;
     };
 } // namespace grx

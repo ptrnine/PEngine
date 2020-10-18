@@ -13,11 +13,11 @@ namespace grx {
 
     public:
         static core::shared_ptr<grx_postprocess_mgr<T>>
-        create_shared(const core::vec2i& size) {
+        create_shared(const core::vec2u& size) {
             return core::make_shared<grx_postprocess_mgr>(size);
         }
 
-        grx_postprocess_mgr(const core::vec2i& size): _render_target_tuple(size) {
+        grx_postprocess_mgr(const core::vec2u& size): _render_target_tuple(size) {
             _vbo_tuple.set_data<0>({
                 {-1.0f, -1.0f, 0.0f },
                 { 1.0f, -1.0f, 0.0f },

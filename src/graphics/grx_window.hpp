@@ -23,7 +23,7 @@ namespace grx {
     public:
         grx_window(
                 const core::string& name,
-                const core::vec2i& size,
+                const core::vec2u& size,
                 const core::shared_ptr<grx_window_render_target>& render_target = nullptr);
         ~grx_window();
 
@@ -66,7 +66,7 @@ namespace grx {
         }
 
         [[nodiscard]]
-        core::vec2i size() const;
+        core::vec2u size() const;
 
         [[nodiscard]]
         bool on_focus() const {

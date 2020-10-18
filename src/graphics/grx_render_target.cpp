@@ -10,19 +10,19 @@ inline GLenum color_fmt_to_opengl(grx::grx_color_fmt fmt) {
     core::array map = {
             GL_RGB, GL_SRGB, GL_RGB16, GL_RGB16F, GL_RGB32F
     };
-    return static_cast<uint>(map[static_cast<uint>(fmt)]);
+    return static_cast<uint>(map[static_cast<uint>(fmt)]); // NOLINT
 }
 
 inline GLint filtering_to_opengl(grx::grx_filtering filtering) {
     static core::array map = {
             GL_LINEAR, GL_NEAREST
     };
-    return map[static_cast<uint>(filtering)];
+    return map[static_cast<uint>(filtering)]; // NOLINT
 }
 
 void grx::_grx_render_target_tuple_init(
         core::pair<grx_color_fmt, grx_filtering>* settings,
-        const core::vec2i& size,
+        const core::vec2u& size,
         uint* framebuffer_ids,
         uint* texture_ids,
         uint* depthbuffer_ids,
@@ -38,18 +38,19 @@ void grx::_grx_render_target_tuple_init(
         glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_ids[i]);
         glBindTexture(GL_TEXTURE_2D, texture_ids[i]);
 
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, size.x(), size.y(), 0, color_fmt_to_opengl(settings[i].first),
-                     GL_UNSIGNED_BYTE, nullptr);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, static_cast<GLsizei>(size.x()), static_cast<GLsizei>(size.y()),
+                0, color_fmt_to_opengl(settings[i].first), GL_FLOAT, nullptr);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filtering_to_opengl(settings[i].second));
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filtering_to_opengl(settings[i].second));
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
         glBindRenderbuffer(GL_RENDERBUFFER, depthbuffer_ids[i]);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, size.x(), size.y());
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT,
+                static_cast<GLsizei>(size.x()), static_cast<GLsizei>(size.y()));
         glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthbuffer_ids[i]);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture_ids[i], 0);
-        GLenum draw_buffers[] = { GL_COLOR_ATTACHMENT0 };
+        GLenum draw_buffers[] = { GL_COLOR_ATTACHMENT0 }; // NOLINT
         glDrawBuffers(1, draw_buffers);
 
         RASSERTF(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE,
@@ -68,9 +69,9 @@ void grx::_grx_render_target_tuple_delete(
     glDeleteTextures     (static_cast<GLsizei>(count), texture_ids);
 }
 
-void grx::_grx_render_target_tuple_bind(uint framebuffer_id, const core::vec2i& size) {
-    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_id);
-    glViewport(0,0, size.x(), size.y());
+void grx::_grx_render_target_tuple_bind(uint framebuffer_id, const core::vec2u& size) {
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer_id);
+    glViewport(0,0, static_cast<GLsizei>(size.x()), static_cast<GLsizei>(size.y()));
 }
 
 void grx::_grx_render_target_tuple_active_texture(uint texture_id) {

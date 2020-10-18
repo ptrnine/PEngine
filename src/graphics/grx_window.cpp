@@ -19,7 +19,7 @@ namespace grx {
 
 grx::grx_window::grx_window(
         const string& name,
-        const vec2i& size,
+        const vec2u& size,
         const core::shared_ptr<grx_window_render_target>& render_target
 ) {
     /*
@@ -28,7 +28,7 @@ grx::grx_window::grx_window(
     grx::grx_context::instance();
 
     glfwWindowHint( GLFW_DOUBLEBUFFER, GL_FALSE );
-    _wnd = glfwCreateWindow(size.x(), size.y(), name.data(), nullptr,
+    _wnd = glfwCreateWindow(static_cast<int>(size.x()), static_cast<int>(size.y()), name.data(), nullptr,
             main_window_context ? main_window_context : nullptr);
     RASSERTF(_wnd, "{}", "Can't create GLFW window");
 
@@ -82,7 +82,7 @@ grx::grx_window::grx_window(
     window_map.insert_or_assign(_wnd, this);
 
     _input_mgr = inp::inp_ctx().input_mgr_for(_wnd);
-    _input_mgr->SetDisplaySize(size.x(), size.y());
+    _input_mgr->SetDisplaySize(static_cast<int>(size.x()), static_cast<int>(size.y()));
     _mouse_id    = _input_mgr->CreateDevice<gainput::InputDeviceMouse>();
     _keyboard_id = _input_mgr->CreateDevice<gainput::InputDeviceKeyboard>();
 
@@ -130,7 +130,7 @@ void grx::grx_window::present() {
     _render_target->do_postprocess_queue();
 
     make_current();
-    glClearColor(119.f / 255.f, 162.f / 255.f, 155.f / 255.f, 1.f);
+    glClearColor(0.f, 0.f, 0.f, 0.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     _render_target->bind_quad_vao();
@@ -148,10 +148,10 @@ void grx::grx_window::present() {
     swap_buffers();
 }
 
-core::vec2i grx::grx_window::size() const {
-    int x, y;
+core::vec2u grx::grx_window::size() const {
+    int x, y; // NOLINT
     glfwGetWindowSize(_wnd, &x, &y);
-    return core::vec{x, y};
+    return core::vec2u{static_cast<uint>(x), static_cast<uint>(y)};
 }
 
 void grx::grx_window::set_mouse_pos(const core::vec2f& position) {
