@@ -31,3 +31,6 @@
 [submodule "submodules/libcuckoo"]
 	path = submodules/libcuckoo
 	url = https://github.com/efficient/libcuckoo
+[submodule "submodule_tools/AFLplusplus"]
+	path = submodule_tools/AFLplusplus
+	url = https://github.com/AFLplusplus/AFLplusplus
