@@ -28,6 +28,8 @@ int pe_main(core::args_view args) {
         auto corpus_dir = fs::path(platform_dependent::get_exe_dir()) / workdir;
         fs::create_directory(corpus_dir);
         corpus_dir /= "corpus";
+
+        fs::remove_all(corpus_dir);
         fs::create_directory(corpus_dir);
 
         for (auto& [corpus, idx] : core::value_index_view(afl_corpus)) {

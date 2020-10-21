@@ -56,7 +56,7 @@ macro(add_afl_fuzz_test _target)
         COMMAND
                 AFL_CXX=${CMAKE_CXX_COMPILER} ${AFL_CXX_COMPILER} -std=c++${CMAKE_CXX_STANDARD}
                 ${AFL_CXX_FLAGS} ${_include_dirs} ${_link_dirs} -o ${CMAKE_CURRENT_BINARY_DIR}/${_target} ${_sources} ${_libs}
-        DEPENDS ${_sources}
+        DEPENDS ${_sources} ./afl.cpp
     )
 
     add_custom_target(${_target}_build ALL
@@ -78,6 +78,17 @@ macro(add_afl_fuzz_test _target)
             -o "${CMAKE_CURRENT_BINARY_DIR}/${_target}_workdir/output"
             "${CMAKE_CURRENT_BINARY_DIR}/${_target}"
         COMMENT "Add afl_'${_target} target for fuzzing"
+        DEPENDS ${_target}_build
+    )
+
+    add_custom_target(afl_${_target}_resume
+        AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES=1
+        AFL_SKIP_CPUFREQ=1
+        "${PE_TOOLS_DIR}/AFLplusplus/afl-fuzz"
+            -i-
+            -o "${CMAKE_CURRENT_BINARY_DIR}/${_target}_workdir/output"
+            "${CMAKE_CURRENT_BINARY_DIR}/${_target}"
+        COMMENT "Add afl_'${_target} target for fuzzing resuming"
         DEPENDS ${_target}_build
     )
 endmacro()
