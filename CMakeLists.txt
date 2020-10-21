@@ -3,6 +3,8 @@ project(PEngine)
 
 set(CMAKE_CXX_STANDARD 20)
 
+option(ENABLE_FUZZING_TESTS "Enable fuzzing tests with AFLplusplus" ON)
+
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(specific_compiler_flags "-fconcepts -fcoroutines -Wduplicated-branches -Wduplicated-cond -Wlogical-op")
 endif()
@@ -78,8 +80,8 @@ endif()
 include_directories(SYSTEM submodules/glm)
 
 # CMake modules
-include(CMake/git_submodule_build.cmake)
-include(CMake/git_submodule_update.cmake)
+set(PE_TOOLS_DIR "${CMAKE_SOURCE_DIR}/submodule_tools")
+add_subdirectory(CMake)
 
 # Update submodules
 git_submodule_update()

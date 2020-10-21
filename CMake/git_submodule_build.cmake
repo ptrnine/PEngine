@@ -1,3 +1,5 @@
+set(PE_TOOLS_DIR "${CMAKE_SOURCE_DIR}/tools")
+
 macro(git_submodule_build _project_name)
     if (NOT ${_project_name}_ALREADY_BUILT)
         set(options INSTALL_SUB_DEPS)

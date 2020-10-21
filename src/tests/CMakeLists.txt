@@ -28,3 +28,10 @@ target_link_libraries(
 include(CTest)
 include(Catch)
 catch_discover_tests(tests)
+
+if (ENABLE_FUZZING_TESTS)
+    include(fuzzing/add_afl_fuzz_test.cmake)
+    git_submodule_build_tool(AFLplusplus)
+    git_submodule_build_tool(AFLplusplus/gcc_plugin)
+    add_subdirectory(fuzzing)
+endif()
