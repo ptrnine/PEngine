@@ -1,7 +1,7 @@
 macro(add_afl_fuzz_test _target)
     set(optionArgs ASAN_MODE)
     set(multiValueArgs SOURCES INCLUDE_DIRS LIBS LINK_DIRS)
-    cmake_parse_arguments(${_target} "" "" "${multiValueArgs}" ${ARGN})
+    cmake_parse_arguments(${_target} "${optionArgs}" "" "${multiValueArgs}" ${ARGN})
 
     set(AFL_CC "${PE_TOOLS_DIR}/AFLplusplus/afl-clang++")
     set(AFL_GPLUSPLUS "${PE_TOOLS_DIR}/AFLplusplus/afl-g++")
@@ -17,9 +17,16 @@ macro(add_afl_fuzz_test _target)
     endif()
 
     set(AFL_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-    if (ASAN_MODE)
+    if (${_target}_ASAN_MODE)
         set(AFL_CXX_FLAGS "${AFL_CXX_FLAGS} -fsanitize=address")
+    else()
+        set(${_target}_preload "AFL_PRELOAD=${PE_TOOLS_DIR}/AFLplusplus/libdislocator.so")
     endif()
+
+    set(_include_dirs "")
+    set(_link_dirs "")
+    set(_libs "")
+    set(_sources "")
 
     get_property(_incl_dirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
     foreach (dir ${_incl_dirs})
@@ -71,6 +78,7 @@ macro(add_afl_fuzz_test _target)
     )
 
     add_custom_target(afl_${_target}
+        ${${_target}_preload}
         AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES=1
         AFL_SKIP_CPUFREQ=1
         "${PE_TOOLS_DIR}/AFLplusplus/afl-fuzz"
@@ -82,6 +90,7 @@ macro(add_afl_fuzz_test _target)
     )
 
     add_custom_target(afl_${_target}_resume
+        ${${_target}_preload}
         AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES=1
         AFL_SKIP_CPUFREQ=1
         "${PE_TOOLS_DIR}/AFLplusplus/afl-fuzz"
