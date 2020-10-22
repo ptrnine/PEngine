@@ -528,7 +528,7 @@ private:
 
     template <typename... Ts> requires((Shader<Ts>)&&...)
     grx_shader_program(const Ts&... shaders) {
-        RASSERTF(sizeof...(shaders), "{}", "Attempt to create shader program without shaders");
+        PeRelRequireF(sizeof...(shaders), "{}", "Attempt to create shader program without shaders");
 
         _gl_name = grx_shader_helper::create_program();
         (grx_shader_helper::attach_shader(_gl_name, shaders.raw_id()), ...);

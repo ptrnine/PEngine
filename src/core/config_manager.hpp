@@ -113,14 +113,43 @@ inline static string_view::size_type strsize_cast(T val) {
     return static_cast<string_view::size_type>(val);
 }
 
-static inline string DEFAULT_CFG_PATH() {
+class cfg_global_state {
+    SINGLETON_IMPL(cfg_global_state);
+
+private:
+    cfg_global_state()  = default;
+    ~cfg_global_state() = default;
+
+    string _cfg_entry_name = "fs.cfg";
+    mutable std::mutex _mtx;
+
+public:
+    std::string cfg_entry_name() const {
+        auto lock = std::lock_guard{_mtx};
+        std::string res = _cfg_entry_name;
+        return res;
+    }
+
+    void cfg_entry_name(const std::string& name) {
+        auto lock = std::lock_guard{_mtx};
+        _cfg_entry_name = name;
+    }
+};
+
+inline cfg_global_state& CFG_STATE() {
+    return cfg_global_state::instance();
+}
+
+inline string DEFAULT_CFG_PATH() {
+    auto cfg_entry_name = CFG_STATE().cfg_entry_name();
     auto path = std::filesystem::path(platform_dependent::get_exe_dir());
-    auto search_entry = [](const std::filesystem::path& path) -> optional<std::filesystem::path> {
+
+    auto search_entry = [cfg_entry_name](const std::filesystem::path& path) -> optional<std::filesystem::path> {
         printline("{}", path.string());
         for (auto& p : std::filesystem::directory_iterator(path)) {
             if (p.is_regular_file()) {
                 auto filename = p.path().filename().string();
-                if (filename == "fs.cfg")
+                if (filename == cfg_entry_name)
                     return p;
             }
         }
@@ -382,7 +411,7 @@ inline string cfg_reentry(string_view name, const string& file_path = DEFAULT_CF
         }
     }
 
-    RABORTF("Can't find entry '{}' in file '{}'", name, path);
+    PeRelAbortF("Can't find entry '{}' in file '{}'", name, path);
 
     return "";
 }
@@ -435,7 +464,7 @@ public:
                 if (on_section && line.front() == '[')
                     return result;
                 else if (!on_section && line.starts_with(section_start)) {
-                    RASSERTF((line.substr(section_start.size()) / remove_trailing_whitespaces()).empty(),
+                    PeRelRequireF((line.substr(section_start.size()) / remove_trailing_whitespaces()).empty(),
                              "Unrecognized symbols after section {} definition. "
                              "Note: direct reading doesn't support section inheritance",
                              section_start);
@@ -474,7 +503,7 @@ public:
             file_stack.pop_back();
         }
 
-        RASSERTF(on_section, "Can't find section {}", section_start);
+        PeRelRequireF(on_section, "Can't find section {}", section_start);
 
         return result;
     }
@@ -863,7 +892,7 @@ private:
     void load_parents_for(config_section& section) {
         for (auto& parent_section_name : section.parents()) {
             auto parent_section = _sections.find(parent_section_name);
-            RASSERTF(parent_section != _sections.end(),
+            PeRelRequireF(parent_section != _sections.end(),
                      "Can't find parent section '{}' in section '{}'",
                      parent_section_name,
                      section.name());
@@ -879,7 +908,7 @@ private:
     void do_file(const string& path) {
         auto file = read_file(path);
 
-        RASSERTF(file.has_value(), "Can't open file '{}'", path);
+        PeRelRequireF(file.has_value(), "Can't open file '{}'", path);
 
         auto lines = file.value() / split_view({'\n'}, true);
 
@@ -897,13 +926,13 @@ private:
 
                 skip_before_one_of(pos, line.end(), ']');
 
-                RASSERTF(pos != line.end(), "{}", "Missing closing ']'");
+                PeRelRequireF(pos != line.end(), "{}", "Missing closing ']'");
 
                 auto section_name            = string(line.substr(1, strsize_cast(pos - line.begin()) - 1));
                 auto [position, is_inserted] = _sections.emplace(section_name, section_name);
 
                 if (section_name != "__global") {
-                    RASSERTF(is_inserted, "Dupplicate section '{}'", section_name);
+                    PeRelRequireF(is_inserted, "Dupplicate section '{}'", section_name);
                     _file_paths.emplace(section_name, path);
                 }
 

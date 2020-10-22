@@ -43,7 +43,7 @@ void grx::frustum_storage::remove_id(size_t id) {
     if (id == std::numeric_limits<size_t>::max())
         return;
 
-    RASSERTF(id < aabbs.size(), "ID >= aabbs size ({}, {})", id, aabbs.size());
+    PeRelRequireF(id < aabbs.size(), "ID >= aabbs size ({}, {})", id, aabbs.size());
     free_aabbs.push_back(id);
 }
 

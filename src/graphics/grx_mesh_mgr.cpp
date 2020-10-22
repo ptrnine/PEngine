@@ -71,7 +71,7 @@ mesh_data_basic mesh_extract_basic_data(const aiScene* scene) {
     DLOG("Total indices:  {}", indices_count);
     DLOG("Total faces:    {}", faces_count);
 
-    RASSERTF(faces_count * 3 == indices_count, "{}", "May be triangulate failed?");
+    PeRelRequireF(faces_count * 3 == indices_count, "{}", "May be triangulate failed?");
 
     vbo_vector_indices indices;
     vbo_vector_vec3f   positions;
@@ -104,12 +104,12 @@ mesh_data_basic mesh_extract_basic_data(const aiScene* scene) {
         }
 
         {
-            RASSERTF(mesh->HasFaces(), "{}", "Mesh loader doesn't support meshes without faces");
+            PeRelRequireF(mesh->HasFaces(), "{}", "Mesh loader doesn't support meshes without faces");
             auto old_size = indices.size();
             indices.resize(old_size + mesh->mNumFaces * 3);
 
             for (auto& face : span(mesh->mFaces, mesh->mNumFaces)) {
-                ASSERTF(face.mNumIndices == 3, "{}", "Mesh loader support 3 indices per face only");
+                PeRequireF(face.mNumIndices == 3, "{}", "Mesh loader support 3 indices per face only");
                 indices[old_size++] = face.mIndices[0];
                 indices[old_size++] = face.mIndices[1];
                 indices[old_size++] = face.mIndices[2];
@@ -300,7 +300,7 @@ pair<VboT, vector<grx_mesh_entry>> load_mesh_vbo(const aiScene* scene) {
     DLOG("Total indices:  {}", indices_count);
     DLOG("Total faces:    {}", faces_count);
 
-    RASSERTF(faces_count * 3 == indices_count, "{}", "May be triangulate failed?");
+    PeRelRequireF(faces_count * 3 == indices_count, "{}", "May be triangulate failed?");
 
     vbo_vector_indices indices;
     vbo_vector_vec3f   positions;
@@ -333,11 +333,11 @@ pair<VboT, vector<grx_mesh_entry>> load_mesh_vbo(const aiScene* scene) {
         }
 
         {
-            RASSERTF(mesh->HasFaces(), "{}", "Mesh loader doesn't support meshes without faces");
+            PeRelRequireF(mesh->HasFaces(), "{}", "Mesh loader doesn't support meshes without faces");
             auto old_size = indices.size();
             indices.resize(old_size + mesh->mNumFaces * 3);
             for (auto& face : span(mesh->mFaces, mesh->mNumFaces)) {
-                ASSERTF(face.mNumIndices == 3, "{}", "Mesh loader support 3 indices per face only");
+                PeRequireF(face.mNumIndices == 3, "{}", "Mesh loader support 3 indices per face only");
                 indices[old_size++] = face.mIndices[0];
                 indices[old_size++] = face.mIndices[1];
                 indices[old_size++] = face.mIndices[2];
@@ -596,8 +596,8 @@ auto grx::grx_mesh_mgr::load_mesh(string_view path, bool instanced, grx_texture_
         scene = importer.ReadFile(path.data(), flags);
     }
 
-    RASSERTF(scene, "Can't load mesh at path '{}': {}", path, importer.GetErrorString());
-    RASSERTF(scene->HasMeshes(), "Scene at path '{}' doesn't have any mesh", path);
+    PeRelRequireF(scene, "Can't load mesh at path '{}': {}", path, importer.GetErrorString());
+    PeRelRequireF(scene->HasMeshes(), "Scene at path '{}' doesn't have any mesh", path);
 
     DLOG("Load scene data '{}'", path);
 

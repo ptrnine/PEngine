@@ -596,11 +596,11 @@ namespace grx {
     class grx_texture_set {
     public:
         grx_texture_set(size_t count = 1): _textures(count, core::pair{grx_texture(), static_cast<uniform_id_t>(-1)}) {
-            RASSERTF(count < 32, "Wrong textures count {} (Must be < 32)", count);
+            PeRelRequireF(count < 32, "Wrong textures count {} (Must be < 32)", count);
         }
 
         grx_texture& get_or_create(size_t type_or_position) {
-            RASSERTF(type_or_position < 32, "Wrong texture position {} (Must be < 32)", type_or_position);
+            PeRelRequireF(type_or_position < 32, "Wrong texture position {} (Must be < 32)", type_or_position);
 
             if (_textures.size() <= type_or_position) {
                 _textures.resize(type_or_position + 1, core::pair{grx_texture(), static_cast<uniform_id_t>(-1)});

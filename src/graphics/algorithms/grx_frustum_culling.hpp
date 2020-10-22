@@ -37,19 +37,19 @@ namespace grx {
 
         [[nodiscard]]
         grx_aabb_fast& aabb_from_id(size_t id) {
-            RASSERT(id < aabbs.size());
+            PeRelRequire(id < aabbs.size());
             return aabbs[id];
         }
 
         [[nodiscard]]
         const grx_aabb_fast& aabb_from_id(size_t id) const {
-            RASSERT(id < aabbs.size());
+            PeRelRequire(id < aabbs.size());
             return aabbs[id];
         }
 
         [[nodiscard]]
         uint32_t result_from_id(size_t id) const {
-            ASSERT(id < results.size());
+            PeRequire(id < results.size());
             return results[id];
         }
 

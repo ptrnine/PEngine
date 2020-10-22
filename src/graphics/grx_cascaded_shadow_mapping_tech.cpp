@@ -28,7 +28,7 @@ grx_cascade_shadow_map_tech::grx_cascade_shadow_map_tech(
     _gl_texture_nums(maps_count),
     _csm_end_cs(maps_count)
 {
-    RASSERT(z_bounds.size() - 1 == maps_count);
+    PeRelRequire(z_bounds.size() - 1 == maps_count);
 
     glGenFramebuffers(1, &_fbo);
 
@@ -64,7 +64,7 @@ grx_cascade_shadow_map_tech::grx_cascade_shadow_map_tech(
     glReadBuffer(GL_NONE);
 
     auto rc = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    RASSERTF(rc == GL_FRAMEBUFFER_COMPLETE, "Shadow map framebuffer error: {}", rc);
+    PeRelRequireF(rc == GL_FRAMEBUFFER_COMPLETE, "Shadow map framebuffer error: {}", rc);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glBindTexture(GL_TEXTURE_2D, 0);
 }
@@ -75,7 +75,7 @@ grx_cascade_shadow_map_tech::~grx_cascade_shadow_map_tech() {
 }
 
 void grx_cascade_shadow_map_tech::set_z_bounds(const vector<float>& values) {
-    RASSERT(static_cast<size_t>(values.size()) == _z_bounds.size());
+    PeRelRequire(static_cast<size_t>(values.size()) == _z_bounds.size());
     _z_bounds = values;
 }
 

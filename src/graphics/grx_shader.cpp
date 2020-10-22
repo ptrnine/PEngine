@@ -18,7 +18,7 @@ GLenum to_gl_type(shader_type type) {
     case shader_type::geometry: return GL_GEOMETRY_SHADER;
     case shader_type::compute:  return GL_COMPUTE_SHADER;
     }
-    ABORT();
+    PeAbort();
     return 0;
 }
 
@@ -29,7 +29,7 @@ GLenum to_gl_type(shader_barrier type) {
     case shader_barrier::storage:      return GL_SHADER_STORAGE_BARRIER_BIT;
     case shader_barrier::all:          return GL_ALL_BARRIER_BITS;
     }
-    ABORT();
+    PeAbort();
     return 0;
 }
 
@@ -421,7 +421,7 @@ void pass_config_value_to_program(string_view                          sect,
     case cfg_number_type::cfg_uint: try_pass_config_value_to_program_helper<uint>(sect, program, key, value); break;
     case cfg_number_type::cfg_float: try_pass_config_value_to_program_helper<float>(sect, program, key, value); break;
     case cfg_number_type::cfg_double: try_pass_config_value_to_program_helper<double>(sect, program, key, value); break;
-    default: ABORT();
+    default: PeAbort();
     }
 }
 
@@ -451,7 +451,7 @@ template <size_t P = 0, typename SectInfoT, grx::Shader... T>
 shared_ptr<grx::grx_shader_program>
 create_program_iter(const string& shaders_dir, SectInfoT section_info, T&&... shaders) {
     if constexpr (P == grx::shader_type_name_pairs.size()) {
-        RASSERTF(sizeof...(shaders), "Shader program section [{}] has no shaders!", get_sectname(section_info));
+        PeRelRequireF(sizeof...(shaders), "Shader program section [{}] has no shaders!", get_sectname(section_info));
         return grx::grx_shader_program::create_shared(move(shaders)...);
     }
     else {

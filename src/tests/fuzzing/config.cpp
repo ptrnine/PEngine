@@ -17,8 +17,9 @@ v6 = {1, 2, 3, {3, 4}}
 };
 
 int afl_main(args_view, span<byte> data) {
+    CFG_STATE().cfg_entry_name("afl.test.fs.cfg");
     write_file_unwrap("~afl.test.cfg", data);
-    write_file_unwrap("fs.cfg", "#include \"~afl.test.cfg\"");
+    write_file_unwrap("afl.test.fs.cfg", "#include \"~afl.test.cfg\"");
 
     try {
         config_manager mgr;

@@ -5,7 +5,7 @@
 using namespace core;
 
 grx::grx_shader_tech::grx_shader_tech(const config_manager& cm, string_view section) {
-    RASSERTF(section.starts_with("shader_tech_"),
+    PeRelRequireF(section.starts_with("shader_tech_"),
             "Wrong shader tech section '{}'"
             "Shader tech section must starts with 'shader_tech_' prefix", section);
 

@@ -100,7 +100,7 @@ void GLAPIENTRY gl_message_callback(
 
 grx::grx_context::grx_context() {
     glfwSetErrorCallback(&glfw_error);
-    RASSERTF(glfwInit(), "{}", "Failed to initialize glfw");
+    PeRelRequireF(glfwInit(), "{}", "Failed to initialize glfw");
 
     // Antialiasing
     //glfwWindowHint(GLFW_SAMPLES, 4);

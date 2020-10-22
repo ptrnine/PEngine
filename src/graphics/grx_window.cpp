@@ -30,7 +30,7 @@ grx::grx_window::grx_window(
     glfwWindowHint( GLFW_DOUBLEBUFFER, GL_FALSE );
     _wnd = glfwCreateWindow(static_cast<int>(size.x()), static_cast<int>(size.y()), name.data(), nullptr,
             main_window_context ? main_window_context : nullptr);
-    RASSERTF(_wnd, "{}", "Can't create GLFW window");
+    PeRelRequireF(_wnd, "{}", "Can't create GLFW window");
 
     auto savedContext = glfwGetCurrentContext();
     glfwMakeContextCurrent(_wnd);
@@ -38,7 +38,7 @@ grx::grx_window::grx_window(
     if (!main_window_context) {
         glewExperimental = GL_TRUE; // required in core mode
         auto rc = glewInit();
-        RASSERTF(rc == GLEW_OK, "Failed to initialize GLEW: {}", glewGetErrorString(rc));
+        PeRelRequireF(rc == GLEW_OK, "Failed to initialize GLEW: {}", glewGetErrorString(rc));
 
         /*
          * Setup debug callback

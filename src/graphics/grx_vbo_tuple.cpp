@@ -8,7 +8,7 @@ namespace grx {
 
 void _grx_gen_vao_and_vbos(win_vao_map_t& vao_map, uint* vbos_ptr, size_t vbos_size) {
     auto current_window = glfwGetCurrentContext();
-    RASSERTF(current_window, "{}", "Attempt to create grx_vbo_tuple without OpenGL context");
+    PeRelRequireF(current_window, "{}", "Attempt to create grx_vbo_tuple without OpenGL context");
 
     uint vao; // NOLINT
     glGenVertexArrays(1, &vao);
@@ -27,7 +27,7 @@ void _grx_delete_vao_and_vbos(win_vao_map_t& vao_map, uint* vbos_ptr, size_t vbo
 
 bool _grx_bind_vao(win_vao_map_t& vao_map) {
     auto current_window = glfwGetCurrentContext();
-    RASSERTF(current_window, "{}", "Attempt to bind VAO without OpenGL context (!?)");
+    PeRelRequireF(current_window, "{}", "Attempt to bind VAO without OpenGL context (!?)");
 
     auto [position, was_inserted] = vao_map.emplace(current_window, -1);
 

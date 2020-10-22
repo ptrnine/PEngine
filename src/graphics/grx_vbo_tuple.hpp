@@ -54,7 +54,7 @@ struct vbo_bone_data_tmpl {
             }
         }
 
-        RABORTF("Not enough bone size. Weights: {}", weights);
+        PeRelAbortF("Not enough bone size. Weights: {}", weights);
     }
 
     core::array<uint, S>  ids;

@@ -19,7 +19,7 @@ namespace grx::grx_texture_helper {
         case 4:
             return GL_RGBA;
         default:
-            ABORTF("Wrong color channels count {}", channels_count);
+            PeAbortF("Wrong color channels count {}", channels_count);
             return 0;
         }
     }
@@ -35,7 +35,7 @@ namespace grx::grx_texture_helper {
         case 4:
             return GL_RGBA8;
         default:
-            ABORTF("Wrong color channels count {}", channels_count);
+            PeAbortF("Wrong color channels count {}", channels_count);
             return 0;
         }
     }
@@ -46,7 +46,7 @@ namespace grx::grx_texture_helper {
         case texture_access::write:     return GL_WRITE_ONLY;
         case texture_access::readwrite: return GL_READ_WRITE;
         default:
-            ABORTF("{}", "Unknown access specifier");
+            PeAbortF("{}", "Unknown access specifier");
             return 0;
         }
     }

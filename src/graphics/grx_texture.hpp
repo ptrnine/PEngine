@@ -94,7 +94,7 @@ namespace grx
                 else if constexpr (pixel_size == 6) // NOLINT
                     ++new_width;
                 else
-                    RABORT();
+                    PeRelAbort();
 
                 _size = vec2u{new_width, _size.y()};
                 auto new_map = color_map.get_resized(_size);
@@ -135,7 +135,7 @@ namespace grx
                 else if constexpr (pixel_size == 6)
                     ++new_width;
                 else
-                    RABORT();
+                    PeRelAbort();
 
                 _size = vec2u{new_width, _size.y()};
                 auto new_map = color_map.get_resized(_size);

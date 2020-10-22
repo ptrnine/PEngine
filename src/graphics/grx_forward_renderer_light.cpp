@@ -132,7 +132,7 @@ grx_fr_shadow_map_mgr::grx_fr_shadow_map_mgr(vec2u size): size_(size) { // NOLIN
     glReadBuffer(GL_NONE);
 
     auto rc = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    RASSERTF(rc == GL_FRAMEBUFFER_COMPLETE, "Shadow map framebuffer error: {}", rc);
+    PeRelRequireF(rc == GL_FRAMEBUFFER_COMPLETE, "Shadow map framebuffer error: {}", rc);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 

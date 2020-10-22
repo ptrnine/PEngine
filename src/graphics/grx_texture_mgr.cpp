@@ -85,13 +85,13 @@ auto grx::grx_texture_mgr::load(const core::config_manager& cm, core::string_vie
 
 auto grx::grx_texture_mgr::load_unwrap(core::string_view path) -> grx_texture {
     auto texture = load(path);
-    RASSERTF(texture.has_value(), "Can't load texture at path'{}'", path);
+    PeRelRequireF(texture.has_value(), "Can't load texture at path'{}'", path);
     return *texture;
 }
 
 auto grx::grx_texture_mgr::load_unwrap(const core::config_manager& cm, core::string_view p) -> grx_texture {
     auto texture = load(cm, p);
-    RASSERTF(texture.has_value(), "Can't load texture at path'{}'",
+    PeRelRequireF(texture.has_value(), "Can't load texture at path'{}'",
             core::path_eval(cm.entry_dir() / cm.read_unwrap<core::string>("textures_dir") / p));
     return *texture;
 }

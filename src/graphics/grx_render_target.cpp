@@ -53,7 +53,7 @@ void grx::_grx_render_target_tuple_init(
         GLenum draw_buffers[] = { GL_COLOR_ATTACHMENT0 }; // NOLINT
         glDrawBuffers(1, draw_buffers);
 
-        RASSERTF(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE,
+        PeRelRequireF(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE,
                  "{}", "Error while creating render target");
     }
 }
