@@ -6,9 +6,12 @@
 using namespace core;
 
 namespace {
+    enum order_type {
+        ot_bsm, ot_pos, ot_normal
+    };
     struct order_value {
         string_view name;
-        bool is_position; // true - position, false - bind_shape_matrix
+        order_type type; // true - position, false - bind_shape_matrix
         pair<size_t, size_t> span;
     };
 }
@@ -19,7 +22,7 @@ namespace {
  */
 string grx_utils::collada_bake_bind_shape_matrix(string_view data) {
     using span_map = hash_map<string_view, pair<size_t, size_t>>;
-    span_map position_spans, bind_shape_matrix_spans;
+    span_map position_spans, normal_spans, bind_shape_matrix_spans;
     vector<order_value> order;
 
     /*
@@ -38,7 +41,29 @@ string grx_utils::collada_bake_bind_shape_matrix(string_view data) {
 
             if (pos_end != string::npos && pos_start != string::npos) {
                 position_spans.emplace(name, pair(pos_start + 1, pos_end - pos_start - 1));
-                order.emplace_back(order_value{name, true, pair(pos_start + 1, pos_end - pos_start - 1)});
+                order.emplace_back(order_value{name, ot_pos, pair(pos_start + 1, pos_end - pos_start - 1)});
+            }
+        }
+        i = end + 1;
+    }
+
+    /*
+     * Find normal span for every mesh
+     */
+    i = 0;
+    while ((i = data.find("-normals-array", i)) != string::npos) {
+        auto end = i;
+        i = data.rfind('\"', i);
+
+        if (i > 3 && string_view(data.data() + i - 3, 3) == "id=") {
+            string_view name(data.data() + i + 1, end - i - 1);
+
+            auto pos_start = data.find('>', end);
+            auto pos_end   = data.find('<', pos_start);
+
+            if (pos_end != string::npos && pos_start != string::npos) {
+                normal_spans.emplace(name, pair(pos_start + 1, pos_end - pos_start - 1));
+                order.emplace_back(order_value{name, ot_normal, pair(pos_start + 1, pos_end - pos_start - 1)});
             }
         }
         i = end + 1;
@@ -63,7 +88,7 @@ string grx_utils::collada_bake_bind_shape_matrix(string_view data) {
 
         if (start != string::npos && end != string::npos) {
             bind_shape_matrix_spans.emplace(name, pair(start, end - start));
-            order.emplace_back(order_value{name, false, pair(start, end - start)});
+            order.emplace_back(order_value{name, ot_bsm, pair(start, end - start)});
         }
     }
     if (bind_shape_matrix_spans.empty())
@@ -84,14 +109,14 @@ string grx_utils::collada_bake_bind_shape_matrix(string_view data) {
      * Fold new data string
      */
     size_t next_start = 0;
-    for (auto& [name, is_position, span] : order) {
+    for (auto& [name, type, span] : order) {
         new_data += string_view(data.data() + next_start, span.first - next_start);
         next_start = span.first + span.second;
 
         /*
          * If it is matrix span - append identity and go next
          */
-        if (!is_position) {
+        if (type == ot_bsm) {
             new_data += identity;
             continue;
         }
@@ -111,12 +136,12 @@ string grx_utils::collada_bake_bind_shape_matrix(string_view data) {
 
             auto matrix = glm::transpose(glm::make_mat4x4(raw_matrix.data()));
 
-            auto positions_span = position_spans[name];
-            string_view positions_str(data.data() + positions_span.first, positions_span.second);
-            splits = positions_str / split(' ');
+            auto cur_span = type == ot_pos ? position_spans[name] : normal_spans[name];
+            string_view cur_str(data.data() + cur_span.first, cur_span.second);
+            splits = cur_str / split(' ');
 
-            string output_positions;
-            output_positions.reserve(positions_str.size());
+            string output;
+            output.reserve(cur_str.size());
 
             /*
              * Perform transformation and push vertex to output_positions
@@ -127,13 +152,16 @@ string grx_utils::collada_bake_bind_shape_matrix(string_view data) {
                         splits[k * 3 + 1] / to_number<float>(),
                         splits[k * 3 + 2] / to_number<float>(), 1.f);
 
-                output_positions += std::to_string(vec.x) + ' ' +
+                if (type == ot_normal)
+                    vec = core::to_glm(vec4f{core::from_glm(vec).xyz().normalize(), 0.f});
+
+                output += std::to_string(vec.x) + ' ' +
                                     std::to_string(vec.y) + ' ' +
                                     std::to_string(vec.z) + ' ';
             }
-            output_positions.pop_back();
+            output.pop_back();
 
-            new_data += output_positions;
+            new_data += output;
         }
     }
     new_data += string_view(data.data() + next_start);
