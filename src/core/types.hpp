@@ -14,6 +14,7 @@
 #include <flat_hash_map.hpp>
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
+#include <libcuckoo/cuckoohash_map.hh>
 
 #include "try_opt.hpp"
 
@@ -86,6 +87,9 @@ namespace core
             typename E = std::equal_to<>,
             typename A = std::allocator<T>>
     using hash_set = ska::flat_hash_set<T, H, E, A>;
+
+    template <typename K, typename V>
+    using mpmc_hash_map = libcuckoo::cuckoohash_map<K, V>;
 
     using gsl::not_null;
     using gsl::span;
