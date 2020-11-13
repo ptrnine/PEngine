@@ -28,7 +28,7 @@ int pe_main(args_view args) {
     wnd.set_pos({300, 0});
     wnd.make_current();
 
-    wnd.push_postprocess(grx::grx_postprocess(cm, "shader_gamma_correction"));
+    //wnd.push_postprocess(grx::grx_postprocess(cm, "shader_gamma_correction"));
 
     auto input_map = wnd.create_input_map();
     if (auto map = input_map.lock()) {
@@ -40,27 +40,26 @@ int pe_main(args_view args) {
         map->MapBool('V', keyboard, gainput::KeyV);
     }
 
-    auto cam = grx_camera::make_shared({0.f, 0.f, 5.f}, 16.f/9.f);
+    auto cam = grx_camera::make_shared({0.f, 0.f, 5.f}, 16.f/9.f, 73.f, 0.1f);
     cam->create_camera_manipulator<grx_camera_manipulator_fly>();
     cam->horizontal_fov(110.f);
     wnd.attach_camera(cam);
 
     auto ds_mgr = grx_ds_light_mgr::create_shared(wnd.size());
-    ds_mgr->enable_debug_draw();
-    //auto dir_light = ds_mgr->create_dir_light();
-    ds_mgr->specular_power(32.f);
-    ds_mgr->specular_intensity(4.f);
-    //dir_light.direction(vec{0.05807f, -0.182f, 0.9816f}.normalize());
-    //dir_light.ambient_intensity(0.00f);
-    //dir_light.diffuse_intensity(1.0f);
+    //ds_mgr->enable_debug_draw();
+    auto dir_light = ds_mgr->create_dir_light();
+    ds_mgr->specular_power(12.f);
+    ds_mgr->specular_intensity(1.5f);
+    dir_light.direction(vec{0.8865f, -0.4057f, -0.2224f}.normalize());
+    dir_light.ambient_intensity(0.5f);
 
-    auto sl2 = ds_mgr->create_spot_light();
-    sl2.beam_angle(40.f);
-    sl2.ambient_intensity(0.f);
-    sl2.diffuse_intensity(1.f);
-    sl2.attenuation_constant(0.f);
-    sl2.attenuation_quadratic(0.01f);
-    sl2.color({0.8f, 0.1f, 0.4f});
+    //auto sl2 = ds_mgr->create_spot_light();
+    //sl2.beam_angle(40.f);
+    //sl2.ambient_intensity(0.f);
+    //sl2.diffuse_intensity(0.01f);
+    //sl2.attenuation_constant(0.f);
+    //sl2.attenuation_quadratic(0.01f);
+    //sl2.color({0.8f, 0.1f, 0.4f});
 
     /*
     auto pl2 = ds_mgr->create_point_light();
@@ -75,16 +74,20 @@ int pe_main(args_view args) {
     auto geom_tech = grx_shader_tech(cm, "shader_tech_ds_geometry");
     auto ds_prog   = grx_shader_program::create_shared(cm, "shader_csm_ds");
     grx_mesh_mgr mm(cm);
-    grx_mesh_instance mesh(mm, "cz805/cz805.dae");
-    mesh.set_debug_aabb_draw(true);
+    //grx_mesh_instance mesh(mm, "cz805/cz805.dae");
+    grx_mesh_instance mesh(mm, "glock19x/glock19x.dae");
+    //mesh.set_scale({0.0525f, 0.0525f, 0.0525f});
+    //mesh.set_debug_aabb_draw(true);
     //grx_mesh_instance mesh(mm, "skate/skate.dae");
     //mesh.set_scale({3.f, 3.f, 3.f});
     //mesh.set_debug_aabb_draw(true);
     //mesh.set_debug_bone_aabb_draw(true);
     mesh.set_rotation({-90.f, 180.f, 0.f});
 
-    sl2.position({-158.1f, -2.f, -10.f});
-    sl2.direction({1.0f, 0.f, 0.f});
+    //sl2.position({-158.1f, -2.f, -10.f});
+    //sl2.direction({1.0f, 0.f, 0.f});
+
+    mesh.default_animation("idle");
 
     timer timer;
     fps_counter counter;
@@ -92,8 +95,15 @@ int pe_main(args_view args) {
         inp::inp_ctx().update();
 
         if (auto map = input_map.lock()) {
-            if (map->GetBoolIsNew('R'))
-                mesh.play_animation("");
+            if (map->GetBoolIsNew('R')) {
+                mesh.mesh().skeleton()->animations.at("reload_empty").ticks_per_second = 8.0;
+                mesh.play_animation("reload_empty");
+            }
+            if (map->GetBoolIsNew('Z')) {
+                mesh.mesh().skeleton()->animations.at("shot").ticks_per_second = 45.0;
+                mesh.play_animation("shot");
+            }
+            /*
             if (map->GetBool('Z'))
                 sl2.position(sl2.position() + vec3f{-0.2f, 0.f, 0.f});
             if (map->GetBool('X'))
@@ -102,17 +112,19 @@ int pe_main(args_view args) {
                 sl2.beam_angle(sl2.beam_angle() - 0.2f);
             if (map->GetBool('V'))
                 sl2.beam_angle(sl2.beam_angle() + 0.2f);
+                */
         }
 
         if (timer.measure() > core::seconds(1)) {
-            printline("ray len: {}", sl2.max_ray_length());
+  //          printline("ray len: {}", sl2.max_ray_length());
             printline("FPS: {}, fov: {.3f} pos:{.4f} dir:{.4f}",
                     counter.get(), cam->horizontal_fov(), cam->position(), cam->directory());
             timer.reset();
         }
-
+/*
         sl2.position(cam->position());
         sl2.direction(cam->directory());
+*/
 
         mesh.update_animation_transforms();
 
