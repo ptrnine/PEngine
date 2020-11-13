@@ -109,6 +109,9 @@ public:
                     ticks = std::fmod(ticks, anim.duration);
                     grx_mesh_mgr::anim_traverse(_bone_transforms, *skeleton, anim, ticks, skeleton->root_node.get());
                 }
+                else if (_default_anim) {
+                    play_animation(*_default_anim, false);
+                }
                 else {
                     _anim_data.current_animation = std::nullopt;
                 }
@@ -138,6 +141,23 @@ public:
         _anim_data.specs[name]       = animation_spec{core::timer(), stop_on_end};
     }
 
+    void default_animation(core::string_view name) {
+        _default_anim = name;
+        if (has_skeleton() && !_anim_data.current_animation)
+            play_animation(*_default_anim, false);
+    }
+
+    [[nodiscard]]
+    core::optional<core::string> default_animation() const {
+        return _default_anim;
+    }
+
+    void reset_default_animation() {
+        if (has_skeleton() && _default_anim && _anim_data.current_animation == *_default_anim)
+            _anim_data.current_animation = core::nullopt;
+        _default_anim = core::nullopt;
+    }
+
     [[nodiscard]]
     const grx_aabb& aabb() const {
         return _mesh->aabb();
@@ -164,6 +184,7 @@ private:
     grx_shader_program*     _cached_program = nullptr;
     bool                    _debug_aabb_draw      = false;
     bool                    _debug_bone_aabb_draw = false;
+    core::optional<core::string> _default_anim;
 
 public:
     DECLARE_GET_SET(position)
