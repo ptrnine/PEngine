@@ -380,11 +380,17 @@ mesh_load_texture_sets(const aiScene* scene, const string& dir, grx_texture_mgr&
     vector<grx_texture_set<4>> texsets(texsets_paths.size());
 
     auto load_if_valid = [&texture_mgr](auto& texture_set, const auto& path_opt, size_t index) {
-        if (path_opt)
+        if (path_opt) {
+            DLOG("Load texture: {}", *path_opt);
             texture_set.set(index, texture_mgr.load_async<color_rgba>(*path_opt));
-        /* Set default normal */
-        else if (index == grx_texture_set<4>::normal)
+        /* Set default diffuse or normal */
+        } else if (index == grx_texture_set<4>::diffuse) {
+            DLOG("Load texture: {}", texture_mgr.textures_dir() + "basic/dummy_diffuse.png");
+            texture_set.set(index, texture_mgr.load_async<color_rgba>(texture_mgr.textures_dir() + "basic/dummy_diffuse.png"));
+        } else if (index == grx_texture_set<4>::normal) {
+            DLOG("Load texture: {}", texture_mgr.textures_dir() + "basic/dummy_normal.png");
             texture_set.set(index, texture_mgr.load_async<color_rgba>(texture_mgr.textures_dir() + "basic/dummy_normal.png"));
+        }
     };
 
     for (auto& [texset, texset_paths] : core::zip_view(texsets, texsets_paths)) {
@@ -404,6 +410,8 @@ auto load_bones(const aiScene* scene, VboType& vbo, const vector<grx_mesh_entry>
     vector<grx_aabb>       aabbs;
     vector<glm::mat4>      offsets;
     vector<glm::mat4>      transforms;
+
+    DLOG("Bones count: {}", scene->mNumMeshes);
 
     auto src_meshes = span(scene->mMeshes, scene->mNumMeshes);
 
