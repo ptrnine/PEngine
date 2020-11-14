@@ -159,11 +159,44 @@ namespace core
     concept IsAdapter = requires{typename T::adapter;};
 
     template <typename T>
+    concept Exception = std::is_base_of_v<std::exception, T>;
+
+    template <typename T, typename F> requires IsAdapter<F>
+    inline auto operator/(const T& v, F f) {
+        return f(v);
+    }
+
+    template <typename T>
     struct constructor_accessor {
         using cref = const constructor_accessor&;
     private:
         friend T;
         constructor_accessor() = default;
+    };
+
+    enum class file_type { regular, directory, char_dev, block_dev, socket, pipe, symlink };
+
+    struct file_stat {
+        u64       size;
+        file_type type;
+    };
+
+    template <typename F>
+    struct opt_map {
+        opt_map(const F& func): map_func(func) {}
+        opt_map(F&& func): map_func(move(func)) {}
+
+        using adapter = void;
+
+        template <Optional T>
+        auto operator()(const T& opt) const {
+            if (opt)
+                return optional{map_func(*opt)};
+            else
+                return optional<decltype(map_func(*opt))>{};
+        }
+
+        F map_func;
     };
 
 } // namespace core

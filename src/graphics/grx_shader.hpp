@@ -3,6 +3,7 @@
 #include "grx_types.hpp"
 #include <core/assert.hpp>
 #include <core/log.hpp>
+#include <core/files.hpp>
 
 namespace core
 {

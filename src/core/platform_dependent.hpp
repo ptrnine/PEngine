@@ -3,6 +3,7 @@
 #include <iostream>
 #include "helper_macros.hpp"
 #include "types.hpp"
+#include "scope_guard.hpp"
 
 
 #ifdef __unix
@@ -12,17 +13,22 @@
  *
  *//////////////////////////////////////////
 
-#include <unistd.h>
+extern "C" {
+#include <fcntl.h>
+#include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
 #include <pwd.h>
 #include <climits>
 #include <cpuid.h>
+}
 
 namespace platform_dependent
 {
     using core::string;
     using core::vector;
 
+    /* TODO: implement for Windows */
     template <typename T> requires core::Integral<T> && core::Unsigned<T>
     inline T byte_swap(T val) {
         static_assert(sizeof(T) == 1 || sizeof(T) == 2 || sizeof(T) == 4 || sizeof(T) == 8, "Invalid type for byte_swap");
@@ -37,6 +43,7 @@ namespace platform_dependent
             return __builtin_bswap64(val);
     }
 
+    /* TODO: implement for Windows */
     inline string get_home_dir() {
         auto bufsize = ::sysconf(_SC_GETPW_R_SIZE_MAX);
         if (bufsize == -1)
@@ -56,6 +63,7 @@ namespace platform_dependent
         return result->pw_dir;
     }
 
+    /* TODO: implement for Windows */
     inline string get_exe_dir() {
         char buffer[PATH_MAX];
         auto len = ::readlink("/proc/self/exe", buffer, PATH_MAX);
@@ -75,6 +83,7 @@ namespace platform_dependent
         }
     }
 
+    /* TODO: implement for Windows */
     inline string get_current_dir() {
         char buffer[PATH_MAX];
 
@@ -91,6 +100,69 @@ namespace platform_dependent
         __cpuid_count(info_type, 0, info[0], info[1], info[2], info[3]);
     }
 
+    /* TODO: implement for Windows */
+    inline core::optional<core::file_stat>
+    get_file_stat(const core::string& path) {
+        int fd = open(path.data(), O_RDONLY | O_NONBLOCK);
+        auto scope_exit = core::scope_guard{[fd](){ close(fd); }};
+
+        /* TODO: return error */
+        if (fd == -1)
+            return {};
+
+        struct stat st;
+        int rc = fstat(fd, &st);
+
+        /* TODO: return error */
+        if (rc == -1)
+            return {};
+
+        close(fd);
+        scope_exit.dismiss();
+
+        core::file_stat result;
+        result.size = static_cast<core::u64>(st.st_size);
+
+        if (S_ISREG(st.st_mode))
+            result.type = core::file_type::regular;
+        else if (S_ISDIR(st.st_mode))
+            result.type = core::file_type::directory;
+        else if (S_ISFIFO(st.st_mode))
+            result.type = core::file_type::pipe;
+        else if (S_ISSOCK(st.st_mode))
+            result.type = core::file_type::socket;
+        else if (S_ISLNK(st.st_mode))
+            result.type = core::file_type::symlink;
+        else if (S_ISCHR(st.st_mode))
+            result.type = core::file_type::char_dev;
+        else if (S_ISBLK(st.st_mode))
+            result.type = core::file_type::block_dev;
+        else {
+            /* TODO: return error */
+            return {};
+        }
+
+        return result;
+    }
+
+    inline bool recursive_create_directory(const core::string& path) {
+        if (path.empty() || path == "." || path == "/")
+            return true;
+
+        auto pos = path.rfind('/');
+        if (pos == path.npos)
+            return true;
+
+        auto parent = path.substr(0, pos);
+
+        if (!recursive_create_directory(parent) && errno != EEXIST)
+            return false;
+
+        if (mkdir(path.data(), 0777) == -1 && errno != EEXIST)
+            throw std::runtime_error("Can't create directory at \'" + path + "\'");
+
+        return true;
+    }
 } // namespace platform_dependent
 
 
@@ -247,3 +319,13 @@ namespace platform_dependent
 
 } // namespace platform_dependent
 
+namespace core
+{
+inline optional<file_type> get_file_type(const string& path) {
+    return platform_dependent::get_file_stat(path) / opt_map(xlambda(opt, opt.type));
+}
+
+inline optional<u64> get_file_size(const string& path) {
+    return platform_dependent::get_file_stat(path) / opt_map(xlambda(opt, opt.size));
+}
+} // namespace core

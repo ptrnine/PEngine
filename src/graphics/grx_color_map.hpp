@@ -12,6 +12,7 @@ extern "C" {
 #include <core/async.hpp>
 #include <core/fiber_pool.hpp>
 #include <core/container_extensions.hpp>
+#include <core/files.hpp>
 #include <core/math.hpp>
 #include <core/types.hpp>
 #include <core/vec.hpp>
