@@ -374,12 +374,10 @@ public:
             throw std::runtime_error("Deferred light manager was destroyed!");                                         \
     }                                                                                                                  \
     [[nodiscard]] core::try_opt<std::decay_t<FIELD_TYPE>> try_##FIELD_NAME() const {                                   \
-        try {                                                                                                          \
-            return FIELD_NAME();                                                                                       \
-        }                                                                                                              \
-        catch (...) {                                                                                                  \
-            return std::current_exception();                                                                           \
-        }                                                                                                              \
+        if (auto mgr = mgr_.lock())                                                                                    \
+            return mgr->dir_light().FIELD_NAME;                                                                        \
+        else                                                                                                           \
+            return std::runtime_error("Deferred light manager was destroyed!");                                        \
     }
 
     _DEF_GETSET(const vec3f&, color)
@@ -427,12 +425,10 @@ public:
         return iter_->FIELD_NAME;                                                                                      \
     }                                                                                                                  \
     [[nodiscard]] core::try_opt<std::decay_t<FIELD_TYPE>> try_##FIELD_NAME() const {                                   \
-        try {                                                                                                          \
+        if (auto mgr = mgr_.lock())                                                                                    \
             return FIELD_NAME();                                                                                       \
-        }                                                                                                              \
-        catch (...) {                                                                                                  \
-            return std::current_exception();                                                                           \
-        }                                                                                                              \
+        else                                                                                                           \
+            return std::runtime_error("Deferred light manager was destroyed");                                         \
     }
 
 #define _DEF_GET_FUNC(FIELD_TYPE, FIELD_NAME)                                                                          \
@@ -446,12 +442,10 @@ public:
     }
 #define _DEF_SET_FUNC(FIELD_TYPE, FIELD_NAME)                                                                          \
     [[nodiscard]] core::try_opt<std::decay_t<FIELD_TYPE>> try_##FIELD_NAME() const {                                   \
-        try {                                                                                                          \
+        if (auto mgr = mgr_.lock())                                                                                    \
             return FIELD_NAME();                                                                                       \
-        }                                                                                                              \
-        catch (...) {                                                                                                  \
-            return std::current_exception();                                                                           \
-        }                                                                                                              \
+        else                                                                                                           \
+            return std::runtime_error("Deferred light manager was destroyed");                                         \
     }
 #define _DEF_GETSET_FUNC(FIELD_TYPE, FIELD_NAME) \
     _DEF_GET_FUNC(FIELD_TYPE, FIELD_NAME) _DEF_SET_FUNC(FIELD_TYPE, FIELD_NAME)
@@ -499,12 +493,10 @@ public:
     }
     [[nodiscard]]
     core::try_opt<core::vector<vec2f>> try_shape() const {
-        try {
-            return shape();
-        }
-        catch (...) {
-            return std::current_exception();
-        }
+        if (auto mgr = mgr_.lock())
+            return iter_->shape();
+        else
+            return std::runtime_error("Forward light manager was destroyed!");
     }
 };
 

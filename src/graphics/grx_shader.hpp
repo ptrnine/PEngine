@@ -502,7 +502,7 @@ public:
             return get_uniform_unwrap<U>(name);
         }
         catch (const shader_exception& e) {
-            return std::current_exception();
+            return shader_exception(e.what());
         }
     }
 

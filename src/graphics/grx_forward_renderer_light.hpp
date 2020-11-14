@@ -467,12 +467,10 @@ public:
             throw std::runtime_error("Forward light manager was destroyed!");                                          \
     }                                                                                                                  \
     [[nodiscard]] core::try_opt<std::decay_t<FIELD_TYPE>> try_##FIELD_NAME() const {                                   \
-        try {                                                                                                          \
-            return FIELD_NAME();                                                                                       \
-        }                                                                                                              \
-        catch (...) {                                                                                                  \
-            return std::current_exception();                                                                           \
-        }                                                                                                              \
+        if (auto mgr = mgr_.lock())                                                                                    \
+            return mgr->dir_light().FIELD_NAME;                                                                        \
+        else                                                                                                           \
+            return std::runtime_error("Forward light manager was destroyed!");                                         \
     }
 
     _DEF_GETSET(const vec3f&, color)
@@ -512,12 +510,10 @@ public:
             throw std::runtime_error("Forward light manager was destroyed!");                                          \
     }                                                                                                                  \
     [[nodiscard]] core::try_opt<std::decay_t<FIELD_TYPE>> try_##FIELD_NAME() const {                                   \
-        try {                                                                                                          \
-            return FIELD_NAME();                                                                                       \
-        }                                                                                                              \
-        catch (...) {                                                                                                  \
-            return std::current_exception();                                                                           \
-        }                                                                                                              \
+        if (auto mgr = mgr_.lock())                                                                                    \
+            return mgr->point_light(num_).FIELD_NAME;                                                                  \
+        else                                                                                                           \
+            return std::runtime_error("Forward light manager was destroyed!");                                         \
     }
 
     _DEF_GETSET(const vec3f&, color)
@@ -563,12 +559,10 @@ public:
             throw std::runtime_error("Forward light manager was destroyed!");                                          \
     }                                                                                                                  \
     [[nodiscard]] core::try_opt<std::decay_t<FIELD_TYPE>> try_##FIELD_NAME() const {                                   \
-        try {                                                                                                          \
-            return FIELD_NAME();                                                                                       \
-        }                                                                                                              \
-        catch (...) {                                                                                                  \
-            return std::current_exception();                                                                           \
-        }                                                                                                              \
+        if (auto mgr = mgr_.lock())                                                                                    \
+            return mgr->spot_light(num_).FIELD_NAME;                                                                   \
+        else                                                                                                           \
+            return std::runtime_error("Forward light manager was destroyed!");                                         \
     }
 
     _DEF_GETSET(const vec3f&, color)
@@ -597,12 +591,12 @@ public:
 
     [[nodiscard]]
     core::try_opt<vec3f> try_position() const {
-        try {
-            return position();
-        } catch (...) {
-            return std::current_exception();
-        }
+        if (auto mgr = mgr_.lock())
+            return mgr->spot_light(num_).position;
+        else
+            throw std::runtime_error("Forward light manager was destroyed!");
     }
+
     void direction(const vec3f& value) {
         if (auto mgr = mgr_.lock()) {
             mgr->spot_light(num_).direction = value;
@@ -621,11 +615,10 @@ public:
 
     [[nodiscard]]
     core::try_opt<vec3f> try_direction() const {
-        try {
-            return direction();
-        } catch (...) {
-            return std::current_exception();
-        }
+        if (auto mgr = mgr_.lock())
+            return mgr->spot_light(num_).direction;
+        else
+            return std::runtime_error("Forward light manager was destroyed!");
     }
 
 #undef _DEF_GETSET

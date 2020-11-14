@@ -145,7 +145,6 @@ inline string DEFAULT_CFG_PATH() {
     auto path = std::filesystem::path(platform_dependent::get_exe_dir());
 
     auto search_entry = [cfg_entry_name](const std::filesystem::path& path) -> optional<std::filesystem::path> {
-        printline("{}", path.string());
         for (auto& p : std::filesystem::directory_iterator(path)) {
             if (p.is_regular_file()) {
                 auto filename = p.path().filename().string();
@@ -571,8 +570,8 @@ public:
             try {
                 return found->second.cast<T>();
             }
-            catch (...) {
-                return std::current_exception();
+            catch (const std::exception& e) {
+                return config_exception(e.what());
             }
         }
         else {
@@ -780,8 +779,8 @@ public:
 
                 return found->second.raw_value(key).value().cast<T>({interpolation_func});
             }
-            catch (...) {
-                return std::current_exception();
+            catch (const std::exception& e) {
+                return config_exception(e.what());
             }
         }
         else {

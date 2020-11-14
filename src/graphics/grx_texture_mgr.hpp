@@ -237,7 +237,7 @@ namespace grx {
                     auto texture_opt = load_texture<core::vec<uint8_t, S>>(path);
 
                     if (!texture_opt)
-                        return core::try_opt<grx_texture_id<S>>(texture_opt.exception_ptr());
+                        return core::try_opt<grx_texture_id<S>>(texture_opt.thrower_ptr());
 
                     auto  raw_id   = texture_opt->raw_id();
                     auto& data_map = id_to_data_map<S>();
@@ -496,7 +496,7 @@ namespace grx {
             if (auto mgr = _parent.lock()) {
                 if constexpr (Opt)
                     if (!map)
-                        return {map.exception_ptr()};
+                        return {map.thrower_ptr()};
 
                 auto [path_pos, was_inserted] = mgr->path_to_id_map<S>().emplace(_path, grx_texture_mgr::path_val_t<S>());
                 auto& path_data = path_pos->second;

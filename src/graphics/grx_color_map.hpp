@@ -631,7 +631,7 @@ save_color_map(const grx_color_map<T, S>& color_map, const core::string& file_pa
         else
             return {std::runtime_error("Can't create file \"" + file_path + "\"")};
     } else
-        return bytes.exception_ptr();
+        return bytes.thrower_ptr();
 }
 
 /**

@@ -154,8 +154,8 @@ namespace core {
             try {
                 if (future_ && future_->valid())
                     storage_ = move(future_->get());
-            } catch (...) {
-                storage_ = std::current_exception();
+            } catch (const std::exception& e) {
+                storage_ = std::runtime_error(e.what());
             }
         }
 
