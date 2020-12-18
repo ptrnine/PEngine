@@ -8,6 +8,11 @@ int pe_main(core::args_view args);
 
 
 int main(int argc, char* argv[]) {
+    auto scope_exit = core::scope_guard([]{
+        core::details::channel_mem::instance().close_all();
+        core::global_fiber_pool().close();
+    });
+
     auto args = core::args_view(argc, argv);
 
     if (args.get("--disable-stdout-logs"))
@@ -21,8 +26,6 @@ int main(int argc, char* argv[]) {
 
     int rc = pe_main(args);
 
-    core::details::channel_mem::instance().close_all();
-    core::global_fiber_pool().close();
     return rc;
 }
 
