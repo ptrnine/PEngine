@@ -4,24 +4,31 @@
 #include "platform_dependent.hpp"
 
 
-#define EVO_SERIALIZE(...) void serialize(serializer& _s) const { _s.write(__VA_ARGS__); } \
-                           void deserialize(deserializer_view& _d) { _d.read(__VA_ARGS__); }
+#define EVO_SERIALIZE(...) void serialize(core::vector<core::byte>& _s) const { core::serialize_all(_s, __VA_ARGS__); } \
+                           void deserialize(core::span<core::byte>& _d) { core::deserialize_all(_d, __VA_ARGS__); }
 
 namespace core
 {
+    using byte_vector = vector<byte>;
+
+    template <typename T>
+    concept SerializableMemberF = requires (T v, byte_vector& b, span<byte>& s) {
+        {v.serialize(b)}; {v.deserialize(s)};
+    };
+
     // Array with size < 32 only (prevent std::array<T, 10000000> compile-time jokes)
     template <typename T>
     concept SerializableStaticCortege =
+            !SerializableMemberF<T> &&
             std::tuple_size<std::remove_reference_t<T>>::value < 32;
 
     template <typename T>
     concept SerializableIterable =
-            (!SerializableStaticCortege<T>) && requires (T&& t) { std::begin(t); std::end(t); };
+            !SerializableMemberF<T> &&
+            (!SerializableStaticCortege<T>) && requires (T&& t) { std::begin(t); std::end(t); std::back_inserter(t); };
 
     template <typename T>
-    concept SerializableArray = SerializableIterable<T> && StdArray<T>;
-
-    using byte_vector = vector<byte>;
+    concept SerializableArray = !SerializableMemberF<T> && SerializableIterable<T> && StdArray<T>;
 
     template <size_t size>
     using byte_array = array<byte, size>;
@@ -30,6 +37,112 @@ namespace core
     auto make_byte_vector(Ts... bytes) {
         return vector{static_cast<byte>(bytes)...};
     }
+
+    template <typename T>
+    struct FloatSizeEqualTypeHelper;
+
+    template <>
+    struct FloatSizeEqualTypeHelper<float> { using type = uint32_t; };
+
+    template <>
+    struct FloatSizeEqualTypeHelper<double> { using type = uint64_t; };
+
+    template <typename T> requires Integral<T> && Unsigned<T>
+    inline void serialize(T val, byte_vector& s);
+
+    template <typename T> requires Integral<T> && (!Unsigned<T>)
+    inline void serialize(T signed_val, byte_vector& s);
+
+    template <typename T> requires FloatingPoint<T>
+    inline void serialize(T float_val, byte_vector& out);
+
+    template <typename T>
+    inline void serialize(const optional<T>& o, byte_vector& out);
+
+    template <SerializableStaticCortege T>
+    inline void serialize(const T& p, byte_vector& out);
+
+    template <SerializableArray T>
+    inline void serialize(const T& vec, byte_vector& out);
+
+    template <SerializableIterable T>
+    inline void serialize(const T& vec, byte_vector& out);
+
+    template <SerializableMemberF T>
+    inline void serialize(const T& v, byte_vector& out) {
+        v.serialize(out);
+    }
+
+    template <typename... Ts>
+    static inline void serialize_all(byte_vector& out, Ts&... args) {
+        ((serialize(args, out)), ...);
+    }
+
+
+    class serializer {
+    public:
+        template <typename... Ts>
+        void write(const Ts&... values) {
+            (serialize(values, _data), ...);
+        }
+
+        [[nodiscard]]
+        const auto& data() const {
+            return _data;
+        }
+
+    private:
+        byte_vector _data;
+    };
+
+
+    template <typename T> requires Integral<T> && Unsigned<T>
+    inline void deserialize(T& val, span<byte>& in);
+
+    template <typename T> requires Integral<T> && (!Unsigned<T>)
+    inline void deserialize(T& out, span<byte>& in);
+
+    template <typename T> requires FloatingPoint<T>
+    inline void deserialize(T& out, span<byte>& in);
+
+    template <typename T>
+    inline void deserialize(optional<T>& out, span<byte>& in);
+
+    template <SerializableStaticCortege T>
+    inline void deserialize(T& p, span<byte>& in);
+
+    template <SerializableArray T>
+    inline void deserialize(T& vec, span<byte>& in);
+
+    template <SerializableIterable T>
+    inline void deserialize(T& vec, span<byte>& in);
+
+    template <SerializableMemberF T>
+    inline void deserialize(T& v, span<byte>& in) {
+        v.deserialize(in);
+    }
+
+    template <typename... Ts>
+    static inline void deserialize_all(span<byte>& in, Ts&... args) {
+        ((deserialize(args, in)), ...);
+    }
+
+    class deserializer_view {
+    public:
+        deserializer_view(span<byte> range): _range(range) {}
+
+        deserializer_view(deserializer_view&&) = delete;
+        deserializer_view& operator=(deserializer_view&&) = delete;
+
+        template <typename... Ts>
+        void read(Ts&... values) {
+            (deserialize(values, _range), ...);
+        }
+
+    private:
+        span<byte> _range;
+    };
+
 
     //==================== Unsigned Integral
 
@@ -80,15 +193,6 @@ namespace core
 
     //===================== FloatingPoint
 
-    template <typename T>
-    struct FloatSizeEqualTypeHelper;
-
-    template <>
-    struct FloatSizeEqualTypeHelper<float> { using type = uint32_t; };
-
-    template <>
-    struct FloatSizeEqualTypeHelper<double> { using type = uint64_t; };
-
     template <typename T> requires FloatingPoint<T>
     inline void serialize(T float_val, byte_vector& out) {
         static_assert(AnyOfType<T, float, double>, "Unsupported floating point type");
@@ -111,24 +215,6 @@ namespace core
         memcpy(&value, &size_eq_int, sizeof(T));
         out = value;
     }
-
-    template <SerializableStaticCortege T>
-    inline void serialize(const T& p, byte_vector& out);
-
-    template <SerializableStaticCortege T>
-    inline void deserialize(T& p, span<byte>& in);
-
-    template <SerializableArray T>
-    inline void serialize(const T& vec, byte_vector& out);
-
-    template <SerializableIterable T>
-    inline void serialize(const T& vec, byte_vector& out);
-
-    template <SerializableArray T>
-    inline void deserialize(T& vec, span<byte>& in);
-
-    template <SerializableIterable T>
-    inline void deserialize(T& vec, span<byte>& in);
 
     //===================== Optional
 
@@ -212,68 +298,4 @@ namespace core
             inserter = move(v);
         }
     }
-
-    class serializer;
-    class deserializer_view;
-    template <typename T>
-    concept Serializable = requires (T v, serializer& s) { v.serialize(s); };
-    template <typename T>
-    concept Deserializable = requires (T v, deserializer_view& d) { v.deserialize(d); };
-
-
-    class serializer {
-    private:
-        template <typename T> requires Serializable<T>
-        void serialize_impl(const T& value) {
-            value.serialize(*this);
-        }
-
-        template <typename T> requires (!Serializable<T>)
-        void serialize_impl(const T& value) {
-            serialize(value, _data);
-        }
-
-    public:
-        template <typename... Ts>
-        void write(const Ts&... values) {
-            (serialize_impl(values), ...);
-        }
-
-        const auto& data() const {
-            return _data;
-        }
-
-    private:
-        byte_vector _data;
-    };
-
-
-    class deserializer_view {
-    private:
-        template <typename T> requires Deserializable<T>
-        void deserialize_impl(T& value) {
-            value.deserialize(*this);
-        }
-
-        template <typename T> requires (!Deserializable<T>)
-        void deserialize_impl(T& value) {
-            deserialize(value, _range);
-        }
-
-    public:
-        deserializer_view(span<byte> range): _range(range) {}
-
-        deserializer_view(deserializer_view&&) = delete;
-        deserializer_view& operator=(deserializer_view&&) = delete;
-
-        template <typename... Ts>
-        void read(Ts&... values) {
-            (deserialize_impl(values), ...);
-        }
-
-
-    private:
-        span<byte> _range;
-    };
-
 } // namespace core
