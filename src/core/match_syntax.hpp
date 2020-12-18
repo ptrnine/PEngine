@@ -29,6 +29,7 @@ private:
     static no test(check<void (fallback::*)(), &C::operator()>*);
 
 public:
+    is_callable_impl() = default; /* Disable warning */
     static constexpr bool value = sizeof(test<derived>(0)) == sizeof(yes);
 };
 
