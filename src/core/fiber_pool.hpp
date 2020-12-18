@@ -65,15 +65,15 @@ private:
     using task_tuple_t = tuple<job_launch_policy, task_t>;
 
 public:
-    static constexpr size_t default_work_queue_size = 32;
+    static constexpr size_t default_work_queue_size = 16384;
 
     static size_t default_threads_count() noexcept {
         auto count = std::thread::hardware_concurrency();
         return count < 2 ? 1 : count - 1;
     }
 
-    fiber_pool(size_t threads_count = default_threads_count(), size_t work_queue_size = default_work_queue_size):
-        threads_count_(threads_count), channel_(work_queue_size) {
+    fiber_pool(size_t threads_count = default_threads_count(), size_t iwork_queue_size = default_work_queue_size):
+        threads_count_(threads_count), work_queue_size_(iwork_queue_size), channel_(iwork_queue_size) {
         try {
             for (uint32_t i = 0; i < threads_count_; ++i) threads_.emplace_back(&fiber_pool::worker, this);
         }
@@ -125,6 +125,10 @@ public:
         return threads_count_;
     }
 
+    size_t work_queue_size() const noexcept {
+        return work_queue_size_;
+    }
+
 private:
     void worker() {
         fibers::use_scheduling_algorithm<fibers::algo::work_stealing>(threads_count_, true);
@@ -138,6 +142,7 @@ private:
 
 private:
     size_t                                 threads_count_ = 1;
+    size_t                                 work_queue_size_;
     fibers::buffered_channel<task_tuple_t> channel_;
     vector<std::thread>                    threads_;
 };
