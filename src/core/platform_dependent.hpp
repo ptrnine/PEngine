@@ -163,6 +163,11 @@ namespace platform_dependent
 
         return true;
     }
+
+    inline bool create_pipe(const core::string& path) {
+        int rc = mkfifo(path.data(), 0666);
+        return rc == 0;
+    }
 } // namespace platform_dependent
 
 
