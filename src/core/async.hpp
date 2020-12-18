@@ -409,10 +409,9 @@ namespace core {
                 if constexpr (std::same_as<ChanT<T>, boost::fibers::buffered_channel<T>>)
                     return _mpmc.try_pop(result);
                 else {
-                    auto status = _mpmc.pop_wait_for(result, 0s);
-                    if (status == channel_op_status::timeout)
-                        status = channel_op_status::empty;
-                    return status;
+                    std::cerr << "Can't try_pop for unbuffered channel" << std::endl;
+                    std::terminate();
+                    return channel_op_status::closed;
                 }
             }
 
@@ -420,10 +419,9 @@ namespace core {
                 if constexpr (std::same_as<ChanT<T>, boost::fibers::buffered_channel<T>>)
                     return _mpmc.try_push(value);
                 else {
-                    auto status = _mpmc.push_wait_for(value, 0s);
-                    if (status == channel_op_status::timeout)
-                        status = channel_op_status::empty;
-                    return status;
+                    std::cerr << "Can't try_push for unbuffered channel" << std::endl;
+                    std::terminate();
+                    return channel_op_status::closed;
                 }
             }
 
@@ -431,10 +429,9 @@ namespace core {
                 if constexpr (std::same_as<ChanT<T>, boost::fibers::buffered_channel<T>>)
                     return _mpmc.try_push(move(value));
                 else {
-                    auto status = _mpmc.push_wait_for(move(value), 0s);
-                    if (status == channel_op_status::timeout)
-                        status = channel_op_status::empty;
-                    return status;
+                    std::cerr << "Can't try_push for unbuffered channel" << std::endl;
+                    std::terminate();
+                    return channel_op_status::closed;
                 }
             }
 
