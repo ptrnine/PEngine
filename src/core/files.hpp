@@ -143,7 +143,7 @@ write_file(const string& file_path, string_view data, bool append = false) {
  * @return true if write successful, false otherwise
  */
 [[nodiscard]] inline bool
-write_file(const string& file_path, span<byte> data, bool append = false) {
+write_file(const string& file_path, span<const byte> data, bool append = false) {
     auto flags = std::ios_base::out;
     if (append)
         flags |= std::ios_base::app;
@@ -182,7 +182,7 @@ inline void write_file_unwrap(const string& file_path, string_view data, bool ap
  * @param data - the file content
  * @param append - if true then appends data to the end of the file
  */
-inline void write_file_unwrap(const string& file_path, span<byte> data, bool append = false) {
+inline void write_file_unwrap(const string& file_path, span<const byte> data, bool append = false) {
     if (!write_file(file_path, data, append))
         throw std::runtime_error("Can't write file '" + file_path + "'");
 }
@@ -259,6 +259,31 @@ inline std::ofstream open_cleverly(const string&           dir,
         throw std::runtime_error("Can't open file " + path);
 
     return ofs;
+}
+
+inline std::fstream open_pipe(const string& path, std::ios_base::openmode mode) {
+    auto type = get_file_type(path);
+    if (type) {
+        if (*type != file_type::pipe)
+            throw std::runtime_error("File " + path + " already exists and it's not a pipe");
+    } else {
+        if (!(mode & std::ios_base::out))
+            throw std::runtime_error("File " + path + " does not exist");
+        else if (!platform_dependent::create_pipe(path))
+            throw std::runtime_error("Can't create pipe at " + path);
+    }
+
+    auto pipe = std::fstream(path, mode);
+    if (!pipe.is_open())
+        throw std::runtime_error("Can't open pipe at " + path);
+
+    return pipe;
+}
+
+[[nodiscard]]
+inline bool has_extension(const string& file_path, string_view extension) {
+    return file_path.size() >= extension.size() &&
+        case_insensitive_match(string_view(file_path).substr(file_path.size() - extension.size()), extension);
 }
 
 } // namespace core
