@@ -34,3 +34,6 @@
 [submodule "submodule_tools/AFLplusplus"]
 	path = submodule_tools/AFLplusplus
 	url = https://github.com/AFLplusplus/AFLplusplus
+[submodule "submodules/boost"]
+	path = submodules/boost
+	url = https://github.com/boostorg/boost
