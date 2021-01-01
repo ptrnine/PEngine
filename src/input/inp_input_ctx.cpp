@@ -5,6 +5,7 @@
 #define GLFW_EXPOSE_NATIVE_X11
 #include <GLFW/glfw3native.h>
 
+#include "inp_unix_mouse.hpp"
 
 void inp::inp_input_ctx::update() {
     auto x11_display = glfwGetX11Display();
@@ -66,6 +67,9 @@ void inp::inp_input_ctx::update() {
         glfw_events.push_back(event);
     }
 
+    if (_raw_mouse_input)
+        _raw_mouse_input->update_positions();
+
     /*
      * Put back events for glfwPollEvents
      * (Shitty solution, but I have no any ideas)
@@ -74,4 +78,19 @@ void inp::inp_input_ctx::update() {
         XPutBackEvent(x11_display, &e);
 
     glfwPollEvents();
+}
+
+core::vec2f inp::inp_input_ctx::raw_mouse_movement(mouse_id id) const {
+    if (!_raw_mouse_input)
+        throw std::runtime_error("There is no raw mouse input context!");
+
+    return _raw_mouse_input->get_last_position(id);
+}
+
+void inp::inp_input_ctx::enable_default_raw_mouse_input() {
+    _raw_mouse_input = std::make_unique<std::remove_pointer_t<decltype(_raw_mouse_input.get())>>();
+}
+
+void inp::inp_input_ctx::disable_raw_mouse_input() {
+    _raw_mouse_input = nullptr;
 }

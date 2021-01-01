@@ -6,6 +6,8 @@
 
 #include <gainput/gainput.h>
 
+#include "inp_unix_mouse.hpp"
+
 struct GLFWwindow;
 
 namespace inp {
@@ -50,7 +52,9 @@ namespace inp {
         SINGLETON_IMPL(inp_input_ctx);
 
     private:
-        inp_input_ctx() = default;
+        inp_input_ctx() {
+            enable_default_raw_mouse_input();
+        }
 
     private:
         inp_state& input_state_for(GLFWwindow* wnd) {
@@ -96,8 +100,20 @@ namespace inp {
          */
         void update();
 
+        [[nodiscard]]
+        core::vec2f raw_mouse_movement(mouse_id id = mouse_id::mice) const;
+        void enable_default_raw_mouse_input();
+        void disable_raw_mouse_input();
+
+
+        [[nodiscard]]
+        bool is_raw_mouse_input_enabled() const {
+            return _raw_mouse_input != nullptr;
+        }
+
     protected:
         core::hash_map<GLFWwindow*, inp_state> _window_map;
+        core::unique_ptr<mouse_input_service>  _raw_mouse_input;
     };
 
 
