@@ -116,14 +116,14 @@ namespace mesh_vbo_skeleton_types
 }
 
 /**
- * @brief Stores data of one mesh group
+ * @brief Stores data of one mesh entry
  */
 struct grx_mesh_entry { // NOLINT
     uint     indices_count;
     uint     vertices_count;
     uint     material_index = std::numeric_limits<uint>::max();
-    uint     start_vertex_pos;
-    uint     start_index_pos;
+    uint     start_vertex_pos = 0;
+    uint     start_index_pos = 0;
     grx_aabb aabb;
 };
 

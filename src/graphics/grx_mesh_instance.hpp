@@ -103,10 +103,10 @@ public:
                 auto& anim_name = _anim_data.current_animation.value();
                 auto& anim      = skeleton->animations[anim_name];
                 auto& spec      = _anim_data.specs[anim_name];
-                auto  ticks     = spec.timer.measure_count() * anim.ticks_per_second;
+                auto  ticks     = spec.timer.measure_count() * anim.ticks_per_second();
 
-                if (!spec.stop_on_end || ticks < anim.duration) {
-                    ticks = std::fmod(ticks, anim.duration);
+                if (!spec.stop_on_end || ticks < anim.duration()) {
+                    ticks = std::fmod(ticks, anim.duration());
                     grx_mesh_mgr::anim_traverse(_bone_transforms, *skeleton, anim, ticks, skeleton->root_node.get());
                 }
                 else if (_default_anim) {

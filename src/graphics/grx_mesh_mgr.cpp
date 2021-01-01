@@ -15,6 +15,7 @@
 #include <core/log.hpp>
 #include <core/math.hpp>
 
+#include "graphics/grx_texture_path_set.hpp"
 #include "grx_camera.hpp"
 #include "grx_debug.hpp"
 #include "grx_shader_mgr.hpp"
@@ -194,59 +195,6 @@ mesh_bone_data mesh_extract_bone_data(const aiScene* scene, const vector<grx_mes
     return {move(bones), move(skeleton_tree), move(bone_map), move(aabbs), move(offsets), move(transforms)};
 }
 
-hash_map<string, grx_animation> mesh_extract_animations(const aiScene* scene) {
-    hash_map<string, grx_animation> animations;
-
-    DLOG("Animations count: {}", scene->mNumAnimations);
-
-    for (auto anim : span(scene->mAnimations, scene->mNumAnimations)) {
-        auto [pos, was_inserted] = animations.emplace(string(anim->mName.data), grx_animation());
-
-        DLOG("Animation name: {}", anim->mName.data);
-
-        if (was_inserted) {
-            pos->second.duration         = anim->mDuration;
-            pos->second.ticks_per_second = anim->mTicksPerSecond;
-
-            DLOG("Channels count: {}", anim->mNumChannels);
-
-            for (auto channel : span(anim->mChannels, anim->mNumChannels)) {
-                DLOG("Channel name: {}", channel->mNodeName.data);
-
-                auto [pos2, was_inserted2] =
-                    pos->second.channels.emplace(string(channel->mNodeName.data), anim_channel());
-
-                if (was_inserted2) {
-                    auto& src_channel = pos2->second;
-
-                    src_channel.position_keys.resize(channel->mNumPositionKeys);
-                    src_channel.scaling_keys.resize(channel->mNumScalingKeys);
-                    src_channel.rotation_keys.resize(channel->mNumRotationKeys);
-
-                    auto src_position_keys = span(channel->mPositionKeys, channel->mNumPositionKeys);
-                    auto src_scaling_keys  = span(channel->mScalingKeys, channel->mNumScalingKeys);
-                    auto src_rotation_keys = span(channel->mRotationKeys, channel->mNumRotationKeys);
-
-                    for (auto& [dst, src] : zip_view(src_channel.position_keys, src_position_keys)) {
-                        dst.time  = src.mTime;
-                        dst.value = vec{src.mValue.x, src.mValue.y, src.mValue.z};
-                    }
-                    for (auto& [dst, src] : zip_view(src_channel.scaling_keys, src_scaling_keys)) {
-                        dst.time  = src.mTime;
-                        dst.value = vec{src.mValue.x, src.mValue.y, src.mValue.z};
-                    }
-                    for (auto& [dst, src] : zip_view(src_channel.rotation_keys, src_rotation_keys)) {
-                        dst.time  = src.mTime;
-                        dst.value = glm::quat(src.mValue.w, src.mValue.x, src.mValue.y, src.mValue.z);
-                    }
-                }
-            }
-        }
-    }
-
-    return animations;
-}
-
 vector<texture_path_pack> mesh_extract_texture_paths(const aiScene* scene, const string& dir) {
     auto paths_pack    = vector<texture_path_pack>(scene->mNumMaterials);
     auto src_materials = span(scene->mMaterials, scene->mNumMaterials);
@@ -375,28 +323,28 @@ pair<VboT, vector<grx_mesh_entry>> load_mesh_vbo(const aiScene* scene) {
 }
 
 vector<grx_texture_set<4>>
-mesh_load_texture_sets(const aiScene* scene, const string& dir, grx_texture_mgr& texture_mgr) {
+mesh_load_texture_sets(const aiScene* scene, const string& dir, grx_texture_mgr<4>& texture_mgr) {
     auto                       texsets_paths = mesh_extract_texture_paths(scene, dir);
     vector<grx_texture_set<4>> texsets(texsets_paths.size());
 
-    auto load_if_valid = [&texture_mgr](auto& texture_set, const auto& path_opt, size_t index) {
+    auto load_if_valid = [&texture_mgr, &dir](auto& texture_set, const auto& path_opt, grx_texture_set_tag index) {
         if (path_opt) {
             DLOG("Load texture: {}", *path_opt);
-            texture_set.set(index, texture_mgr.load_async<color_rgba>(*path_opt));
+            texture_set.set(index, texture_mgr.load(cfg_path("", cfg_make_relative(dir) + *path_opt)));
         /* Set default diffuse or normal */
-        } else if (index == grx_texture_set<4>::diffuse) {
-            DLOG("Load texture: {}", texture_mgr.textures_dir() + "basic/dummy_diffuse.png");
-            texture_set.set(index, texture_mgr.load_async<color_rgba>(texture_mgr.textures_dir() + "basic/dummy_diffuse.png"));
-        } else if (index == grx_texture_set<4>::normal) {
-            DLOG("Load texture: {}", texture_mgr.textures_dir() + "basic/dummy_normal.png");
-            texture_set.set(index, texture_mgr.load_async<color_rgba>(texture_mgr.textures_dir() + "basic/dummy_normal.png"));
+        } else if (index == grx_texture_set_tag::diffuse) {
+            DLOG("Load texture: {}", texture_mgr.textures_dir() / "basic/dummy_diffuse.png");
+            texture_set.set(index, texture_mgr.load(cfg_path("textures_dir", "basic/dummy_diffuse.png")));
+        } else if (index == grx_texture_set_tag::normal) {
+            DLOG("Load texture: {}", texture_mgr.textures_dir() / "basic/dummy_normal.png");
+            texture_set.set(index, texture_mgr.load(cfg_path("textures_dir", "basic/dummy_normal.png")));
         }
     };
 
     for (auto& [texset, texset_paths] : core::zip_view(texsets, texsets_paths)) {
-        load_if_valid(texset, texset_paths.diffuse, grx_texture_set<4>::diffuse);
-        load_if_valid(texset, texset_paths.normal, grx_texture_set<4>::normal);
-        load_if_valid(texset, texset_paths.specular, grx_texture_set<4>::specular);
+        load_if_valid(texset, texset_paths.diffuse, grx_texture_set_tag::diffuse);
+        load_if_valid(texset, texset_paths.normal, grx_texture_set_tag::normal);
+        load_if_valid(texset, texset_paths.specular, grx_texture_set_tag::specular);
     }
 
     return texsets;
@@ -454,44 +402,8 @@ void grx_mesh_mgr::load_anim(const aiScene* scene, grx_bone_data& bone_data) {
 
         DLOG("Animation name: {}", anim->mName.data);
 
-        if (was_inserted) {
-            pos->second.duration         = anim->mDuration;
-            pos->second.ticks_per_second = anim->mTicksPerSecond;
-
-            DLOG("Channels count: {}", anim->mNumChannels);
-
-            for (auto channel : span(anim->mChannels, anim->mNumChannels)) {
-                DLOG("Channel name: {}", channel->mNodeName.data);
-
-                auto [pos2, was_inserted2] =
-                    pos->second.channels.emplace(string(channel->mNodeName.data), anim_channel());
-
-                if (was_inserted2) {
-                    auto& src_channel = pos2->second;
-
-                    src_channel.position_keys.resize(channel->mNumPositionKeys);
-                    src_channel.scaling_keys.resize(channel->mNumScalingKeys);
-                    src_channel.rotation_keys.resize(channel->mNumRotationKeys);
-
-                    auto src_position_keys = span(channel->mPositionKeys, channel->mNumPositionKeys);
-                    auto src_scaling_keys  = span(channel->mScalingKeys, channel->mNumScalingKeys);
-                    auto src_rotation_keys = span(channel->mRotationKeys, channel->mNumRotationKeys);
-
-                    for (auto& [dst, src] : zip_view(src_channel.position_keys, src_position_keys)) {
-                        dst.time  = src.mTime;
-                        dst.value = vec{src.mValue.x, src.mValue.y, src.mValue.z};
-                    }
-                    for (auto& [dst, src] : zip_view(src_channel.scaling_keys, src_scaling_keys)) {
-                        dst.time  = src.mTime;
-                        dst.value = vec{src.mValue.x, src.mValue.y, src.mValue.z};
-                    }
-                    for (auto& [dst, src] : zip_view(src_channel.rotation_keys, src_rotation_keys)) {
-                        dst.time  = src.mTime;
-                        dst.value = glm::quat(src.mValue.w, src.mValue.x, src.mValue.y, src.mValue.z);
-                    }
-                }
-            }
-        }
+        if (was_inserted)
+            pos->second = grx_animation::from_assimp(anim);
     }
 }
 
@@ -505,42 +417,34 @@ void grx_mesh_mgr::anim_traverse(span<glm::mat4>      output_bone_transforms,
                                  double               time,
                                  const bone_node*     node,
                                  const glm::mat4&     parent_transform) {
-    auto get_neighborhood = [](double time, const auto& keys) {
-        time        = fmod(time, keys.back().time);
-        auto next   = keys / find_if([=](auto& k) { return time < k.time; });
-        auto cur    = next == keys.begin() ? keys.end() - 1 : next - 1;
-        auto factor = static_cast<float>((time - cur->time) / (next->time - cur->time));
-        return tuple{next, cur, factor};
+    auto calc_scaling = [=](double time, const grx_animation_channel& c) -> glm::mat4 {
+        //if (c.scaling_keys.size() == 1)
+        //    return glm::scale(glm::mat4(1.f), to_glm(c.scaling_keys.front().value));
+
+        auto [cur, next, factor] = grx_animation_key_lookup(c.scaling_keys).interstep(time);
+        return glm::scale(glm::mat4(1.f), to_glm(lerp(cur, next, factor)));
     };
 
-    auto calc_scaling = [=](double time, const anim_channel& c) -> glm::mat4 {
-        if (c.scaling_keys.size() == 1)
-            return glm::scale(glm::mat4(1.f), to_glm(c.scaling_keys.front().value));
+    auto calc_rotation = [=](double time, const grx_animation_channel& c) -> glm::mat4 {
+        //if (c.rotation_keys.size() == 1)
+        //    return glm::mat4(c.rotation_keys.front().value);
 
-        auto [next, cur, factor] = get_neighborhood(time, c.scaling_keys);
-        return glm::scale(glm::mat4(1.f), to_glm(lerp(cur->value, next->value, factor)));
+        auto [cur, next, factor] = grx_animation_key_lookup(c.rotation_keys).interstep(time);
+        return glm::mat4_cast(glm::normalize(glm::slerp(cur, next, factor)));
     };
 
-    auto calc_rotation = [=](double time, const anim_channel& c) -> glm::mat4 {
-        if (c.rotation_keys.size() == 1)
-            return glm::mat4(c.rotation_keys.front().value);
+    auto calc_position = [=](double time, const grx_animation_channel& c) -> glm::mat4 {
+        //if (c.position_keys.size() == 1)
+        //    return glm::translate(glm::mat4(1.f), to_glm(c.position_keys.front().value));
 
-        auto [next, cur, factor] = get_neighborhood(time, c.rotation_keys);
-        return glm::mat4_cast(glm::normalize(glm::slerp(cur->value, next->value, factor)));
+        auto [cur, next, factor] = grx_animation_key_lookup(c.position_keys).interstep(time);
+        return glm::translate(glm::mat4(1.f), to_glm(lerp(cur, next, factor)));
     };
 
-    auto calc_position = [=](double time, const anim_channel& c) -> glm::mat4 {
-        if (c.position_keys.size() == 1)
-            return glm::translate(glm::mat4(1.f), to_glm(c.position_keys.front().value));
-
-        auto [next, cur, factor] = get_neighborhood(time, c.position_keys);
-        return glm::translate(glm::mat4(1.f), to_glm(lerp(cur->value, next->value, factor)));
-    };
-
-    auto      channel_pos = anim.channels.find(node->name);
+    auto      channel_pos = anim.channels().find(node->name);
     glm::mat4 transform   = node->transform;
 
-    if (channel_pos != anim.channels.end()) {
+    if (channel_pos != anim.channels().end()) {
         auto scaling     = calc_scaling(time, channel_pos->second);
         auto rotation    = calc_rotation(time, channel_pos->second);
         auto translation = calc_position(time, channel_pos->second);
@@ -579,12 +483,12 @@ string collada_prepare(string_view path) {
 }
 } // namespace grx
 
-grx::grx_mesh_mgr::grx_mesh_mgr(const core::config_manager& cm) {
-    _texture_mgr = grx_texture_mgr::create_shared(cm);
+grx::grx_mesh_mgr::grx_mesh_mgr(const core::config_manager& cm, const core::string& mgr_tag) {
+    _texture_mgr = grx_texture_mgr<4>::create_shared(mgr_tag);
     _models_dir  = cm.entry_dir() / cm.read_unwrap<string>("models_dir");
 }
 
-auto grx::grx_mesh_mgr::load_mesh(string_view path, bool instanced, grx_texture_mgr* texture_mgr)
+auto grx::grx_mesh_mgr::load_mesh(string_view path, bool instanced, grx_texture_mgr<4>* texture_mgr)
     -> shared_ptr<grx_mesh> {
     auto importer = Assimp::Importer();
 
@@ -699,16 +603,18 @@ void draw(grx_mesh&                             m,
 
     for (auto& entry : m._mesh_entries) {
         if (enable_textures && entry.material_index != std::numeric_limits<uint>::max()) {
-            auto& texture_resource = m._texture_sets[entry.material_index].get_resource(0); // 0 is diffuse
-            if (texture_resource.is_ready()) {
-                texture_resource.get().value().bind_unit(0);
+            auto& diffuse_id =
+                m._texture_sets[entry.material_index].get(grx_texture_set_tag::diffuse);
+            if (auto texture = diffuse_id.try_access()) {
+                texture->bind_unit(0);
                 if (auto txtr = program->get_uniform<int>("texture0"))
                     (*txtr) = 0;
             }
 
-            auto& normal_resource = m._texture_sets[entry.material_index].get_resource(1); // 1 is normal
-            if (normal_resource.is_ready()) {
-                normal_resource.get().value().bind_unit(1);
+            auto& normal_id =
+                m._texture_sets[entry.material_index].get(grx_texture_set_tag::normal);
+            if (auto texture = normal_id.try_access()) {
+                texture->bind_unit(1);
                 if (auto txtr = program->get_uniform<int>("texture1"))
                     (*txtr) = 1;
             }
@@ -755,16 +661,18 @@ void grx::grx_mesh::draw_instanced(const glm::mat4&                      vp,
 
     for (auto& entry : _mesh_entries) {
         if (enable_textures && entry.material_index != std::numeric_limits<uint>::max()) {
-            auto& texture_resource = _texture_sets[entry.material_index].get_resource(0); // 0 is diffuse
-            if (texture_resource.is_ready()) {
-                texture_resource.get().value().bind_unit(0);
+            auto& diffuse_id =
+                _texture_sets[entry.material_index].get(grx_texture_set_tag::diffuse);
+            if (auto texture = diffuse_id.try_access()) {
+                texture->bind_unit(0);
                 if (auto txtr = program->get_uniform<int>("texture0"))
                     (*txtr) = 0;
             }
 
-            auto& normal_resource = _texture_sets[entry.material_index].get_resource(1); // 1 is normal
-            if (normal_resource.is_ready()) {
-                normal_resource.get().value().bind_unit(1);
+            auto& normal_id =
+                _texture_sets[entry.material_index].get(grx_texture_set_tag::normal);
+            if (auto texture = normal_id.try_access()) {
+                texture->bind_unit(1);
                 if (auto txtr = program->get_uniform<int>("texture1"))
                     (*txtr) = 1;
             }

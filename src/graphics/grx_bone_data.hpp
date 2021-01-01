@@ -5,6 +5,7 @@
 
 #include "grx_shader.hpp"
 #include "grx_types.hpp"
+#include "grx_animation.hpp"
 
 namespace grx
 {
@@ -14,48 +15,6 @@ using core::string;
 using core::unique_ptr;
 using core::vec3f;
 using core::vector;
-
-/**
- * @brief Position animation key data
- */
-struct anim_position_key {
-    double time;
-    vec3f  value;
-};
-
-/**
- * @brief Scaling animation key data
- */
-struct anim_scaling_key {
-    double time;
-    vec3f  value;
-};
-
-/**
- * @brief Rotation animation key data
- */
-struct anim_rotation_key {
-    double    time;
-    glm::quat value;
-};
-
-/**
- * @brief Stores data specific for the animation channel
- */
-struct anim_channel {
-    vector<anim_position_key> position_keys;
-    vector<anim_scaling_key>  scaling_keys;
-    vector<anim_rotation_key> rotation_keys;
-};
-
-/**
- * @brief Stores animation specific data
- */
-struct grx_animation { // NOLINT
-    double                         duration;
-    double                         ticks_per_second;
-    hash_map<string, anim_channel> channels;
-};
 
 /**
  * @brief Stores bone specific data
