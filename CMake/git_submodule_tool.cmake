@@ -2,7 +2,7 @@ macro(git_submodule_build_tool _tool_name)
     message("${PE_TOOLS_DIR}/${_tool_name}")
 
     if (NOT ${_tool_name}_ALREADY_BUILT)
-        execute_process(COMMAND make CC="${CMAKE_C_COMPILER}"
+        execute_process(COMMAND make
                 RESULT_VARIABLE result
                 WORKING_DIRECTORY "${PE_TOOLS_DIR}/${_tool_name}"
                 )
