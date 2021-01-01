@@ -1,4 +1,5 @@
 
+#include <random>
 #define DEFERRED
 
 #ifdef DEFERRED
@@ -14,6 +15,8 @@
 #include <graphics/grx_mesh_instance.hpp>
 #include <input/inp_input_ctx.hpp>
 #include <graphics/grx_deferred_renderer_light.hpp>
+#include <graphics/grx_cpu_mesh_group.hpp>
+#include <graphics/grx_object.hpp>
 
 using namespace grx;
 using namespace core;
@@ -73,36 +76,57 @@ int pe_main(args_view args) {
     auto shadow_sp = grx_shader_tech(cm, "shader_tech_csm_fr_shadow");
     auto geom_tech = grx_shader_tech(cm, "shader_tech_ds_geometry");
     auto ds_prog   = grx_shader_program::create_shared(cm, "shader_csm_ds");
-    grx_mesh_mgr mm(cm);
+    grx_mesh_mgr mm(cm, "mesh_mgr");
     //grx_mesh_instance mesh(mm, "cz805/cz805.dae");
-    grx_mesh_instance mesh(mm, "glock19x/glock19x.dae");
+    //grx_mesh_instance mesh(mm, "glock19x/glock19x.dae");
+
+    auto ttmgr = grx_texture_mgr<4>::create_shared("manager");
+    //auto obj = load_object<grx_cpu_boned_mesh_group_t>(ttmgr, "glock19x/glock19x.dae");
+    using obj_t = decltype(load_object<grx_cpu_boned_mesh_group_t>(ttmgr, ""));
+    obj_t obj;
+
+    core::printline("load start");
+    auto obj_data = read_binary_file_unwrap("/home/ptrnine/Desktop/glock-pe.xxx");
+    deserializer_view deser(obj_data);
+    deser.read(obj);
+    core::printline("load end");
+
+    //serializer ser;
+    //ser.write(obj);
+    //write_file_unwrap("/home/ptrnine/Desktop/glock-pe.xxx", ser.data());
+
     //mesh.set_scale({0.0525f, 0.0525f, 0.0525f});
     //mesh.set_debug_aabb_draw(true);
     //grx_mesh_instance mesh(mm, "skate/skate.dae");
     //mesh.set_scale({3.f, 3.f, 3.f});
     //mesh.set_debug_aabb_draw(true);
     //mesh.set_debug_bone_aabb_draw(true);
-    mesh.set_rotation({-90.f, 180.f, 0.f});
+    //mesh.set_rotation({-90.f, 180.f, 0.f});
 
     //sl2.position({-158.1f, -2.f, -10.f});
     //sl2.direction({1.0f, 0.f, 0.f});
 
-    mesh.default_animation("idle");
+    //mesh.default_animation("idle");
 
     timer timer;
     fps_counter counter;
+
+    std::mt19937 mt;
     while (!wnd.should_close()) {
         inp::inp_ctx().update();
 
         if (auto map = input_map.lock()) {
+            /*
             if (map->GetBoolIsNew('R')) {
-                mesh.mesh().skeleton()->animations.at("reload_empty").ticks_per_second = 8.0;
+                mesh.mesh().skeleton()->animations.at("reload_empty").ticks_per_second(8.0);
                 mesh.play_animation("reload_empty");
             }
             if (map->GetBoolIsNew('Z')) {
-                mesh.mesh().skeleton()->animations.at("shot").ticks_per_second = 45.0;
+                mesh.mesh().skeleton()->animations.at("shot").ticks_per_second(55.0);
                 mesh.play_animation("shot");
             }
+            */
+
             /*
             if (map->GetBool('Z'))
                 sl2.position(sl2.position() + vec3f{-0.2f, 0.f, 0.f});
@@ -126,12 +150,13 @@ int pe_main(args_view args) {
         sl2.direction(cam->directory());
 */
 
-        mesh.update_animation_transforms();
+        //mesh.update_animation_transforms();
 
         grx::grx_frustum_mgr().calculate_culling(cam->extract_frustum());
 
         ds_mgr->start_geometry_pass();
-        mesh.draw(cam->view_projection(), geom_tech);
+        //mesh.draw(cam->view_projection(), geom_tech);
+        obj.draw(cam->view_projection(), glm::mat4(1.f), geom_tech);
         //ds_mgr->debug_draw(cam->view_projection());
         //sss->activate();
         //sss->get_uniform_unwrap<glm::mat4>("MVP") = cam->view_projection() * spot_light.matttt();
@@ -162,6 +187,7 @@ int pe_main(args_view args) {
 
     return 0;
 }
+
 
 #else
 
