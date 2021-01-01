@@ -3,6 +3,29 @@
 #include <core/serialization.hpp>
 #include <core/vec.hpp>
 
+struct some_type {
+    core::pair<core::string, int> a;
+    double b;
+};
+
+namespace core {
+    template <>
+    struct pe_serialize<some_type> {
+        void operator()(const some_type& s, byte_vector& v) {
+            serialize(s.a, v);
+            serialize(s.b, v);
+        }
+    };
+    template <>
+    struct pe_deserialize<some_type> {
+        void operator()(some_type& s, span<const byte>& v) {
+            deserialize(s.a, v);
+            deserialize(s.b, v);
+        }
+    };
+
+}
+
 TEST_CASE("serialization & deserialization") {
     using namespace core;
 
@@ -129,7 +152,7 @@ TEST_CASE("serialization & deserialization") {
     SECTION("class member serialization") {
         struct test_class {
         public:
-            EVO_SERIALIZE(a, b, c, d)
+            PE_SERIALIZE(a, b, c, d)
 
             void clear() {
                 a = 0;
@@ -160,5 +183,53 @@ TEST_CASE("serialization & deserialization") {
         REQUIRE(t.b == test_class().b);
         REQUIRE(t.c == test_class().c);
         REQUIRE(t.d == test_class().d);
+    }
+
+    SECTION("map serialization") {
+        hash_map<string, double> map;
+        map.emplace("one", 1.111);
+        map.emplace("two", 2.222);
+
+        serializer s;
+        s.write(map);
+        auto s1 = format("{}", s.data());
+        bool cmp =
+            s1 == "{ 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, "
+                  "0x00, 0x00, 0x00, 0x00, 0x6f, 0x6e, 0x65, 0x2d, 0xb2, 0x9d, 0xef, 0xa7, "
+                  "0xc6, 0xf1, 0x3f, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x74, "
+                  "0x77, 0x6f, 0x2d, 0xb2, 0x9d, 0xef, 0xa7, 0xc6, 0x01, 0x40 }" ||
+            s1 == "{ 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x74, 0x77, 0x6f, 0x2d, "
+                  "0xb2, 0x9d, 0xef, 0xa7, 0xc6, 0x01, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, "
+                  "0x00, 0x00, 0x00, 0x03, 0x00, 0x0      0, 0x00, 0x00, 0x00, 0x00, 0x00, "
+                  "0x6f, 0x6e, 0x65, 0x2d, 0xb2, 0x9d, 0xef, 0xa7, 0xc6, 0xf1, 0x3f }";
+        REQUIRE(cmp);
+
+        hash_map<string, double> map2;
+        auto bytes = s.data();
+        auto ds = deserializer_view(bytes);
+        ds.read(map2);
+
+        REQUIRE(map == map2);
+    }
+
+    SECTION("external functor serialization") {
+        some_type v;
+        v.a = pair{string("string"), 228};
+        v.b = 228.228;
+
+        serializer s;
+        s.write(v);
+
+        REQUIRE(format("{}", s.data()) ==
+                "{ 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x73, 0x74, 0x72, 0x69, 0x6e, "
+                "0x67, 0xe4, 0x00, 0x00, 0x00, 0x9e, 0xef, 0xa7, 0xc6, 0x4b, 0x87, 0x6c, 0x40 }");
+
+        some_type v2;
+        auto bytes = s.data();
+        auto ds = deserializer_view(bytes);
+        ds.read(v2);
+
+        REQUIRE(v.a == v2.a);
+        REQUIRE(std::memcmp(&v.b, &v2.b, sizeof(v.b)) == 0);
     }
 }
