@@ -16,13 +16,16 @@ add_executable(
         match_syntax.cpp
         md5.cpp
         log.cpp
+        grx_cpu_mesh_group.cpp
+        grx_skeleton.cpp
+        grx_animation.cpp
         )
 
 target_link_libraries(
         tests
         Catch2::Catch2
-        Threads::Threads
-        CONAN_PKG::boost_fiber
+        ${PE_LIBS}
+        pe_graphics
 )
 
 include(CTest)
@@ -33,6 +36,6 @@ if (ENABLE_FUZZING_TESTS)
     include(fuzzing/add_afl_fuzz_test.cmake)
     git_submodule_build_tool(AFLplusplus)
     #git_submodule_build_tool(AFLplusplus/gcc_plugin)
-    git_submodule_build_tool(AFLplusplus/libdislocator)
+    #git_submodule_build_tool(AFLplusplus/libdislocator)
     add_subdirectory(fuzzing)
 endif()
