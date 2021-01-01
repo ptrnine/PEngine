@@ -1,13 +1,17 @@
 #!/bin/bash
 
+GPLUSPLUS="g++-10"
+CLANGPLUSPLUS="clang++-10"
+
 C_COMPILER=gcc-10
-CXX_COMPILER=g++-10
+CXX_COMPILER="$GPLUSPLUS"
 BUILD_TYPE=release
 ENABLE_ASAN=OFF
 ENABLE_UBSAN=OFF
 ENABLE_TSAN=OFF
 ENABLE_NATIVE_ARCH=OFF
 EXEC_PATH=""
+EXEC_ARGS=""
 GDB_EXEC=false
 GEN_DB=false
 NPROCS=$(($(grep -c ^processor /proc/cpuinfo) - 0))
@@ -22,6 +26,7 @@ $0 [<options> ...]
 --tsan          - enable thread sanitizer
 --native        - build for current architecture
 --exec NAME     - execute specified program after build
+--target NAME   - build specified cmake target
 --gdb           - execute program under gdb after build
 --jobs N        - set jobs count
 --gendb         - no building, generate compile_commands.json and put into ./
@@ -35,7 +40,7 @@ while [[ $1 == --* ]]; do
         "--clang")
             shift
             C_COMPILER=clang-10
-            CXX_COMPILER=clang++-10
+            CXX_COMPILER="$CLANGPLUSPLUS"
         ;;
         "--debug")
             shift
@@ -57,9 +62,20 @@ while [[ $1 == --* ]]; do
             shift
             ENABLE_NATIVE_ARCH=ON
         ;;
+        "--target")
+            shift
+            TARGET="$1"; shift
+        ;;
         "--exec")
             shift
             EXEC_PATH="$1"; shift
+            if [ "$1" == '--' ]; then
+                shift
+                while [ -n "$1" ]; do
+                    EXEC_ARGS="$EXEC_ARGS $1"
+                    shift
+                done
+            fi
         ;;
         "--gdb")
             shift
@@ -79,6 +95,25 @@ while [[ $1 == --* ]]; do
         ;;
     esac
 done
+
+
+if [ -d "./submodules/boost" ] && [ -z "$(ls -A "./submodules/boost")" ]; then
+    git submodule init submodules/boost
+    git submodule update submodules/boost
+    pushd "./submodules/boost"
+    git submodule init tools/build
+    git submodule update tools/build
+cat >> ./tools/build/src/user-config.jam << EOF
+using gcc : : $GPLUSPLUS : <compileflags> ;
+using clang-linux : : $CLANGPLUSPLUS : <compileflags> ;
+EOF
+    popd
+
+    pushd "./submodules/boost"
+    ./bootstrap.sh --with-toolset=gcc --with-icu
+    popd
+fi
+
 
 if [ "$GEN_DB" == "true" ]; then
     cmake . -Bbuild-"$BUILD_TYPE"-clang-10 \
@@ -103,13 +138,19 @@ cmake . -Bbuild-"$BUILD_TYPE"-"$C_COMPILER" \
     -DENABLE_NATIVE_ARCH="$ENABLE_NATIVE_ARCH" \
     -DMAKE_NPROCS="$NPROCS"
 
-[ $? -eq 0 ] && make -j "$NPROCS" -C build-"$BUILD_TYPE"-"$C_COMPILER"
+if [ $? -eq 0 ]; then
+    if [ -z "$TARGET" ]; then
+        make -j "$NPROCS" -C build-"$BUILD_TYPE"-"$C_COMPILER"
+    else
+        make "$TARGET" -j "$NPROCS" -C build-"$BUILD_TYPE"-"$C_COMPILER"
+    fi
+fi
 
 if [ $? -eq 0 ] && [ ! -z "$EXEC_PATH" ]; then
     if [ "$GDB_EXEC" == "true" ]; then
-        gdb build-"$BUILD_TYPE"-"$C_COMPILER"/"$EXEC_PATH"
+        LD_LIBRARY_PATH="./build-$BUILD_TYPE-$C_COMPILER/3rd/lib" gdb build-"$BUILD_TYPE"-"$C_COMPILER"/"$EXEC_PATH" $EXEC_ARGS
     else
-        build-"$BUILD_TYPE"-"$C_COMPILER"/"$EXEC_PATH"
+        LD_LIBRARY_PATH="./build-$BUILD_TYPE-$C_COMPILER/3rd/lib" build-"$BUILD_TYPE"-"$C_COMPILER"/"$EXEC_PATH" $EXEC_ARGS
     fi
 fi
 
