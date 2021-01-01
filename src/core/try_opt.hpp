@@ -77,6 +77,22 @@ public:
     try_opt(ExceptT exception_obj):
         _thrower(std::make_unique<thrower<ExceptT>>(exception_obj.what())) {}
 
+    template <typename T2, typename F>
+    try_opt(try_opt<T2>&& opt, F cast_callback) {
+        if (opt.has_value())
+            _opt = cast_callback(move(*opt));
+        else if (opt._thrower)
+            _thrower = opt._thrower->get_copy();
+    }
+
+    template <typename T2, typename F>
+    try_opt(const try_opt<T2>& opt, F cast_callback) {
+        if (opt.has_value())
+            _opt = cast_callback(*opt);
+        else if (opt._thrower)
+            _thrower = opt._thrower->get_copy();
+    }
+
     /**
      * @brief Access to stored value
      *
@@ -212,19 +228,30 @@ public:
         return _opt.has_value();
     }
 
-    template <typename F, typename R = std::invoke_result_t<F, T>>
+    template <typename F, typename R = std::decay_t<std::invoke_result_t<F, T>>>
     [[nodiscard]]
-    constexpr try_opt<R> map(F callback) const {
-        if (has_value())
-            return try_opt<R>(callback(*_opt));
-        else if (_thrower)
-            return try_opt<R>(_thrower->get_copy());
-        else
-            return try_opt<R>();
+    constexpr try_opt<R> map(F callback) const& {
+        return try_opt<R>(*this, callback);
+    }
+
+    template <typename F, typename R = std::decay_t<std::invoke_result_t<F, T>>>
+    [[nodiscard]]
+    constexpr try_opt<R> map(F callback) && {
+        return try_opt<R>(*this, callback);
     }
 
     constexpr explicit operator bool() const noexcept {
         return has_value();
+    }
+
+    [[nodiscard]]
+    constexpr const std::optional<T>& to_optional() const& noexcept {
+        return _opt;
+    }
+
+    [[nodiscard]]
+    constexpr std::optional<T>&& to_optional() && noexcept {
+        return std::move(_opt);
     }
 
     constexpr T* operator->() {
@@ -255,5 +282,10 @@ private:
     std::optional<T>              _opt;
     std::unique_ptr<thrower_base> _thrower;
 };
-} // namespace core
 
+template <typename T2, typename F>
+try_opt(try_opt<T2>&&, F) -> try_opt<std::decay_t<try_opt<std::invoke_result_t<F, T2>>>>;
+
+template <typename T2, typename F>
+try_opt(const try_opt<T2>&, F) -> try_opt<std::decay_t<try_opt<std::invoke_result_t<F, T2>>>>;
+} // namespace core
