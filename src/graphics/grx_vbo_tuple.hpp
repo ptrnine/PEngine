@@ -5,70 +5,13 @@
 #include <glm/mat4x4.hpp>
 #include <type_traits>
 
-#include "grx_types.hpp"
+#include "grx_vbo_types.hpp"
 #include <core/assert.hpp>
 
-#define BONES_PER_VERTEX 4
 
 namespace grx
 {
 using win_vao_map_t = core::hash_map<void*, uint>;
-
-using vbo_vector_vec2f = core::vector<core::vec2f>;
-template <typename T>
-concept VboVectorVec2f = std::is_same_v<T, vbo_vector_vec2f>;
-
-using vbo_vector_vec3f = core::vector<core::vec3f>;
-template <typename T>
-concept VboVectorVec3f = std::is_same_v<T, vbo_vector_vec3f>;
-
-using vbo_vector_indices = core::vector<uint>;
-template <typename T>
-concept VboVectorIndices = std::is_same_v<T, vbo_vector_indices>;
-
-using vbo_vector_matrix4 = core::vector<glm::mat4>;
-template <typename T>
-concept VboVectorMatrix4 = std::is_same_v<T, vbo_vector_matrix4>;
-
-template <size_t S>
-struct vbo_bone_data_tmpl {
-    using vbo_bone_data_check = void;
-
-    vbo_bone_data_tmpl() {
-        std::fill(ids.begin(), ids.end(), 0);
-        std::fill(weights.begin(), weights.end(), 0.f);
-    }
-
-    [[nodiscard]]
-    static constexpr size_t size() {
-        return S;
-    }
-
-    void append(uint bone_id, float weight) {
-        float zero = 0.0f;
-        for (size_t i = 0; i < size(); ++i) {
-            if (!memcmp(&weights[i], &zero, sizeof(float))) {
-                ids[i]     = bone_id;
-                weights[i] = weight;
-                return;
-            }
-        }
-
-        PeRelAbortF("Not enough bone size. Weights: {}", weights);
-    }
-
-    core::array<uint, S>  ids;
-    core::array<float, S> weights;
-};
-
-using vbo_vector_bone = core::vector<vbo_bone_data_tmpl<BONES_PER_VERTEX>>;
-
-template <typename T>
-concept VboVectorBone = std::is_same_v<T, vbo_vector_bone>;
-
-template <typename T>
-concept VboData =
-    VboVectorVec2f<T> || VboVectorVec3f<T> || VboVectorIndices<T> || VboVectorMatrix4<T> || VboVectorBone<T>;
 
 void _grx_gen_vao_and_vbos(win_vao_map_t& vao_map, uint* vbos_ptr, size_t vbos_size);
 void _grx_delete_vao_and_vbos(win_vao_map_t& vao_map, uint* vbos_ptr, size_t vbos_size);
@@ -126,7 +69,7 @@ protected:
         else if constexpr (VboVectorIndices<DataT>)
             _grx_rebind_vector_indices_ebo(id);
         else if constexpr (VboVectorBone<DataT>)
-            _grx_rebind_vector_bone_vbo(id, loc, BONES_PER_VERTEX);
+            _grx_rebind_vector_bone_vbo(id, loc, MAX_BONES_PER_VERTEX);
     }
 
     template <size_t... Idx>
