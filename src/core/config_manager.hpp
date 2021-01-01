@@ -8,6 +8,7 @@
 #include "platform_dependent.hpp"
 #include "ston.hpp"
 #include "types.hpp"
+#include "serialization.hpp"
 
 namespace core
 {
@@ -124,16 +125,57 @@ private:
     string _cfg_entry_name = "fs.cfg";
     mutable std::mutex _mtx;
 
+    mutable std::mutex _path_mtx;
+    optional<string> _cached_default_cfg_path;
+
+    mpmc_hash_map<string, string> _cached_values;
+
 public:
+    optional<string> cached_value(const string& section, const string& key) const {
+        optional<string> result;
+        _cached_values.find_fn(section + "]" + key, [&](const string& val) { result = val; });
+        return result;
+    }
+
+    optional<string> cached_value(const string& key) const {
+        return cached_value("__global", key);
+    }
+
+    void set_cached_value(const string& section, const string& key, const string& value) {
+        _cached_values.insert_or_assign(section + "]" + key, value);
+    }
+
+    void set_cached_value(const string& key, const string& value) {
+        set_cached_value("__global", key, value);
+    }
+
+    optional<string> cached_default_cfg_path() const {
+        auto lock = std::lock_guard{_path_mtx};
+        auto res = _cached_default_cfg_path;
+
+        return res;
+    }
+
     std::string cfg_entry_name() const {
         auto lock = std::lock_guard{_mtx};
         std::string res = _cfg_entry_name;
+
         return res;
     }
 
     void cfg_entry_name(const std::string& name) {
+        _cached_values.clear();
+
+        auto lock2 = std::lock_guard{_path_mtx};
+        _cached_default_cfg_path = nullopt;
+
         auto lock = std::lock_guard{_mtx};
         _cfg_entry_name = name;
+    }
+
+    void cached_default_cfg_path(const std::string& name) {
+        auto lock2 = std::lock_guard{_path_mtx};
+        _cached_default_cfg_path = name;
     }
 };
 
@@ -142,6 +184,9 @@ inline cfg_global_state& CFG_STATE() {
 }
 
 inline string DEFAULT_CFG_PATH() {
+    if (auto path = CFG_STATE().cached_default_cfg_path())
+        return move(*path);
+
     auto cfg_entry_name = CFG_STATE().cfg_entry_name();
     auto path = std::filesystem::path(platform_dependent::get_exe_dir());
 
@@ -158,12 +203,28 @@ inline string DEFAULT_CFG_PATH() {
 
     while (!path.empty()) {
         auto result = search_entry(path);
-        if (result)
-            return result->string();
+        if (result) {
+            CFG_STATE().cached_default_cfg_path(*result);
+            return *result;
+        }
         path = path.parent_path();
     }
 
     throw config_exception("Can't find entry config fs.cfg");
+}
+
+inline string DEFAULT_CFG_DIR() {
+    auto path = DEFAULT_CFG_PATH();
+    path.resize(path.size() - CFG_STATE().cfg_entry_name().size());
+    return path;
+}
+
+inline string cfg_make_relative(const string& path) {
+    auto dir = DEFAULT_CFG_DIR();
+    if (path.starts_with(dir))
+        return path.substr(dir.size());
+    else
+        return path;
 }
 
 template <typename T>
@@ -1063,15 +1124,67 @@ void config_manager::read_cfg_values(ArgsT&... args) const {
 }
 
 inline string cfg_read_path(string_view section, const string& key) {
-    return DEFAULT_CFG_PATH() / ".." /
-        config_section::direct_read(section).read_unwrap<string>(key);
+    if (auto cached = CFG_STATE().cached_value(string(section), key))
+        return *cached;
+    else {
+        auto value =
+            DEFAULT_CFG_DIR() / config_section::direct_read(section).read_unwrap<string>(key);
+        CFG_STATE().set_cached_value(string(section), key, value);
+        return value;
+    }
 }
 
 inline string cfg_read_path(const string& key) {
-    return DEFAULT_CFG_PATH() / ".." /
-        config_section::direct_read().read_unwrap<string>(key);
+    if (auto cached = CFG_STATE().cached_value(key))
+        return *cached;
+    else {
+        auto value = DEFAULT_CFG_DIR() / config_section::direct_read().read_unwrap<string>(key);
+        CFG_STATE().set_cached_value(key, value);
+        return value;
+    }
 }
 
+
+/**
+ * @brief Stores a path with prefix directory key
+ */
+class cfg_path {
+public:
+    PE_SERIALIZE(dir_key, path)
+
+    cfg_path() = default;
+
+    /**
+     * @brief Constructs a path with the default directory prefix (location of fs.cfg)
+     *
+     * @param ipath - the relative path after default directory prefix
+     */
+    cfg_path(string_view ipath): path(ipath) {}
+
+    /**
+     * @brief Constructs a path with specified directory prefix key
+     *
+     * @param idir_key - the directory prefix key that will be reads from fs.cfg
+     * @param ipath - the relative path after directory prefix
+     */
+    cfg_path(string_view idir_key, string_view ipath): dir_key(idir_key), path(ipath) {}
+
+    /**
+     * @brief Constructs the absolute path
+     *
+     * @return the absolute path
+     */
+    [[nodiscard]]
+    string absolute() const {
+        if (dir_key.empty())
+            return DEFAULT_CFG_DIR() / path;
+        else
+            return cfg_read_path(dir_key) / path;
+    }
+
+    string dir_key;
+    string path;
+};
 } // namespace core
 
 /**
