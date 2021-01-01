@@ -23,7 +23,8 @@ set(GRX_SOURCES
         grx_ssbo.cpp
         grx_color_map.cpp
         grx_texture.cpp
-        grx_texture_mgr.cpp
+        grx_texture_path_set.cpp
+        grx_cpu_mesh_group.cpp
         grx_mesh_mgr.cpp
         grx_mesh_gen.cpp
         grx_camera.cpp
@@ -33,6 +34,8 @@ set(GRX_SOURCES
         grx_forward_renderer_light.cpp
         grx_g_buffer.cpp
         grx_deferred_renderer_light.cpp
+        grx_skeleton.cpp
+        grx_animation.cpp
 )
 
 set(GRX_HEADERS
@@ -57,4 +60,4 @@ set(GRX_HEADERS
 )
 
 add_library(pe_graphics SHARED ${GRX_SOURCES})
-target_link_libraries(pe_graphics GL GLEW glfw3 assimp pe_input grx_asm Threads::Threads CONAN_PKG::boost_fiber)
+target_link_libraries(pe_graphics GL GLEW glfw3 assimp pe_input grx_asm ${PE_LIBS})
