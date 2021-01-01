@@ -73,16 +73,23 @@ void grx::grx_camera_manipulator_fly::update_orientation(grx_window* window, flo
         if (window->on_focus())
             window->reset_mouse_pos();
 
-        auto pos = vec{map->GetFloat(input_event::RotateX), map->GetFloat(input_event::RotateY)};
-
         float zero = 0.f;
-        if (!memcmp(&pos.x(), &zero, sizeof(float)))
-            pos.x() = 0.5f;
+        vec2f mov;
 
-        if (!memcmp(&pos.y(), &zero, sizeof(float)))
-            pos.y() = 0.5f;
+        if (inp::inp_ctx().is_raw_mouse_input_enabled()) {
+            mov = inp::inp_ctx().raw_mouse_movement() * 2.5f;
+        }
+        else {
+            auto pos = vec{map->GetFloat(input_event::RotateX), map->GetFloat(input_event::RotateY)};
 
-        auto mov = (pos - vec{0.5f, 0.5f}) * _mouse_speed;
+            if (!memcmp(&pos.x(), &zero, sizeof(float)))
+                pos.x() = 0.5f;
+
+            if (!memcmp(&pos.y(), &zero, sizeof(float)))
+                pos.y() = 0.5f;
+
+            mov = (pos - vec{0.5f, 0.5f}) * _mouse_speed;
+        }
 
         yaw   += mov.x();
         pitch += mov.y();
