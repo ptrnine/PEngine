@@ -137,6 +137,9 @@ namespace core
     template <typename T>
     concept Number = Integral<T> || FloatingPoint<T>;
 
+    template <typename T>
+    concept Enum = std::is_enum_v<T>;
+
     template<typename T>
     concept Iterable = requires(T && v) {
         std::begin(v);
@@ -198,5 +201,10 @@ namespace core
 
         F map_func;
     };
+
+    template <typename T, typename... Ts>
+    constexpr bool contains_type(tuple<Ts...>&&) {
+        return false || (std::is_same_v<T, Ts> || ...);
+    }
 
 } // namespace core
