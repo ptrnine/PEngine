@@ -2,11 +2,13 @@
 
 #include <glm/mat4x4.hpp>
 #include <glm/vec4.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 #include <core/types.hpp>
 #include <core/vec.hpp>
 #include <core/container_extensions.hpp>
 #include <core/helper_macros.hpp>
+#include <core/serialization.hpp>
 
 namespace grx {
     using core::vec;
@@ -41,6 +43,10 @@ namespace grx {
     using float_color_rgb  = core::vec<float, 3>;
     using float_color_rgba = core::vec<float, 4>;
 
+    enum class grx_load_significance {
+        low = 0, medium, high
+    };
+
     enum class grx_color_fmt {
         RGB = 0, SRGB, RGB16, RGB16F, RGB32F
     };
@@ -54,6 +60,8 @@ namespace grx {
     };
 
     struct grx_aabb {
+        PE_SERIALIZE(min, max)
+
         static grx_aabb maximized() {
             return grx_aabb{
                 {std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()},
@@ -71,6 +79,13 @@ namespace grx {
             max.x() = max.x() > aabb.max.x() ? max.x() : aabb.max.x();
             max.y() = max.y() > aabb.max.y() ? max.y() : aabb.max.y();
             max.z() = max.z() > aabb.max.z() ? max.z() : aabb.max.z();
+        }
+
+        [[nodiscard]]
+        grx_aabb get_merged(const grx_aabb& aabb) const {
+            grx_aabb result = *this;
+            result.merge(aabb);
+            return result;
         }
 
         void transform(const glm::mat4& matrix) {
@@ -96,6 +111,8 @@ namespace grx {
     };
 
     struct grx_aabb_fast {
+        PE_SERIALIZE(min, max)
+
         grx_aabb_fast() = default;
         grx_aabb_fast(const core::vec3f& imin, const core::vec3f& imax):
             min{imin.x(), imin.y(), imin.z(), 1.0},
@@ -149,4 +166,38 @@ namespace grx {
 
     template <typename T>
     concept RenderTargetSettings = requires { typename T::grx_render_target_settings_check; };
+}
+
+namespace core {
+    template <glm::length_t C, glm::length_t R, typename T, glm::qualifier Q>
+    struct pe_serialize<glm::mat<C, R, T, Q>> {
+        void operator()(const glm::mat<C, R, T, Q>& m, byte_vector& out) const {
+            for (int i = 0; i < R; ++i)
+                for (int j = 0; j < C; ++j)
+                    core::serialize(m[i][j], out);
+        }
+    };
+
+    template <glm::length_t C, glm::length_t R, typename T, glm::qualifier Q>
+    struct pe_deserialize<glm::mat<C, R, T, Q>> {
+        void operator()(glm::mat<C, R, T, Q>& m, span<const byte>& in) const {
+            for (int i = 0; i < R; ++i)
+                for (int j = 0; j < C; ++j)
+                    core::deserialize(m[i][j], in);
+        }
+    };
+
+    template <>
+    struct pe_serialize<glm::quat> {
+        void operator()(const glm::quat& q, byte_vector& out) const {
+            core::serialize_all(out, q.w, q.x, q.y, q.z);
+        }
+    };
+
+    template <>
+    struct pe_deserialize<glm::quat> {
+        void operator()(glm::quat& q, span<const byte>& in) const {
+            core::deserialize_all(in, q.w, q.x, q.y, q.z);
+        }
+    };
 }
