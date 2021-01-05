@@ -232,4 +232,22 @@ TEST_CASE("serialization & deserialization") {
         REQUIRE(v.a == v2.a);
         REQUIRE(std::memcmp(&v.b, &v2.b, sizeof(v.b)) == 0);
     }
+
+    SECTION("enum serialization") {
+        enum class shit : uint32_t { kek = 3, lol };
+
+        auto a = shit::kek;
+
+        serializer s;
+        s.write(a);
+
+        REQUIRE(format("{}", s.data()) == "{ 0x03, 0x00, 0x00, 0x00 }");
+
+        shit b;
+        auto bytes = s.data();
+        auto ds = deserializer_view(bytes);
+        ds.read(b);
+
+        REQUIRE(a == b);
+    }
 }

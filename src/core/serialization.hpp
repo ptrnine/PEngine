@@ -109,6 +109,9 @@ namespace core
     template <typename T> requires FloatingPoint<T>
     inline void serialize(T float_val, byte_vector& out);
 
+    template <typename T> requires Enum<T> && (!Integral<T>)
+    inline void serialize(T enum_val, byte_vector& out);
+
     template <typename T>
     inline void serialize(const optional<T>& o, byte_vector& out);
 
@@ -164,6 +167,9 @@ namespace core
     inline void deserialize(T& out, span<const byte>& in);
 
     template <typename T> requires FloatingPoint<T>
+    inline void deserialize(T& out, span<const byte>& in);
+
+    template <typename T> requires Enum<T> && (!Integral<T>)
     inline void deserialize(T& out, span<const byte>& in);
 
     template <typename T>
@@ -283,6 +289,21 @@ namespace core
         T value;
         memcpy(&value, &size_eq_int, sizeof(T));
         out = value;
+    }
+
+    //===================== Enum
+
+    template <typename T> requires Enum<T> && (!Integral<T>)
+    inline void serialize(T enum_val, byte_vector& out) {
+        serialize(static_cast<std::underlying_type_t<T>>(enum_val), out);
+    }
+
+    template <typename T> requires Enum<T> && (!Integral<T>)
+    inline void deserialize(T& out, span<const byte>& in) {
+        using underlying_t = std::underlying_type_t<T>;
+        underlying_t res;
+        deserialize(res, in);
+        out = static_cast<T>(res);
     }
 
     //===================== Optional
