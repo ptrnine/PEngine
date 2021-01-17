@@ -200,12 +200,14 @@ inline void write_file_unwrap(const string& file_path, span<const byte> data, bo
  * @param dir - the directory, where file is should be located
  * @param filename - the name of a file
  * @param extension - the extension of the file without a dot prefix
+ * @param append_mode - append to file with greater index
  *
- * @return - full path for available path
+ * @return - absolute available path
  */
 inline string get_available_file_path_with_index(const string& dir,
                                                  const string& filename,
-                                                 const string& extension) {
+                                                 const string& extension,
+                                                 bool append_mode = false) {
     auto type = get_file_type(dir);
 
     /* Directory not exists - file path available */
@@ -217,12 +219,21 @@ inline string get_available_file_path_with_index(const string& dir,
 
     size_t index = 0;
     auto full_path = dir / filename + "." + extension;
+
+    optional<string> prev_full_path;
+    if (append_mode)
+        prev_full_path = full_path;
+
+
     while ((type = get_file_type(full_path))) {
+        if (append_mode)
+            prev_full_path = full_path;
+
         full_path = dir / filename + std::to_string(index) + "." + extension;
         ++index;
     }
 
-    return full_path;
+    return append_mode ? *prev_full_path : full_path;
 }
 
 /**
@@ -239,24 +250,30 @@ inline string get_available_file_path_with_index(const string& dir,
  * @param filename - the name of the file
  * @param extension - the extension of the file without a dot prefix
  * @param mode - open mode (same as for std::ofstream)
+ * @param path - file path
  *
  * @return - openned file
  */
 inline std::ofstream open_cleverly(const string&           dir,
                                    const string&           filename,
                                    const string&           extension,
-                                   std::ios_base::openmode mode = std::ios_base::out) {
+                                   std::ios_base::openmode mode = std::ios_base::out,
+                                   string*                 file_path = nullptr) {
     auto dir_type = get_file_type(dir);
     if (!dir_type)
         platform_dependent::recursive_create_directory(dir);
     else if (*dir_type != file_type::directory)
         throw std::runtime_error(dir + " not a directory!");
 
-    auto path = get_available_file_path_with_index(dir, filename, extension);
+    auto path = get_available_file_path_with_index(
+        dir, filename, extension, (mode & std::ios_base::app) ? true : false);
     auto ofs  = std::ofstream(path, mode);
 
     if (!ofs.is_open())
         throw std::runtime_error("Can't open file " + path);
+
+    if (file_path)
+        *file_path = path;
 
     return ofs;
 }
