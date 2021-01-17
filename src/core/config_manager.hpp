@@ -1185,6 +1185,14 @@ public:
     string dir_key;
     string path;
 };
+
+template <>
+struct magic_printer<cfg_path> {
+    void operator()(std::ostream& os, const cfg_path& path) {
+        magic_print(os, pair{path.dir_key, path.path});
+    }
+};
+
 } // namespace core
 
 /**
