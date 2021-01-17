@@ -11,6 +11,8 @@
 
 namespace grx {
 
+static constexpr size_t OBJECT_TEXTURE_CHANS = 4;
+
 class grx_object_skeleton {
 public:
     PE_SERIALIZE(_skeleton, _animations)
@@ -35,10 +37,10 @@ using grx_object_instance_id = core::u64;
 
 class grx_object_instance_storage {
 public:
-    PE_SERIALIZE(_current_id, _mvp_matrices, _m_matrices, _id_to_instance)
+    //PE_SERIALIZE(_current_id, _mvp_matrices, _m_matrices, _id_to_instance)
 
     struct instance_value {
-        PE_SERIALIZE(mvp, m)
+        //PE_SERIALIZE(mvp, m)
 
         glm::mat4 mvp;
         glm::mat4 m;
@@ -57,6 +59,7 @@ public:
         return _id_to_instance.at(id);
     }
 
+    [[nodiscard]]
     const instance_value& get_instance(grx_object_instance_id id) const {
         return _id_to_instance.at(id);
     }
@@ -122,8 +125,6 @@ public:
         core::serialize_all(s, to_mesh_group(), _texture_sets);
         if constexpr (Skeleton)
             grx_object_skeleton::serialize(s);
-        if constexpr (Instanced)
-            grx_object_instance_storage::serialize(s);
     }
 
     template <bool Instanced = IsInstanced, bool Skeleton = has_skeleton()>
@@ -135,8 +136,6 @@ public:
 
         if constexpr (Skeleton)
             grx_object_skeleton::deserialize(d);
-        if constexpr (Instanced)
-            grx_object_instance_storage::deserialize(d);
     }
 
     grx_object() = default;
@@ -196,7 +195,7 @@ public:
     }
 
     template <bool Enable = IsInstanced, bool Skeleton = has_skeleton()>
-    std::enable_if_t<Enable> draw(const glm::mat4&                            vp,
+    std::enable_if_t<Enable> draw(const glm::mat4&,
                                   const core::shared_ptr<grx_shader_program>& program,
                                   bool enable_textures = true) {
         if (this->_m_matrices.empty())
@@ -270,8 +269,21 @@ public:
         return to_mesh_group(std::make_index_sequence<MeshT::buffers_count>());
     }
 
-    void set_textures(core::vector<grx_texture_set<4>> texture_sets) {
+    void set_textures(core::vector<grx_texture_set<OBJECT_TEXTURE_CHANS>> texture_sets) {
         _texture_sets = core::move(texture_sets);
+    }
+
+    [[nodiscard]]
+    const core::vector<grx_texture_set<OBJECT_TEXTURE_CHANS>>& texture_sets() const& {
+        return _texture_sets;
+    }
+    [[nodiscard]]
+    core::vector<grx_texture_set<OBJECT_TEXTURE_CHANS>>& texture_sets() & {
+        return _texture_sets;
+    }
+    [[nodiscard]]
+    core::vector<grx_texture_set<OBJECT_TEXTURE_CHANS>> texture_sets() && {
+        return core::move(_texture_sets);
     }
 
 private:
@@ -318,7 +330,7 @@ private:
                       core::optional<int>>
         _unicache{"MVP", "M", "bone_matrices", "texture0", "texture1"};
 
-    core::vector<grx_texture_set<4>> _texture_sets;
+    core::vector<grx_texture_set<OBJECT_TEXTURE_CHANS>> _texture_sets;
 };
 
 template <MeshBufT... BufTs>
