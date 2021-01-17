@@ -19,12 +19,14 @@ add_executable(
         grx_cpu_mesh_group.cpp
         grx_skeleton.cpp
         grx_animation.cpp
+        compression.cpp
         )
 
 target_link_libraries(
         tests
         Catch2::Catch2
         ${PE_LIBS}
+        pe_util
         pe_graphics
 )
 

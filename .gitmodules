@@ -37,3 +37,6 @@
 [submodule "submodules/boost"]
 	path = submodules/boost
 	url = https://github.com/boostorg/boost
+[submodule "submodules/zlib"]
+	path = submodules/zlib
+	url = https://github.com/madler/zlib
