@@ -613,7 +613,7 @@ template <CpuMeshGroup T = grx_cpu_mesh_group_t>
 inline core::job_future<core::try_opt<T>>
 try_async_load_mesh_group(const core::string& file_path) {
     return core::submit_job([file_path] {
-        return try_load_mesh_group(file_path);
+        return try_load_mesh_group<T>(file_path);
     });
 }
 
@@ -622,7 +622,7 @@ template <CpuMeshGroup T = grx_cpu_mesh_group_t>
 inline core::job_future<T>
 async_load_mesh_group(const core::string& file_path) {
     return core::submit_job([file_path] {
-        return load_mesh_group(file_path);
+        return load_mesh_group<T>(file_path);
     });
 }
 
