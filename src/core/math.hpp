@@ -97,5 +97,9 @@ namespace core {
             return vec_map(radians, [](T v) { return degree(v); });
         }
     } // namespace angle
+
+    inline bool is_power_of_two(Integral auto v) {
+        return (v & (v - 1)) == 0;
+    }
 } // namespace core
 
