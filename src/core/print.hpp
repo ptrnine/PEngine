@@ -9,6 +9,7 @@
 
 namespace core
 {
+
 template <typename T>
 struct magic_printer;
 
@@ -228,6 +229,12 @@ void printline(string_view fmt, ArgsT&&... args) {
 }
 
 template <typename... ArgsT>
+void println(string_view fmt, ArgsT&&... args) {
+    print_base(std::cout, fmt, forward<ArgsT>(args)...);
+    std::cout << std::endl;
+}
+
+template <typename... ArgsT>
 void printfl(string_view fmt, ArgsT&&... args) {
     print_base(std::cout, fmt, forward<ArgsT>(args)...);
     std::cout.flush();
@@ -239,6 +246,41 @@ string format(string_view fmt, ArgsT&&... args) {
     ss << std::setprecision(print_float_precision);
     print_base(ss, fmt, forward<ArgsT>(args)...);
     return ss.str();
+}
+
+inline string bytesize_str(Integral auto size) {
+    auto dsz = static_cast<double>(size);
+
+    if (size < 1024LLU)
+        return format("{}B", size);
+    else if (size < (1024LLU << 10))
+        return format("{}KiB", dsz / static_cast<double>(1024LLU <<  0));
+    else if (size < (1024LLU << 20))
+        return format("{}MiB", dsz / static_cast<double>(1024LLU << 10));
+    else if (size < (1024LLU << 30))
+        return format("{}GiB", dsz / static_cast<double>(1024LLU << 20));
+    else if (size < (1024LLU << 40))
+        return format("{}TiB", dsz / static_cast<double>(1024LLU << 30));
+    else
+        return format("{}PiB", dsz / static_cast<double>(1024LLU << 40));
+}
+
+inline string nanotime_str(std::chrono::nanoseconds time_nano) {
+    auto time = time_nano.count();
+    auto dsz = static_cast<double>(time_nano.count());
+
+    if (time < 1000LL)
+        return format("{}ns", time);
+    else if (time < (1000LL << 10))
+        return format("{}us", dsz / static_cast<double>(1000LLU <<  0));
+    else if (time < (1000LL << 20))
+        return format("{}ms", dsz / static_cast<double>(1000LLU << 10));
+    else if (time < (1000LL << 20) * 60)
+        return format("{}s", dsz / static_cast<double>(1000LLU << 20));
+    else if (time < (1000LL << 20) * 60 * 60)
+        return format("{}minutes", dsz / static_cast<double>((1024LLU << 20) * 60));
+    else
+        return format("{}hours", dsz / static_cast<double>((1024LLU << 20) * 60 * 60));
 }
 
 } // namespace core
