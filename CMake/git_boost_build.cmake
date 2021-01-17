@@ -44,6 +44,6 @@ macro(git_boost_build)
         set(boost_ALREADY_BUILT ON CACHE STRING "Is submodule already built")
     endif()
 
-    set(BOOST_LIBS boost_context boost_thread boost_fiber)
+    set(BOOST_LIBS boost_context boost_thread boost_fiber dl)
 
 endmacro()

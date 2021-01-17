@@ -5,7 +5,6 @@
 #include "types.hpp"
 #include "scope_guard.hpp"
 
-
 #ifdef __unix
 /*//////////////////////////////////////////
  *
@@ -13,15 +12,14 @@
  *
  *//////////////////////////////////////////
 
-extern "C" {
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <pwd.h>
 #include <climits>
 #include <cpuid.h>
-}
 
 namespace platform_dependent
 {
@@ -167,6 +165,37 @@ namespace platform_dependent
     inline bool create_pipe(const core::string& path) {
         int rc = mkfifo(path.data(), 0666);
         return rc == 0;
+    }
+
+    inline std::tm localtime(std::time_t time) {
+        std::tm t;
+        localtime_r(&time, &t);
+        return t;
+    }
+
+    inline int afterlife(int(*main_function)(int, char**), void(*afterlife_function)(), int argc, char* argv[]) {
+        pid_t pid = fork();
+
+        if (pid == 0)
+            exit(main_function(argc, argv));
+        else if (pid == -1) {
+            fprintf(stderr, "fork failed.\n");
+            return EXIT_FAILURE;
+        }
+
+        int status;
+        if (waitpid(pid, &status, 0) == -1) {
+            fprintf(stderr, "waitpid failed.\n");
+            return EXIT_FAILURE;
+        }
+
+        int rc = EXIT_FAILURE;
+        if (WIFEXITED(status))
+            rc = WEXITSTATUS(status);
+
+        afterlife_function();
+
+        return rc;
     }
 } // namespace platform_dependent
 

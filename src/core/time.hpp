@@ -1,9 +1,10 @@
 #pragma once
 
 #include <chrono>
+#include <iomanip>
 #include "helper_macros.hpp"
 #include "types.hpp"
-
+#include "platform_dependent.hpp"
 
 namespace core {
     using std::chrono::time_point;
@@ -28,9 +29,10 @@ namespace core {
             return duration_cast<duration<T, Period>>(steady_clock::now() - _start).count();
         }
 
+        template <typename T = nanoseconds>
         [[nodiscard]]
         auto measure() const {
-            return steady_clock::now() - _start;
+            return duration_cast<T>(steady_clock::now() - _start);
         }
 
         void reset() {
@@ -45,9 +47,10 @@ namespace core {
             return result;
         }
 
+        template <typename T = nanoseconds>
         auto tick() {
             auto now = steady_clock::now();
-            auto res = now - _start;
+            auto res = duration_cast<T>(now - _start);
             _start = now;
             return res;
         }
@@ -66,5 +69,66 @@ namespace core {
 
     inline timer& global_timer() {
         return st_global_timer::instance()._timer;
+    }
+
+    inline string current_datetime(string_view format) {
+        std::stringstream ss;
+
+        auto now = std::chrono::system_clock::now();
+        auto now_tt = std::chrono::system_clock::to_time_t(now);
+        auto now_tm = platform_dependent::localtime(now_tt);
+        auto ns = duration_cast<nanoseconds>(now - std::chrono::system_clock::from_time_t(now_tt))
+                      .count();
+        auto us = ns / 1000;
+        auto ms = us / 1000;
+
+        array<bool, 256> charmap = {false};
+        charmap['D'] = charmap['M'] = charmap['Y'] = charmap['h'] = charmap['m'] = charmap['s'] =
+            charmap['x'] = charmap['u'] = charmap['n'] = true;
+
+        static constexpr auto padprint = [](std::stringstream& ss, int c, auto v) {
+            ss << std::setfill('0') << std::setw(c) << v;
+        };
+
+        int counter = 0;
+
+        auto printtm = [&](char f) {
+            if (counter) {
+                switch (f) {
+                case 'D': padprint(ss, counter, now_tm.tm_mday); break;
+                case 'M': padprint(ss, counter, now_tm.tm_mon + 1); break;
+                case 'Y': padprint(ss, counter, now_tm.tm_year + 1900); break;
+                case 'h': padprint(ss, counter, now_tm.tm_hour); break;
+                case 'm': padprint(ss, counter, now_tm.tm_min); break;
+                case 's': padprint(ss, counter, now_tm.tm_sec); break;
+                case 'x': padprint(ss, counter, ms); break;
+                case 'u': padprint(ss, counter, us); break;
+                case 'n': padprint(ss, counter, ns); break;
+                default: break;
+                }
+                counter = 0;
+            }
+        };
+
+        char last_fmt = '\0';
+        for (auto c : format) {
+            auto is_fmt = charmap[static_cast<u8>(c)];
+
+            if (!is_fmt || last_fmt != c)
+                printtm(last_fmt);
+
+            if (is_fmt)
+                ++counter;
+            else {
+                ss << c;
+                counter = 0;
+            }
+
+            if (is_fmt && last_fmt != c)
+                last_fmt = c;
+        }
+        printtm(last_fmt);
+
+        return ss.str();
     }
 }

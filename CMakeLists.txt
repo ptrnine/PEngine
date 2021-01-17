@@ -96,7 +96,6 @@ git_submodule_copy_files(libcuckoo NO_NAME_INCLUDE INCLUDES
         libcuckoo/bucket_container.hh)
 git_submodule_copy_files(flat_hash_map NO_NAME_INCLUDE INCLUDES flat_hash_map.hpp)
 
-
 # Build type
 string(TOUPPER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE)
 
@@ -130,4 +129,4 @@ set(PE_LIBS pthread ${BOOST_LIBS})
 add_subdirectory(src)
 
 add_executable(PEngine main.cpp)
-target_link_libraries(PEngine pe_graphics ${PE_LIBS})
+target_link_libraries(PEngine pe_util pe_graphics ${PE_LIBS})

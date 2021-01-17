@@ -4,6 +4,9 @@
 
 using namespace core;
 
+/* TODO: rewrite this */
+#if 0
+
 TEST_CASE("Log multithread test") {
     auto ss = make_shared<std::stringstream>();
     logger::instance().remove_output_stream("stdout");
@@ -40,3 +43,5 @@ TEST_CASE("Log multithread test") {
         ss->str("");
     }
 }
+
+#endif

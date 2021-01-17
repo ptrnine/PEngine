@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <string>
 #include <memory>
+#include "pe_throw.hpp"
 
 namespace core
 {
@@ -23,7 +24,7 @@ public:
     thrower(std::string message): msg(move(message)) {}
 
     void throw_exception() const override {
-        throw E(msg);
+        pe_throw E(msg);
     }
 
     [[nodiscard]]
@@ -81,16 +82,16 @@ public:
     try_opt(try_opt<T2>&& opt, F cast_callback) {
         if (opt.has_value())
             _opt = cast_callback(move(*opt));
-        else if (opt._thrower)
-            _thrower = opt._thrower->get_copy();
+        else if (auto copy = opt.thrower_ptr())
+            _thrower = move(copy);
     }
 
     template <typename T2, typename F>
     try_opt(const try_opt<T2>& opt, F cast_callback) {
         if (opt.has_value())
             _opt = cast_callback(*opt);
-        else if (opt._thrower)
-            _thrower = opt._thrower->get_copy();
+        else if (auto copy = opt.thrower_ptr())
+            _thrower = move(copy);
     }
 
     /**
@@ -105,7 +106,7 @@ public:
             if (_thrower)
                 _thrower->throw_exception();
             else
-                throw std::runtime_error("try_opt was not set");
+                pe_throw std::runtime_error("try_opt was not set");
         }
 
         return *_opt;
@@ -123,7 +124,7 @@ public:
             if (_thrower)
                 _thrower->throw_exception();
             else
-                throw std::runtime_error("try_opt was not set");
+                pe_throw std::runtime_error("try_opt was not set");
         }
 
         return *_opt;
@@ -141,7 +142,7 @@ public:
             if (_thrower)
                 _thrower->throw_exception();
             else
-                throw std::runtime_error("try_opt was not set");
+                pe_throw std::runtime_error("try_opt was not set");
         }
 
         return std::move(*_opt);
@@ -159,7 +160,7 @@ public:
             if (_thrower)
                 _thrower->throw_exception();
             else
-                throw std::runtime_error("try_opt was not set");
+                pe_throw std::runtime_error("try_opt was not set");
         }
 
         return std::move(*_opt);
