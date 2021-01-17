@@ -17,11 +17,22 @@ namespace grx
     namespace grx_texture_helper {
         uint create_texture();
         uint create_texture(uint w, uint h, uint channels);
-        uint create_texture(uint w, uint h, uint channels, bool is_float, const void* color_map_data);
+        uint create_texture(uint        w,
+                            uint        h,
+                            uint        channels,
+                            bool        is_float,
+                            const void* color_map_data,
+                            bool        has_pregen_mipmaps);
 
         void delete_texture(uint name);
         void generate_storage(uint name, uint w, uint h, uint channels);
-        void set_storage(uint name, uint w, uint h, uint channels, bool is_float, const void* color_map_data);
+        void set_storage(uint        name,
+                         uint        w,
+                         uint        h,
+                         uint        channels,
+                         bool        is_float,
+                         const void* color_map_data,
+                         bool        has_pregen_mipmaps);
 
         void copy_texture(uint dst_name, uint src_name, uint w, uint h);
 
@@ -78,8 +89,12 @@ namespace grx
             constexpr size_t pixel_size = S * sizeof(T);
 
             if ((color_map.size().x() * pixel_size) % 4 == 0) {
-                _gl_name = grx_texture_helper::create_texture(
-                        _size.x(), _size.y(), static_cast<uint>(S), core::FloatingPoint<T>, color_map.data());
+                _gl_name = grx_texture_helper::create_texture(_size.x(),
+                                                              _size.y(),
+                                                              static_cast<uint>(S),
+                                                              core::FloatingPoint<T>,
+                                                              color_map.data(),
+                                                              color_map.has_mipmaps());
             }
             else {
                 LOG_WARNING("PERFORMANCE: color_map with size {} violate GL_UNPACK_ALIGNMENT and will be resized.", color_map.size());
@@ -99,14 +114,19 @@ namespace grx
                 _size = vec2u{new_width, _size.y()};
                 auto new_map = color_map.get_resized(_size);
 
-                _gl_name = grx_texture_helper::create_texture(
-                        _size.x(), _size.y(), static_cast<uint>(S), core::FloatingPoint<T>, new_map.data());
+                _gl_name = grx_texture_helper::create_texture(_size.x(),
+                                                              _size.y(),
+                                                              static_cast<uint>(S),
+                                                              core::FloatingPoint<T>,
+                                                              new_map.data(),
+                                                              new_map.has_mipmaps());
             }
         }
 
         template <typename T>
-        grx_texture& operator= (const grx_color_map<T, S>& color_map) {
-            static_assert(std::is_same_v<T, uint8_t> || std::is_same_v<T, float>, "T must be uint8_t or float only");
+        grx_texture& operator=(const grx_color_map<T, S>& color_map) {
+            static_assert(std::is_same_v<T, uint8_t> || std::is_same_v<T, float>,
+                          "T must be uint8_t or float only");
             _size = color_map.size();
 
             constexpr size_t pixel_size = S * sizeof(T);
@@ -114,16 +134,26 @@ namespace grx
             if ((color_map.size().x() * pixel_size) % 4 == 0) {
                 if (_size != color_map.size() || _gl_name == no_name) {
                     grx_texture_helper::delete_texture(_gl_name);
-                    _gl_name = grx_texture_helper::create_texture(
-                            _size.x(), _size.y(), static_cast<uint>(S), core::FloatingPoint<T>, color_map.data());
+                    _gl_name = grx_texture_helper::create_texture(_size.x(),
+                                                                  _size.y(),
+                                                                  static_cast<uint>(S),
+                                                                  core::FloatingPoint<T>,
+                                                                  color_map.data(),
+                                                                  color_map.has_mipmaps());
                 }
                 else {
-                    grx_texture_helper::set_storage(
-                            _gl_name, _size.x(), _size.y(), static_cast<uint>(S), core::FloatingPoint<T>, color_map.data());
+                    grx_texture_helper::set_storage(_gl_name,
+                                                    _size.x(),
+                                                    _size.y(),
+                                                    static_cast<uint>(S),
+                                                    core::FloatingPoint<T>,
+                                                    color_map.data(),
+                                                    color_map.has_mipmaps());
                 }
             }
             else {
-                LOG_WARNING("PERFORMANCE: color_map with size {} {} violate GL_UNPACK_ALIGNMENT and will be resized.");
+                LOG_WARNING("PERFORMANCE: color_map with size {} {} violate GL_UNPACK_ALIGNMENT "
+                            "and will be resized.");
                 uint new_width = color_map.size().x();
 
                 if constexpr (pixel_size == 1)
@@ -137,17 +167,26 @@ namespace grx
                 else
                     PeRelAbort();
 
-                _size = vec2u{new_width, _size.y()};
+                _size        = vec2u{new_width, _size.y()};
                 auto new_map = color_map.get_resized(_size);
 
                 if (_size != new_map.size() || _gl_name == no_name) {
                     grx_texture_helper::delete_texture(_gl_name);
-                    _gl_name = grx_texture_helper::create_texture(
-                            _size.x(), _size.y(), static_cast<uint>(S), core::FloatingPoint<T>, new_map.data());
+                    _gl_name = grx_texture_helper::create_texture(_size.x(),
+                                                                  _size.y(),
+                                                                  static_cast<uint>(S),
+                                                                  core::FloatingPoint<T>,
+                                                                  new_map.data(),
+                                                                  new_map.has_mipmaps());
                 }
                 else {
-                    grx_texture_helper::set_storage(
-                            _gl_name, _size.x(), _size.y(), static_cast<uint>(S), core::FloatingPoint<T>, new_map.data());
+                    grx_texture_helper::set_storage(_gl_name,
+                                                    _size.x(),
+                                                    _size.y(),
+                                                    static_cast<uint>(S),
+                                                    core::FloatingPoint<T>,
+                                                    new_map.data(),
+                                                    new_map.has_mipmaps());
                 }
             }
 
@@ -325,7 +364,7 @@ namespace grx
         template <typename T = uint8_t>
         [[nodiscard]]
         grx_color_map<T, S> to_color_map() const {
-            grx_color_map<T, S> result(_size);
+            grx_color_map<T, S> result(_size, MIPMAPS_COUNT);
 
             grx_texture_helper::get_texture(
                     result.data(), _gl_name, _size.x(), _size.y(), static_cast<uint>(S), core::FloatingPoint<T>);
