@@ -1,3 +1,5 @@
+#pragma once
+
 #include "types.hpp"
 #include "helper_macros.hpp"
 #include "print.hpp"
