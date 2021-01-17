@@ -125,19 +125,19 @@ TEST_CASE("grx_cpu_mesh test") {
         vertex *= 2.f;
     REQUIRE(mesh != mesh4.submesh(0));
 
-    auto mesh5 = load_mesh_group(models_dir + "basic/cube.dae");
+    auto mesh5 = load_mesh_group<mesh_t>(models_dir + "basic/cube.dae");
     for (auto& [vertex, normal] : mesh5.view<mesh_buf_tag::position, mesh_buf_tag::normal>())
         vertex *= 2.f;
 
     REQUIRE(mesh4.submesh(0) == mesh5);
 
     save_mesh_group("./test_mesh.pemesh", mesh5);
-    auto mesh6 = load_mesh_group("./test_mesh.pemesh");
+    auto mesh6 = load_mesh_group<mesh_t>("./test_mesh.pemesh");
     REQUIRE(mesh5 == mesh6);
 
     auto rc = try_async_save_mesh_group("./test_mesh.pemesh", mesh5);
     REQUIRE(rc.get());
-    deffered_resource mesh7 = try_async_load_mesh_group("./test_mesh.pemesh");
+    deffered_resource mesh7 = try_async_load_mesh_group<mesh_t>("./test_mesh.pemesh");
     REQUIRE(mesh7.get().value() == mesh5);
 
     using mesh_t2 =
