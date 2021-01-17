@@ -333,10 +333,10 @@ mesh_load_texture_sets(const aiScene* scene, const string& dir, grx_texture_mgr<
             texture_set.set(index, texture_mgr.load(cfg_path("", cfg_make_relative(dir) + *path_opt)));
         /* Set default diffuse or normal */
         } else if (index == grx_texture_set_tag::diffuse) {
-            DLOG("Load texture: {}", texture_mgr.textures_dir() / "basic/dummy_diffuse.png");
+            DLOG("Load texture: {}", cfg_path("textures_dir", "basic/dummy_diffuse.png").absolute());
             texture_set.set(index, texture_mgr.load(cfg_path("textures_dir", "basic/dummy_diffuse.png")));
         } else if (index == grx_texture_set_tag::normal) {
-            DLOG("Load texture: {}", texture_mgr.textures_dir() / "basic/dummy_normal.png");
+            DLOG("Load texture: {}", cfg_path("textures_dir", "basic/dummy_normal.png").absolute());
             texture_set.set(index, texture_mgr.load(cfg_path("textures_dir", "basic/dummy_normal.png")));
         }
     };
