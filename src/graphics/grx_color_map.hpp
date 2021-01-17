@@ -16,6 +16,9 @@ extern "C" {
 #include <core/math.hpp>
 #include <core/types.hpp>
 #include <core/vec.hpp>
+#include <core/serialization.hpp>
+#include <core/assert.hpp>
+#include <util/compression.hpp>
 
 namespace grx
 {
@@ -26,7 +29,8 @@ using core::zip_view;
 using core::u8;
 using core::make_unique;
 
-static constexpr u8 COLOR_VAL_MAX = 255;
+constexpr u8 COLOR_VAL_MAX = 255;
+constexpr core::u32 MIPMAPS_COUNT = 8;
 
 /**
  * @brief Provides access to the pixel data
@@ -259,38 +263,184 @@ class grx_color_map {
 public:
     using c_array = T[]; // NOLINT
 
-    grx_color_map(T* raw_data, const vec2u& size): _size(size) {
-        _data = make_unique<c_array>(_size.x() * _size.y() * NPP);
-        memcpy(_data.get(), raw_data, _size.x() * _size.y() * NPP * sizeof(T));
+    static size_t calc_compcount(const vec2u& size, core::u32 mipmaps) {
+        size_t compcount = size.x() * size.y() * NPP;
+        auto mipmap_size = size / 2U;
+
+        for (core::u32 i = 0; i < mipmaps; ++i) {
+            compcount += mipmap_size.x() * mipmap_size.y() * NPP;
+            mipmap_size /= 2U;
+            if (mipmap_size.x() == 0)
+                mipmap_size.x() = 1;
+            if (mipmap_size.y() == 0)
+                mipmap_size.y() = 1;
+        }
+
+        return compcount;
     }
 
-    grx_color_map(const vec2u& size): _size(size) {
-        _data = make_unique<c_array>(_size.x() * _size.y() * NPP);
+    grx_color_map(T* raw_data, const vec2u& size, core::u32 mipmaps = 0):
+        _size(size), _mipmaps(mipmaps) {
+        if (mipmaps && (!core::is_power_of_two(size.x()) || !core::is_power_of_two(size.y())))
+            pe_throw std::runtime_error("Sizes must be power of two");
+
+        _compcount = calc_compcount(_size, _mipmaps);
+        _data = make_unique<c_array>(_compcount);
+        memcpy(_data.get(), raw_data, _compcount * sizeof(T));
     }
 
-    grx_color_map(const grx_color_map& map): grx_color_map(map._data.get(), map._size) {}
+    grx_color_map(const vec2u& size, core::u32 mipmaps = 0): _size(size), _mipmaps(mipmaps) {
+        if (mipmaps && (!core::is_power_of_two(size.x()) || !core::is_power_of_two(size.y())))
+            pe_throw std::runtime_error("Sizes must be power of two");
+
+        _compcount = calc_compcount(_size, _mipmaps);
+        _data = make_unique<c_array>(_compcount);
+    }
+
+    grx_color_map(const grx_color_map& map):
+        grx_color_map(map._data.get(), map._size, map._mipmaps) {}
 
     grx_color_map& operator=(const grx_color_map& map) {
         _size = map._size;
-        _data = make_unique<c_array>(_size.x() * _size.y() * NPP);
-        memcpy(_data.get(), map._data.get(), _size.x() * _size.y() * NPP * sizeof(T));
+        _compcount = map._compcount;
+        _mipmaps = map._mipmaps;
+        _data = make_unique<c_array>(_compcount);
+        memcpy(_data.get(), map._data.get(), _compcount * sizeof(T));
 
         return *this;
     }
 
-    grx_color_map(grx_color_map&& map) noexcept: _size(map._size), _data(std::move(map._data)) {
+    grx_color_map(grx_color_map&& map) noexcept:
+        _size(map._size),
+        _data(std::move(map._data)),
+        _compcount(map._compcount),
+        _mipmaps(map._mipmaps) {
         map._data = nullptr;
     }
 
     grx_color_map& operator=(grx_color_map&& map) noexcept {
         _size     = map._size;
         _data     = std::move(map._data);
+        _mipmaps  = map._mipmaps;
+        _compcount = map._compcount;
         map._data = nullptr;
 
         return *this;
     }
 
     ~grx_color_map() noexcept = default;
+
+    static grx_color_map from_bytes(core::span<core::byte> bytes) {
+        if constexpr (std::endian::native == std::endian::big)
+            pe_throw std::runtime_error("Implement me for big endian");
+
+        using namespace core;
+
+        deserializer_view ds{bytes};
+        ds.read_get<array<char, 4>>();
+
+        auto channels = ds.read_get<u32>();
+        PeRelRequireF(channels == NPP, "Invalid channels count: gets {} but {} required", channels, NPP);
+
+        auto size = ds.read_get<vec<u32, 2>>();
+        auto mipmaps = ds.read_get<u32>();
+
+        if (mipmaps && (!core::is_power_of_two(size.x()) || !core::is_power_of_two(size.y())))
+            pe_throw std::runtime_error("Sizes must be power of two");
+
+        ds.read_get<u64>(); /* Skip compressed size */
+
+        auto compcount      = calc_compcount(size, mipmaps);
+        auto data           = make_unique<c_array>(compcount);
+        auto img_compressed = bytes.subspan(28);
+        auto img_data       = util::decompress_block(img_compressed, compcount * sizeof(T));
+
+        PeRelRequireF(compcount == static_cast<size_t>(img_data.size()),
+                      "Invalid image size: gets {} but {} required",
+                      img_data.size(),
+                      compcount);
+        memcpy(data.get(), img_data.data(), compcount * sizeof(T));
+
+        grx_color_map result;
+        result._size = size;
+        result._data = move(data);
+        result._mipmaps = mipmaps;
+        result._compcount = compcount;
+
+        return result;
+    }
+
+    [[nodiscard]]
+    core::vector<core::byte> to_bytes() const {
+        if constexpr (std::endian::native == std::endian::big)
+            pe_throw std::runtime_error("Implement me for big endian");
+
+        using namespace core;
+
+        serializer s;
+        s.write(array{'P', 'E', 'T', 'X'});
+        s.write(static_cast<u32>(NPP));
+        s.write(static_cast<vec<u32, 2>>(_size));
+        s.write(_mipmaps);
+        s.write(util::compress(span{reinterpret_cast<core::byte*>(_data.get()), // NOLINT
+                                    static_cast<ssize_t>(_compcount)},
+                               util::COMPRESS_FAST));
+
+        return s.detach_data();
+    }
+
+    void gen_mipmaps() {
+        if (!core::is_power_of_two(_size.x()) || !core::is_power_of_two(_size.y()))
+            pe_throw std::runtime_error("Sizes must be power of two");
+
+        auto compcount = calc_compcount(_size, MIPMAPS_COUNT);
+        auto newdata = make_unique<c_array>(compcount);
+        auto ptr = newdata.get();
+
+        auto src_compcount = _size.x() * _size.y() * NPP;
+        std::memcpy(ptr, _data.get(), src_compcount * sizeof(T));
+
+        auto   mipmap_size  = _size;
+        size_t src_displacement = 0;
+        for (core::u32 i = 0; i < MIPMAPS_COUNT; ++i) {
+            auto new_mipmap_size = mipmap_size / 2U;
+            if (new_mipmap_size.x() == 0)
+                new_mipmap_size.x() = 1;
+            if (new_mipmap_size.y() == 0)
+                new_mipmap_size.y() = 1;
+
+            if constexpr (core::FloatingPoint<T>)
+                stbir_resize_float(ptr + src_displacement,
+                                   static_cast<int>(mipmap_size.x()),
+                                   static_cast<int>(mipmap_size.y()),
+                                   0,
+                                   ptr + src_displacement + src_compcount,
+                                   static_cast<int>(new_mipmap_size.x()),
+                                   static_cast<int>(new_mipmap_size.y()),
+                                   0,
+                                   static_cast<int>(NPP));
+            else
+                stbir_resize_uint8(ptr + src_displacement,
+                                   static_cast<int>(mipmap_size.x()),
+                                   static_cast<int>(mipmap_size.y()),
+                                   0,
+                                   ptr + src_displacement + src_compcount,
+                                   static_cast<int>(new_mipmap_size.x()),
+                                   static_cast<int>(new_mipmap_size.y()),
+                                   0,
+                                   static_cast<int>(NPP));
+
+            auto dst_compcount = new_mipmap_size.x() * new_mipmap_size.y() * NPP;
+
+            src_displacement += src_compcount;
+            src_compcount = dst_compcount;
+            mipmap_size = new_mipmap_size;
+        }
+
+        _data = move(newdata);
+        _mipmaps = MIPMAPS_COUNT;
+        _compcount = compcount;
+    }
 
     grx_color_map_iterator<T, NPP> begin() noexcept {
         return grx_color_map_iterator<T, NPP>(_data.get());
@@ -352,6 +502,16 @@ public:
         return _data.get();
     }
 
+    [[nodiscard]]
+    bool has_mipmaps() const noexcept {
+        return _mipmaps > 0;
+    }
+
+    [[nodiscard]]
+    core::u32 mipmaps_count() const noexcept {
+        return _mipmaps;
+    }
+
     grx_color_map get_resized(const vec2u& new_size) const {
         auto output_pixels = make_unique<c_array>(new_size.x() * new_size.y() * NPP);
 
@@ -379,16 +539,22 @@ public:
         grx_color_map result;
         result._data = std::move(output_pixels);
         result._size = new_size;
+        result._compcount = new_size.x() * new_size.y() * NPP;
 
         return result;
     }
 
 private:
+    template <size_t S>
+    friend class grx_texture;
+
     grx_color_map() noexcept = default;
 
 private:
     vec2u                _size = {0, 0};
     std::unique_ptr<T[]> _data = nullptr; // NOLINT
+    size_t               _compcount = 0;
+    core::u32            _mipmaps = 0;
 };
 
 using grx_color_map_r    = grx_color_map<uint8_t, 1>;
@@ -428,8 +594,21 @@ load_color_map_from_bytes(core::span<core::byte> bytes) {
     else if constexpr (T::size() == 4)
         type = STBI_rgb_alpha;
 
-    auto img = stbi_load_from_memory(
-        reinterpret_cast<const uint8_t*>(bytes.data()), static_cast<int>(bytes.size()), &w, &h, &comp, type); // NOLINT
+    if (bytes.size() > 4 && core::deserializer_view{bytes}.read_get<core::array<char, 4>>() ==
+                                core::array{'P', 'E', 'T', 'X'}) {
+        if constexpr (std::is_same_v<typename T::value_type, uint8_t>)
+            return grx_color_map<uint8_t, T::size()>::from_bytes(bytes);
+        else
+            return static_cast<grx_color_map<typename T::value_type, T::size()>>(
+                grx_color_map<uint8_t, T::size()>::from_bytes(bytes));
+    }
+
+    auto img = stbi_load_from_memory(reinterpret_cast<const uint8_t*>(bytes.data()), // NOLINT
+                                     static_cast<int>(bytes.size()),
+                                     &w,
+                                     &h,
+                                     &comp,
+                                     type);
 
     if (!img)
         return {std::runtime_error("Can't load image from memory")};
@@ -536,6 +715,9 @@ template <typename T, size_t S>
 [[nodiscard]]
 core::try_opt<core::vector<core::byte>>
 save_color_map_to_bytes(const grx_color_map<T, S>& color_map, core::string_view extension = "png") {
+    if (extension == "petx")
+        return color_map.to_bytes();
+
     core::vector<core::byte> result;
 
     using save_func_t = std::function<int(stbi_write_func*, void*, int, int, int, const void*)>;
@@ -616,12 +798,19 @@ save_color_map(const grx_color_map<T, S>& color_map, const core::string& file_pa
     constexpr size_t minimal_len = 5; // a.bmp, c.jpg, ...
 
     if (file_path.size() < minimal_len)
-        return {std::runtime_error("Can't save image '" + file_path + "': can't determine file format")};
+        return {std::runtime_error("Can't save image '" + file_path +
+                                   "': can't determine file format")};
 
-    auto extension = file_path.substr(file_path.size() - 4) / core::transform<core::string>(::tolower);
+    auto dot_pos = file_path.rfind('.');
+    if (dot_pos == core::string::npos)
+        return std::runtime_error("Can't save color map '" + file_path + "': has no extension");
+    auto extension = file_path.substr(dot_pos) / core::transform<core::string>(::tolower);
 
-    if (core::array{".png", ".bmp", ".tga", ".jpg"} / core::count_if([&](auto s) { return s == extension; }) == 0)
-        return  {std::runtime_error("Can't save image '" + file_path + "': unsupported extension '" + extension + "'")};
+    if (core::array{".png", ".bmp", ".tga", ".jpg", ".petx"} /
+            core::count_if([&](auto s) { return s == extension; }) ==
+        0)
+        return {std::runtime_error("Can't save image '" + file_path + "': unsupported extension '" +
+                                   extension + "'")};
 
     extension = extension.substr(1);
 
@@ -631,7 +820,8 @@ save_color_map(const grx_color_map<T, S>& color_map, const core::string& file_pa
             return true;
         else
             return {std::runtime_error("Can't create file \"" + file_path + "\"")};
-    } else
+    }
+    else
         return bytes.thrower_ptr();
 }
 
