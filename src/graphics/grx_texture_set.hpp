@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/async.hpp"
+#include "core/resource_mgr_base.hpp"
 #include "grx_texture_mgr.hpp"
 #include "grx_texture_path_set.hpp"
 
@@ -8,7 +9,7 @@ namespace grx {
 
 template <size_t S>
 class grx_texture_set
-    : public core::option_array<grx_texture_id<S>,
+    : public core::option_array<grx_texture_provider<S>,
                                 grx_texture_set_tag,
                                 static_cast<size_t>(
                                     grx_texture_set_tag::grx_texture_set_tag_count)> {
@@ -25,19 +26,34 @@ public:
 
     grx_texture_set(const core::shared_ptr<grx_texture_mgr<S>>& texture_mgr,
                     const grx_texture_path_set&                 texture_paths) {
-        using core::operator/;
-
         for (auto& [path, i] : core::value_index_view(texture_paths.options())) {
             auto tag = static_cast<grx_texture_set_tag>(i);
+
             if (path)
-                this->set(tag, texture_mgr->load(*path));
-            else {
-                if (tag == grx_texture_set_tag::diffuse)
-                    this->set(tag, texture_mgr->load(core::cfg_path("textures_dir", "basic/dummy_diffuse.png")));
-                else if (tag == grx_texture_set_tag::normal)
-                    this->set(tag, texture_mgr->load(core::cfg_path("textures_dir", "basic/dummy_normal.png")));
+                this->set(tag, texture_mgr->load(path->path, path->load_significance));
+        }
+    }
+
+    grx_texture_set(const grx_texture_path_set& texture_paths) {
+        for (auto& [path, i] : core::value_index_view(texture_paths.options())) {
+            auto tag = static_cast<grx_texture_set_tag>(i);
+
+            if (path) {
+                auto mgr = core::mgr_lookup<grx_texture_mgr<S>>(path->mgr_tag);
+                this->set(tag, mgr->load(path->path, path->load_significance));
             }
         }
+    }
+
+    [[nodiscard]]
+    grx_texture_path_set to_path_set() const {
+        grx_texture_path_set result;
+        for (auto& [texture_provider, i] : core::value_index_view(this->options())) {
+            auto tag = static_cast<grx_texture_set_tag>(i);
+            if (texture_provider)
+                result.set(tag, texture_provider->to_resource_path());
+        }
+        return result;
     }
 };
 
@@ -50,6 +66,25 @@ load_texture_set_from_paths(const core::shared_ptr<grx_texture_mgr<S>>& texture_
         textures.emplace_back(grx_texture_set<S>(texture_mgr, path_set));
 
     return textures;
+}
+
+template <size_t S>
+core::vector<grx_texture_set<S>>
+load_texture_sets_from_paths(const core::vector<grx_texture_path_set>& paths) {
+    core::vector<grx_texture_set<S>> textures;
+    for (auto& path_set : paths)
+        textures.emplace_back(grx_texture_set<S>(path_set));
+
+    return textures;
+}
+
+template <size_t S>
+core::vector<grx_texture_path_set> texture_sets_to_paths(const core::vector<grx_texture_set<S>>& texture_sets) {
+    core::vector<grx_texture_path_set> texture_paths;
+    for (auto& texture_provider : texture_sets)
+        texture_paths.emplace_back(texture_provider.to_path_set());
+
+    return texture_paths;
 }
 
 } // namespace grx

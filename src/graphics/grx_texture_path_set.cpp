@@ -9,18 +9,42 @@ using namespace core;
 namespace grx
 {
 
-grx_texture_path_set grx_texture_path_set::from_assimp(const string&     path_dir_key,
-                                                       const string&     path_prefix,
-                                                       const aiMaterial* material) {
+grx_texture_path_set
+grx_texture_path_set::from_assimp(const string&             path_dir_key,
+                                  const string&             path_prefix,
+                                  const aiMaterial*         material,
+                                  const core::string&       mgr_tag,
+                                  core::load_significance_t load_significance) {
     grx_texture_path_set set;
 
-    auto try_extract = [&](const aiMaterial* material, aiTextureType texture_type) -> optional<cfg_path> {
+    auto try_extract = [&](const aiMaterial* material, aiTextureType texture_type) -> optional<resource_path_t> {
+        optional<resource_path_t> result;
         if (material->GetTextureCount(texture_type)) {
             aiString texture_path;
             if (material->GetTexture(texture_type, 0, &texture_path) == AI_SUCCESS)
-                return cfg_path(path_dir_key, path_prefix / string(texture_path.C_Str(), texture_path.length));
+                result = resource_path_t{
+                    mgr_tag,
+                    cfg_path(path_dir_key,
+                             path_prefix / string(texture_path.C_Str(), texture_path.length)),
+                    load_significance};
         }
-        return nullopt;
+        if (!result) {
+            switch (texture_type) {
+            case aiTextureType_DIFFUSE:
+                result = resource_path_t{mgr_tag,
+                                         cfg_path("textures_dir", "basic/dummy_diffuse.png"),
+                                         load_significance};
+                break;
+            case aiTextureType_NORMALS:
+                result = resource_path_t{mgr_tag,
+                                         cfg_path("textures_dir", "basic/dummy_normal.png"),
+                                         load_significance};
+                break;
+            default: break;
+            }
+        }
+
+        return result;
     };
 
     set.set<grx_texture_set_tag::diffuse> (try_extract(material, aiTextureType_DIFFUSE));
@@ -31,11 +55,15 @@ grx_texture_path_set grx_texture_path_set::from_assimp(const string&     path_di
 }
 
 vector<grx_texture_path_set>
-get_texture_paths_from_assimp(const string& path_dir_key, const string& path_prefix, const aiScene* assimp_scene) {
+get_texture_paths_from_assimp(const string&             path_dir_key,
+                              const string&             path_prefix,
+                              const aiScene*            assimp_scene,
+                              const core::string&       mgr_tag,
+                              core::load_significance_t load_significance) {
     vector<grx_texture_path_set> paths;
 
     for (auto material : span(assimp_scene->mMaterials, assimp_scene->mNumMaterials))
-        paths.emplace_back(grx_texture_path_set::from_assimp(path_dir_key, path_prefix, material));
+        paths.emplace_back(grx_texture_path_set::from_assimp(path_dir_key, path_prefix, material, mgr_tag, load_significance));
 
     return paths;
 }
