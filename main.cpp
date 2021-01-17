@@ -17,6 +17,7 @@
 #include <graphics/grx_deferred_renderer_light.hpp>
 #include <graphics/grx_cpu_mesh_group.hpp>
 #include <graphics/grx_object.hpp>
+#include <graphics/grx_object_mgr.hpp>
 
 using namespace grx;
 using namespace core;
@@ -73,6 +74,13 @@ int pe_main(args_view args) {
     pl2.attenuation_quadratic(0.001f);
     */
 
+    /*
+    auto cmap = load_color_map_unwrap<color_rgba>("/home/ptrnine/repo/PEngine/gamedata/models/glock19x/diffuse.png");
+    auto cmap2 = cmap.get_resized({2048,2048});
+    cmap2.gen_mipmaps();
+    save_color_map_unwrap(cmap2, "/home/ptrnine/repo/PEngine/gamedata/models/glock19x/diffuse.petx");
+    */
+
     auto shadow_sp = grx_shader_tech(cm, "shader_tech_csm_fr_shadow");
     auto geom_tech = grx_shader_tech(cm, "shader_tech_ds_geometry");
     auto ds_prog   = grx_shader_program::create_shared(cm, "shader_csm_ds");
@@ -80,20 +88,27 @@ int pe_main(args_view args) {
     //grx_mesh_instance mesh(mm, "cz805/cz805.dae");
     //grx_mesh_instance mesh(mm, "glock19x/glock19x.dae");
 
-    auto ttmgr = grx_texture_mgr<4>::create_shared("manager");
+    //auto ttmgr = grx_texture_mgr<4>::create_shared("manager");
     //auto obj = load_object<grx_cpu_boned_mesh_group_t>(ttmgr, "glock19x/glock19x.dae");
-    using obj_t = decltype(load_object<grx_cpu_boned_mesh_group_t>(ttmgr, ""));
-    obj_t obj;
+    //using obj_t = decltype(load_object<grx_cpu_boned_mesh_group_t>(ttmgr, ""));
+    using obj_mgr_t = grx_object_type_to_mgr_t<false, grx_cpu_boned_mesh_group_t>;
+
+    auto obj_mgr = obj_mgr_t::create_shared("default");
+
+    //obj_t obj;
 
     core::printline("load start");
-    auto obj_data = read_binary_file_unwrap("/home/ptrnine/Desktop/glock-pe.xxx");
-    deserializer_view deser(obj_data);
-    deser.read(obj);
+    auto obj = obj_mgr->load({"models_dir", "glock19x/glock19x.dae"});
+    auto obj2 = core::optional{obj_mgr->load({"models_dir", "glock19x/glock-pe.xxx"})};
+    //auto obj_data = read_binary_file_unwrap("/home/ptrnine/Desktop/glock-pe.xxx");
+    //deserializer_view deser(obj_data);
+    //deser.read(obj);
     core::printline("load end");
 
+    //while (obj.try_access() == nullptr);
     //serializer ser;
-    //ser.write(obj);
-    //write_file_unwrap("/home/ptrnine/Desktop/glock-pe.xxx", ser.data());
+    //ser.write(*obj.try_access());
+    //write_file_unwrap("/home/ptrnine/repo/PEngine/gamedata/models/glock19x/glock-pe2.xxx", ser.data());
 
     //mesh.set_scale({0.0525f, 0.0525f, 0.0525f});
     //mesh.set_debug_aabb_draw(true);
@@ -108,8 +123,10 @@ int pe_main(args_view args) {
 
     //mesh.default_animation("idle");
 
-    timer timer;
     fps_counter counter;
+
+    timer tim;
+    bool state = false;
 
     std::mt19937 mt;
     while (!wnd.should_close()) {
@@ -139,16 +156,18 @@ int pe_main(args_view args) {
                 */
         }
 
-        if (timer.measure() > core::seconds(1)) {
-  //          printline("ray len: {}", sl2.max_ray_length());
-            printline("FPS: {}, fov: {.3f} pos:{.4f} dir:{.4f}",
-                    counter.get(), cam->horizontal_fov(), cam->position(), cam->directory());
-            timer.reset();
-        }
-/*
-        sl2.position(cam->position());
-        sl2.direction(cam->directory());
-*/
+        //          printline("ray len: {}", sl2.max_ray_length());
+
+        LOG_UPDATE("FPS: {}, fov: {.3f} pos:{.4f} dir:{.4f}",
+                   static_cast<uint>(counter.get()),
+                   cam->horizontal_fov(),
+                   cam->position(),
+                   cam->directory());
+
+        /*
+                sl2.position(cam->position());
+                sl2.direction(cam->directory());
+        */
 
         //mesh.update_animation_transforms();
 
@@ -156,7 +175,29 @@ int pe_main(args_view args) {
 
         ds_mgr->start_geometry_pass();
         //mesh.draw(cam->view_projection(), geom_tech);
-        obj.draw(cam->view_projection(), glm::mat4(1.f), geom_tech);
+        if (auto objptr = obj.try_access()) {
+            objptr->draw(cam->view_projection(), glm::mat4(1.f), geom_tech);
+        }
+        if (obj2) {
+            if (auto objptr = obj2->try_access()) {
+                objptr->draw(cam->view_projection(),
+                             glm::translate(glm::mat4(1.f), {5.f, 0.f, 0.f}),
+                             geom_tech);
+            }
+
+            if (!state) {
+                state = true;
+            }
+        }
+
+        if (state && tim.measure_count() > 0.5)
+            obj2.reset();
+
+        if (state && tim.measure_count() > 1.0) {
+            obj2 = core::optional{
+                obj_mgr->load({"models_dir", "glock19x/glock-pe.xxx"}, load_significance_t::low)};
+            tim.reset();
+        }
         //ds_mgr->debug_draw(cam->view_projection());
         //sss->activate();
         //sss->get_uniform_unwrap<glm::mat4>("MVP") = cam->view_projection() * spot_light.matttt();
