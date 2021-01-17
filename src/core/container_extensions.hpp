@@ -1028,6 +1028,14 @@ template <typename T, size_t S, typename F>
 constexpr inline auto array_map(const array<T, S>& arr, F callback) {
     return array_map(arr, callback, std::make_index_sequence<S>());
 }
+
+template <typename... Ts> requires requires (const Ts&... s) { ((s.size()), ...); (string_view(s), ...); }
+inline string build_string(const Ts&... strings) {
+    string str;
+    str.reserve((strings.size() + ...));
+    ((str.append(strings)), ...);
+    return str;
+}
 } // namespace core
 
 namespace std
