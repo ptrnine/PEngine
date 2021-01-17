@@ -155,6 +155,13 @@ namespace core
             return _data;
         }
 
+        [[nodiscard]]
+        byte_vector detach_data() {
+            auto result = move(_data);
+            _data = {};
+            return result;
+        }
+
     private:
         byte_vector _data;
     };
@@ -212,6 +219,13 @@ namespace core
         template <typename... Ts>
         void read(Ts&... values) {
             (deserialize(values, _range), ...);
+        }
+
+        template <typename T>
+        T read_get() {
+            T v;
+            read(v);
+            return v;
         }
 
     private:
