@@ -60,7 +60,16 @@ public:
     ~resource_provider_t() {
         if (_resource_id != numlim<u64>::max()) {
             PeAssert(_storage);
-            _storage->decrement_usages(_resource_id);
+            try {
+                _storage->decrement_usages(_resource_id);
+            }
+            catch (const std::exception& e) {
+                auto trace = core_details::try_get_stacktrace_str(e);
+                LOG_ERROR(
+                    "resource_provider_t: exception in dtor: {}{}\n", e.what(), trace ? *trace : "");
+
+                std::terminate();
+            }
         }
     }
 
@@ -237,9 +246,11 @@ public:
             /* Resource may be on loading */
             auto future_pos = _futures.find(id);
             if (found_resource ==_resources.end() && future_pos != _futures.end()) {
+                auto scope_exit = scope_guard{[&]() {
+                    _futures.erase(future_pos);
+                }};
                 resource_val_t resource;
                 resource.cached = move(future_pos->second.get());
-                _futures.erase(future_pos);
 
                 auto [position, _] = _resources.insert_or_assign(id, move(resource));
                 found_resource = position;
