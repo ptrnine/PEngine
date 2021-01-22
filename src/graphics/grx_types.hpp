@@ -10,6 +10,8 @@
 #include <core/helper_macros.hpp>
 #include <core/serialization.hpp>
 
+#include "grx_config_ext.hpp"
+
 namespace grx {
     using core::vec;
     using core::vec2f;
