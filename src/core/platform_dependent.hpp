@@ -173,6 +173,10 @@ namespace platform_dependent
         return t;
     }
 
+    inline core::string basename(const core::string& path) {
+        return ::basename(path.data());
+    }
+
     inline int afterlife(int(*main_function)(int, char**), void(*afterlife_function)(), int argc, char* argv[]) {
         pid_t pid = fork();
 
