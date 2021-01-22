@@ -67,7 +67,7 @@ namespace grx::grx_texture_helper {
 
         GL_TRACE(glTextureStorage2D,
                 name,
-                10,
+                MIPMAPS_COUNT + 1,
                 internal_fmt,
                 static_cast<GLsizei>(w),
                 static_cast<GLsizei>(h));
@@ -102,10 +102,12 @@ namespace grx::grx_texture_helper {
 
             cur_w /= 2;
             cur_h /= 2;
-            if (cur_w == 0)
-                cur_w = 1;
-            if (cur_h == 0)
-                cur_h = 1;
+            constexpr auto mipmap_min = static_cast<vec2i>(MIPMAP_MIN_SIZE);
+
+            if (cur_w == mipmap_min.x())
+                cur_w = mipmap_min.x();
+            if (cur_h == mipmap_min.y())
+                cur_h = mipmap_min.y();
             cur_size = cur_w * cur_h * static_cast<int>(channels * compsize);
         }
 

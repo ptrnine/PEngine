@@ -31,6 +31,7 @@ using core::make_unique;
 
 constexpr u8 COLOR_VAL_MAX = 255;
 constexpr core::u32 MIPMAPS_COUNT = 8;
+constexpr auto MIPMAP_MIN_SIZE = core::vec{2U, 2U};
 
 /**
  * @brief Provides access to the pixel data
@@ -270,10 +271,10 @@ public:
         for (core::u32 i = 0; i < mipmaps; ++i) {
             compcount += mipmap_size.x() * mipmap_size.y() * NPP;
             mipmap_size /= 2U;
-            if (mipmap_size.x() == 0)
-                mipmap_size.x() = 1;
-            if (mipmap_size.y() == 0)
-                mipmap_size.y() = 1;
+            if (mipmap_size.x() < MIPMAP_MIN_SIZE.x())
+                mipmap_size.x() = MIPMAP_MIN_SIZE.x();
+            if (mipmap_size.y() == MIPMAP_MIN_SIZE.y())
+                mipmap_size.y() = MIPMAP_MIN_SIZE.y();
         }
 
         return compcount;
@@ -404,10 +405,10 @@ public:
         size_t src_displacement = 0;
         for (core::u32 i = 0; i < MIPMAPS_COUNT; ++i) {
             auto new_mipmap_size = mipmap_size / 2U;
-            if (new_mipmap_size.x() == 0)
-                new_mipmap_size.x() = 1;
-            if (new_mipmap_size.y() == 0)
-                new_mipmap_size.y() = 1;
+            if (mipmap_size.x() < MIPMAP_MIN_SIZE.x())
+                mipmap_size.x() = MIPMAP_MIN_SIZE.x();
+            if (mipmap_size.y() == MIPMAP_MIN_SIZE.y())
+                mipmap_size.y() = MIPMAP_MIN_SIZE.y();
 
             if constexpr (core::FloatingPoint<T>)
                 stbir_resize_float(ptr + src_displacement,
