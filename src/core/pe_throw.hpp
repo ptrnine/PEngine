@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <boost/stacktrace.hpp>
 #include <boost/exception/all.hpp>
 
@@ -12,6 +13,13 @@ using boost_traced_t = boost::error_info<struct tag_stacktrace, boost::stacktrac
 
 namespace core_details
 {
+inline std::optional<std::string> try_get_stacktrace_str(const std::exception& e) {
+    const auto*  st = boost::get_error_info<boost_traced_t>(e);
+    return st ?
+        "\n\n\n*** STACK TRACE ***\n\n" + boost::stacktrace::to_string(*st) :
+        std::optional<std::string>{};
+}
+
 struct stacktrace_exception_helper {
     template <typename T>
     auto operator/(const T& e) {

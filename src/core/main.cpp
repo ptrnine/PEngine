@@ -73,13 +73,8 @@ namespace {
             return pe_main(args);
         }
         catch (const std::exception& e) {
-            const auto* st = boost::get_error_info<boost_traced_t>(e);
-            core::string trace;
-
-            if (st)
-                trace = "\n\n\n*** STACK TRACE ***\n\n" + boost::stacktrace::to_string(*st);
-
-            LOG_ERROR("{}{}", e.what(), trace);
+            auto trace = core_details::try_get_stacktrace_str(e);
+            LOG_ERROR("{}{}", e.what(), trace ? *trace : "");
             std::terminate();
         }
     }
