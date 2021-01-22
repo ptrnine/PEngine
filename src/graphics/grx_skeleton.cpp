@@ -78,9 +78,11 @@ void remove_orphan_non_bone_nodes(unique_ptr<grx::grx_bone_node>& node, const gr
 
 unique_ptr<grx::grx_bone_node>& prune_non_bone_root(unique_ptr<grx::grx_bone_node>& node,
                                                    const grx::grx_skeleton_data&   skeleton_data) {
-    if (skeleton_data.mapping.count(node->name) == 0 && node->children.size() == 1)
+    if (skeleton_data.mapping.count(node->name) == 0 && node->children.size() == 1) {
+        DLOG("grx_skeleton: prune non-bone root {}: transform: {}", node->name, node->transform);
+        //node->children.front()->transform = node->children.front()->transform * node->transform;
         return prune_non_bone_root(node->children.front(), skeleton_data);
-    else
+    } else
         return node;
 }
 
@@ -92,6 +94,7 @@ void insert_identity_for_non_bones(const unique_ptr<grx::grx_bone_node>& node,
     auto [position, was_inserted] = skeleton_data.mapping.emplace(node->name, skeleton_data.offsets.size());
 
     if (was_inserted) {
+        DLOG("Insert identity for non-bone {}", node->name);
         Expects(!node->children.empty());
 
         auto& [mapping, aabbs, offsets, final_transforms] = skeleton_data;
@@ -169,14 +172,20 @@ void anim_traverse(const grx::grx_bone_node_optimized& node,
                    const glm::mat4&                    global_inverse_transform,
                    core::span<glm::mat4>               final_transforms,
                    const glm::mat4&                    parent_transform = glm::mat4(1.0)) {
+    glm::mat4 tsr = node.transform;
+
     auto& channel = animation.channels().at(node.idx);
-    auto [position, scaling, rotation] =
-        grx::grx_animation_key_lookup(channel).interstep(time).interpolate();
-    auto t   = glm::translate(glm::mat4(1.0), to_glm(position));
-    auto s   = glm::scale(glm::mat4(1.0), to_glm(scaling));
-    auto r   = glm::mat4_cast(rotation);
-    auto tsr = t * s * r;
-    auto global_transform = parent_transform * tsr;
+
+    /* TODO: remove this if after fixing prune_non_bone_root */
+    if (!channel.empty()) {
+        auto [position, scaling, rotation] =
+            grx::grx_animation_key_lookup(channel).interstep(time).interpolate();
+        auto t = glm::translate(glm::mat4(1.0), to_glm(position));
+        auto s = glm::scale(glm::mat4(1.0), to_glm(scaling));
+        auto r = glm::mat4_cast(rotation);
+        tsr    = t * s * r;
+    }
+    auto global_transform      = parent_transform * tsr;
     final_transforms[node.idx] = global_inverse_transform * global_transform * node.offset;
 
     for (auto& child : node.children)
@@ -230,8 +239,9 @@ grx_skeleton grx_skeleton::from_assimp(const aiScene* scene) {
     auto skeleton = grx_skeleton(assimp_extract_nodes(scene), assimp_extract_skeleton_data(scene));
 
     remove_orphan_non_bone_nodes(skeleton._root, skeleton._skeleton_data);
-    auto new_root  = move(prune_non_bone_root(skeleton._root, skeleton._skeleton_data));
-    skeleton._root = move(new_root);
+    /* TODO: remove roots with saving transformation */
+    //auto new_root  = move(prune_non_bone_root(skeleton._root, skeleton._skeleton_data));
+    //skeleton._root = move(new_root);
 
     insert_identity_for_non_bones(skeleton._root, skeleton._skeleton_data);
 
