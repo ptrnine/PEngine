@@ -86,7 +86,8 @@ int pe_main(args_view args) {
     auto ds_prog   = grx_shader_program::create_shared(cm, "shader_csm_ds");
     grx_mesh_mgr mm(cm, "mesh_mgr");
     //grx_mesh_instance mesh(mm, "cz805/cz805.dae");
-    //grx_mesh_instance mesh(mm, "glock19x/glock19x.dae");
+    grx_mesh_instance mesh(mm, "glock19x/glock19x.dae");
+    mesh.move({5.f, 0.f, 0.f});
 
     //auto ttmgr = grx_texture_mgr<4>::create_shared("manager");
     //auto obj = load_object<grx_cpu_boned_mesh_group_t>(ttmgr, "glock19x/glock19x.dae");
@@ -98,8 +99,8 @@ int pe_main(args_view args) {
     //obj_t obj;
 
     core::printline("load start");
-    auto obj = obj_mgr->load({"models_dir", "glock19x/glock19x.dae"});
-    auto obj2 = core::optional{obj_mgr->load({"models_dir", "glock19x/glock-pe.xxx"})};
+    //auto obj = obj_mgr->load({"models_dir", "glock19x/glock19x.dae"});
+    auto obj2 = core::optional{obj_mgr->load({"models_dir", "glock19x/glock19x.dae"})};
     //auto obj_data = read_binary_file_unwrap("/home/ptrnine/Desktop/glock-pe.xxx");
     //deserializer_view deser(obj_data);
     //deser.read(obj);
@@ -133,11 +134,13 @@ int pe_main(args_view args) {
         inp::inp_ctx().update();
 
         if (auto map = input_map.lock()) {
-            /*
             if (map->GetBoolIsNew('R')) {
-                mesh.mesh().skeleton()->animations.at("reload_empty").ticks_per_second(8.0);
-                mesh.play_animation("reload_empty");
+                if (obj2)
+                obj2->play_animation("shot");
+                mesh.mesh().skeleton()->animations.at("shot").ticks_per_second(8.0);
+                mesh.play_animation("shot");
             }
+            /*
             if (map->GetBoolIsNew('Z')) {
                 mesh.mesh().skeleton()->animations.at("shot").ticks_per_second(55.0);
                 mesh.play_animation("shot");
@@ -169,35 +172,30 @@ int pe_main(args_view args) {
                 sl2.direction(cam->directory());
         */
 
-        //mesh.update_animation_transforms();
+        mesh.update_animation_transforms();
 
         grx::grx_frustum_mgr().calculate_culling(cam->extract_frustum());
 
         ds_mgr->start_geometry_pass();
-        //mesh.draw(cam->view_projection(), geom_tech);
-        if (auto objptr = obj.try_access()) {
-            objptr->draw(cam->view_projection(), glm::mat4(1.f), geom_tech);
-        }
+        mesh.draw(cam->view_projection(), geom_tech);
+
+        //obj.draw(cam->view_projection(), geom_tech);
         if (obj2) {
-            if (auto objptr = obj2->try_access()) {
-                objptr->draw(cam->view_projection(),
-                             glm::translate(glm::mat4(1.f), {5.f, 0.f, 0.f}),
-                             geom_tech);
-            }
+            obj2->draw(cam->view_projection(), geom_tech);
 
             if (!state) {
                 state = true;
             }
         }
 
-        if (state && tim.measure_count() > 0.5)
-            obj2.reset();
+        //if (state && tim.measure_count() > 0.5)
+            //obj2.reset();
 
-        if (state && tim.measure_count() > 1.0) {
-            obj2 = core::optional{
-                obj_mgr->load({"models_dir", "glock19x/glock-pe.xxx"}, load_significance_t::low)};
-            tim.reset();
-        }
+        //if (state && tim.measure_count() > 1.0) {
+            //obj2 = core::optional{
+          //      obj_mgr->load({"models_dir", "glock19x/glock19x.dae"}, load_significance_t::low)};
+            //tim.reset();
+        //}
         //ds_mgr->debug_draw(cam->view_projection());
         //sss->activate();
         //sss->get_uniform_unwrap<glm::mat4>("MVP") = cam->view_projection() * spot_light.matttt();
