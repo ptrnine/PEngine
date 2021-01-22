@@ -148,11 +148,12 @@ public:
     grx_object(const grx_cpu_mesh_group<BufTs...>& mesh_group, grx_object_instanced_tag&&):
         grx_object(mesh_group, std::make_index_sequence<sizeof...(BufTs)>()) {}
 
-    template <bool Enable = !IsInstanced, bool Skeleton = has_skeleton()>
+    template <bool Enable = !IsInstanced, bool Skeleton = has_skeleton(), typename... FinalTransformsT>
     std::enable_if_t<Enable> draw(const glm::mat4&                            vp,
                                   const glm::mat4&                            model,
                                   const core::shared_ptr<grx_shader_program>& program,
-                                  bool enable_textures = true) {
+                                  bool enable_textures = true,
+                                  const FinalTransformsT&... final_transforms) {
         program->activate();
 
         _unicache.setup(program);
@@ -164,8 +165,13 @@ public:
             *m = model;
 
         if constexpr (Skeleton) {
-            if (auto& bone_matrices = _unicache.get<unitag_bone_matrices>())
-                *bone_matrices = this->_skeleton.final_transforms();
+            if (auto& bone_matrices = _unicache.get<unitag_bone_matrices>()) {
+                if constexpr (sizeof...(FinalTransformsT) == 0)
+                    *bone_matrices = this->_skeleton.final_transforms();
+                else
+                    *bone_matrices =
+                        std::get<0>(std::tuple<const FinalTransformsT&...>(final_transforms...));
+            }
         }
 
         _vbo.bind_vao();
@@ -194,6 +200,7 @@ public:
         }
     }
 
+    /* TODO: implement this */
     template <bool Enable = IsInstanced, bool Skeleton = has_skeleton()>
     std::enable_if_t<Enable> draw(const glm::mat4&,
                                   const core::shared_ptr<grx_shader_program>& program,
@@ -241,15 +248,16 @@ public:
         }
     }
 
-    template <bool Enable = !IsInstanced, bool Skeleton = has_skeleton()>
+    template <bool Enable = !IsInstanced, bool Skeleton = has_skeleton(), typename... FinalTransforms>
     std::enable_if_t<Enable> draw(const glm::mat4&       vp,
                                   const glm::mat4&       model,
                                   const grx_shader_tech& tech,
-                                  bool                   enable_textures = true) {
+                                  bool                   enable_textures = true,
+                                  const FinalTransforms&... final_transforms) {
         if constexpr (Skeleton)
-            draw(vp, model, tech.skeleton(), enable_textures);
+            draw(vp, model, tech.skeleton(), enable_textures, final_transforms...);
         else
-            draw(vp, model, tech.base(), enable_textures);
+            draw(vp, model, tech.base(), enable_textures, final_transforms...);
     }
 
     template <bool Enable = IsInstanced, bool Skeleton = has_skeleton()>
@@ -379,7 +387,7 @@ auto try_load_object(const core::shared_ptr<grx_texture_mgr<4>>& texture_mgr,
 
         try {
             auto str_data = grx_utils::collada_bake_bind_shape_matrix(*data);
-            auto scene    = details::assimp_load_scene(*data);
+            auto scene    = details::assimp_load_scene(str_data);
             auto guard    = core::scope_guard{[&]() {
                 details::assimp_release_scene(scene);
             }};
