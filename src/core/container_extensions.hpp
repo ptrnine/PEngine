@@ -553,6 +553,21 @@ requires Iterable<ContainerT> inline auto _fold_operator(const ContainerT& t, co
     }
 }
 
+template <typename F>
+inline void generate(Iterable auto& container, F&& generator) {
+    std::generate(std::begin(container), std::end(container), std::forward<F>(generator));
+}
+
+inline void sort(Iterable auto& container) {
+    std::sort(std::begin(container), std::end(container));
+}
+
+inline bool is_unique_sort(Iterable auto& container) {
+    std::sort(std::begin(container), std::end(container));
+    auto pos = std::adjacent_find(std::begin(container), std::end(container));
+    return pos == std::end(container);
+}
+
 /**
  * @brief Adapter for std::count_if
  */
@@ -957,6 +972,8 @@ inline std::basic_string<CharT> path_eval(std::basic_string_view<CharT> src) {
 inline string path_eval(string_view path) {
     return path_eval<char>(path);
 }
+
+using platform_dependent::basename;
 
 /**
  * @brief Case insensitive match of two ASCII strings
