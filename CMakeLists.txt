@@ -9,6 +9,20 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(specific_compiler_flags "-fconcepts -fcoroutines -Wduplicated-branches -Wduplicated-cond -Wlogical-op")
 endif()
 
+# Build type
+string(TOUPPER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE)
+
+if (DEFINED CMAKE_BUILD_TYPE AND NOT CMAKE_BUILD_TYPE MATCHES "^(|DEBUG|RELEASE|RELWITHDEBINFO|MINSIZEREL)$")
+    message(FATAL_ERROR "Invalid CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
+endif()
+
+if (NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE MATCHES "^(|DEBUG|RELWITHDEBINFO)$")
+    set(CMAKE_DEBUG_ENABLED ON)
+    add_definitions(-D DEBUG)
+elseif()
+    add_definitions(-D NDEBUG)
+endif()
+
 set(cxx_flags
     -fstrict-aliasing
     -Wall
@@ -28,6 +42,10 @@ set(cxx_flags
     -Werror=unused-result
     -Wno-unused-function -Wno-missing-braces
 )
+
+if (CMAKE_BUILD_TYPE MATCHES "^(|RELEASE|RELWITHDEBINFO)$")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast")
+endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${specific_compiler_flags}")
 foreach(flag IN LISTS cxx_flags)
@@ -95,21 +113,6 @@ git_submodule_copy_files(libcuckoo NO_NAME_INCLUDE INCLUDES
         libcuckoo/cuckoohash_config.hh
         libcuckoo/bucket_container.hh)
 git_submodule_copy_files(flat_hash_map NO_NAME_INCLUDE INCLUDES flat_hash_map.hpp)
-
-# Build type
-string(TOUPPER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE)
-
-if (DEFINED CMAKE_BUILD_TYPE AND NOT CMAKE_BUILD_TYPE MATCHES "^(|DEBUG|RELEASE|RELWITHDEBINFO|MINSIZEREL)$")
-    message(FATAL_ERROR "Invalid CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
-endif()
-
-if (NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE MATCHES "^(|DEBUG|RELWITHDEBINFO)$")
-    set(CMAKE_DEBUG_ENABLED ON)
-    add_definitions(-D DEBUG)
-elseif()
-    add_definitions(-D NDEBUG)
-endif()
-
 
 if (CMAKE_BUILD_TYPE STREQUAL "RELEASE" AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
