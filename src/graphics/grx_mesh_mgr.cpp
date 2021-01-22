@@ -329,9 +329,11 @@ mesh_load_texture_sets(const aiScene* scene, const string& dir, grx_texture_mgr<
 
     auto load_if_valid = [&texture_mgr, &dir](auto& texture_set, const auto& path_opt, grx_texture_set_tag index) {
         if (path_opt) {
-            DLOG("Load texture: {}", *path_opt);
-            texture_set.set(index, texture_mgr.load(cfg_path("", cfg_make_relative(dir) + *path_opt)));
-        /* Set default diffuse or normal */
+            DLOG("Load texture: {} relative dir: {}", *path_opt, cfg_make_relative(dir));
+            texture_set.set(
+                index,
+                texture_mgr.load(cfg_path("", cfg_make_relative(dir) / core::basename(*path_opt))));
+            /* Set default diffuse or normal */
         } else if (index == grx_texture_set_tag::diffuse) {
             DLOG("Load texture: {}", cfg_path("textures_dir", "basic/dummy_diffuse.png").absolute());
             texture_set.set(index, texture_mgr.load(cfg_path("textures_dir", "basic/dummy_diffuse.png")));
