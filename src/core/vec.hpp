@@ -279,7 +279,7 @@ namespace core {
         }
 
         template <typename TT> requires requires {typename TT::n_dimension_vector;}
-        explicit operator TT() const {
+        constexpr explicit operator TT() const {
             return TT{vec_static_cast<typename TT::value_type>(v, std::make_index_sequence<S>())};
         }
 
