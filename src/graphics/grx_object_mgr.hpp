@@ -8,8 +8,63 @@ class grx_object_mgr;
 
 
 template <bool IsInstanced, typename MeshT, typename... Ts>
-using grx_object_provider = core::resource_provider_t<grx_object_mgr<IsInstanced, MeshT, Ts...>>;
+class grx_object_provider;
 
+template <typename MeshT, typename... Ts>
+class grx_object_provider<false, MeshT, Ts...>
+    : public core::resource_provider_t<grx_object_mgr<false, MeshT, Ts...>> {
+public:
+    using super_t = core::resource_provider_t<grx_object_mgr<false, MeshT, Ts...>>;
+    using super_t::super_t;
+
+    struct anim_spec_t {
+        core::string name;
+        core::timer  timer;
+        bool         stop_at_end = true;
+    };
+
+    template <bool Enable = MeshT::has_bone_buf()>
+    std::enable_if_t<Enable> play_animation(const core::string& name, bool stop_at_end = true) {
+        current_anim = anim_spec_t{name, {}, stop_at_end};
+    }
+
+    template <typename ShaderT, bool Enable = MeshT::has_bone_buf()>
+    std::enable_if_t<Enable> draw(const glm::mat4& view_projection,
+                                  const ShaderT&   program,
+                                  bool             enable_textures = true) {
+        auto* obj = this->try_access();
+        if (obj) {
+            if (current_anim) {
+                auto& anim = *current_anim;
+                auto& animations = obj->_animations;
+                auto anim_pos = animations.find(anim.name);
+
+                if (anim_pos == animations.end()) {
+                    LOG_ERROR("Animation {} not found!", anim.name);
+                    current_anim.reset();
+                    obj->draw(view_projection, _model_mat, program, enable_textures);
+                } else {
+                    obj->draw(view_projection, _model_mat, program, enable_textures,
+                            obj->_skeleton.animation_transforms(anim_pos->second, anim.timer.measure_count()));
+                }
+            } else {
+                obj->draw(view_projection, _model_mat, program, enable_textures);
+            }
+        }
+    }
+
+private:
+    core::optional<anim_spec_t> current_anim;
+    glm::mat4                   _model_mat = glm::mat4(1.f);
+};
+
+template <typename MeshT, typename... Ts>
+class grx_object_provider<true, MeshT, Ts...>
+    : public core::resource_provider_t<grx_object_mgr<true, MeshT, Ts...>> {
+public:
+    using super_t = core::resource_provider_t<grx_object_mgr<true, MeshT, Ts...>>;
+    using super_t::super_t;
+};
 
 template <bool IsInstanced, typename MeshT, typename... Ts>
 struct grx_cached_mesh_t : public details::skeleton_storage<MeshT::has_bone_buf()> {
@@ -77,7 +132,7 @@ struct grx_cached_mesh_t : public details::skeleton_storage<MeshT::has_bone_buf(
                 pe_throw std::runtime_error("Can't load mesh at path '" + absolute_path + "'");
 
             auto str_data = grx_utils::collada_bake_bind_shape_matrix(*data);
-            auto scene    = details::assimp_load_scene(*data);
+            auto scene    = details::assimp_load_scene(str_data);
             auto guard    = core::scope_guard{[&]() {
                 details::assimp_release_scene(scene);
             }};

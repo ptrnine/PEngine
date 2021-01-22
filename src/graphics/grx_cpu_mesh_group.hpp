@@ -578,7 +578,7 @@ try_load_mesh_group(const core::string& file_path) {
             return std::runtime_error("Can't load mesh at path '" + file_path + "'");
 
         auto str_data = grx_utils::collada_bake_bind_shape_matrix(*data);
-        auto scene = details::assimp_load_scene(*data);
+        auto scene = details::assimp_load_scene(str_data);
         auto guard = core::scope_guard{[&](){ details::assimp_release_scene(scene); }};
 
         if (!scene)
