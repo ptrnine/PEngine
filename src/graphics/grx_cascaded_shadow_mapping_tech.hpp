@@ -17,9 +17,9 @@ namespace grx
     public:
         struct uniforms_t {
             uniforms_t(grx_shader_program& sp):
-                light_mvps (sp.get_uniform_unwrap<core::span<glm::mat4>>("light_MVP")),
-                shadow_maps(sp.get_uniform_unwrap<core::span<int>>("shadow_map")),
-                csm_end_cs (sp.get_uniform_unwrap<core::span<float>>("csm_end_cs")) {}
+                light_mvps (sp.get_uniform<core::span<glm::mat4>>("light_MVP")),
+                shadow_maps(sp.get_uniform<core::span<int>>("shadow_map")),
+                csm_end_cs (sp.get_uniform<core::span<float>>("csm_end_cs")) {}
 
             grx_uniform<core::span<glm::mat4>> light_mvps;
             grx_uniform<core::span<int>>       shadow_maps;

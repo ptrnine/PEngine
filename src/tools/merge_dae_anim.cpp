@@ -5,7 +5,7 @@
 using namespace core;
 
 string read_anims(const string& filename) {
-    auto data = read_file_unwrap(filename);
+    auto data = read_file(filename);
 
     auto start = data.find("<library_animations>");
     if (start == string::npos)
@@ -42,7 +42,7 @@ string set_anim_name(const string& anim_data, const string& anim_name) {
 }
 
 string insert_animations(const string& output_name, const vector<pair<string, string>>& anim_data) {
-    auto data = read_file_unwrap(output_name);
+    auto data = read_file(output_name);
     auto start = data.find("<library_animations>");
 
     if (start == string::npos)
@@ -63,7 +63,7 @@ int pe_main(args_view args) {
     vector<pair<string, string>> anim_data;
     string output_name;
 
-    while (auto fname_opt = args.next()) {
+    while (auto fname_opt = args.try_next()) {
         auto& fname = *fname_opt;
         auto splits = fname / split(':');
         if (splits.size() == 1) {
@@ -84,7 +84,7 @@ int pe_main(args_view args) {
     }
 
     auto output = insert_animations(output_name, anim_data);
-    write_file_unwrap(output_name, output);
+    write_file(output_name, output);
 
     return 0;
 }

@@ -79,7 +79,7 @@ int pe_main(args_view args) {
     );
 
     /* Get Matrix-View-Projection matrix uniform */
-    auto MVP = shader->get_uniform_unwrap<glm::mat4>("MVP");
+    auto MVP = shader->get_uniform<glm::mat4>("MVP");
 
     while (!wnd.should_close()) {
         /* Update input context */

@@ -167,7 +167,7 @@ namespace core {
          * @return reference to try_opt with the nested resource
          */
         [[nodiscard]]
-        try_opt<value_type>& get() & {
+        try_opt<value_type>& try_get() & {
             wait();
             return storage_;
         }
@@ -180,7 +180,7 @@ namespace core {
          * @return const reference to try_opt with the nested resource
          */
         [[nodiscard]]
-        const try_opt<value_type>& get() const& {
+        const try_opt<value_type>& try_get() const& {
             wait();
             return storage_;
         }
@@ -195,7 +195,7 @@ namespace core {
          * @return reference to the nested value
          */
         [[nodiscard]]
-        value_type& get_unwrap() & {
+        value_type& get() & {
             wait();
             return storage_.value();
         }
@@ -210,7 +210,7 @@ namespace core {
          * @return const reference to the nested value
          */
         [[nodiscard]]
-        const value_type& get_unwrap() const& {
+        const value_type& get() const& {
             wait();
             return storage_.value();
         }
@@ -223,7 +223,7 @@ namespace core {
          * @return rvalue reference to try_opt with the nested resource
          */
         [[nodiscard]]
-        try_opt<value_type>&& get() && {
+        try_opt<value_type>&& try_get() && {
             wait();
             return move(storage_);
         }
@@ -238,7 +238,7 @@ namespace core {
          * @return rvalue reference to the nested value
          */
         [[nodiscard]]
-        value_type&& get_unwrap() && {
+        value_type&& get() && {
             wait();
             return move(move(storage_).value());
         }

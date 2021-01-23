@@ -487,7 +487,7 @@ public:
      * @return the uniform
      */
     template <UniformVal U>
-    grx_uniform<U> get_uniform_unwrap(const core::string& name);
+    grx_uniform<U> get_uniform(const core::string& name);
 
     /**
      * @brief Gets uniform
@@ -498,9 +498,9 @@ public:
      * @return the uniform or exception in try_opt
      */
     template <UniformVal U>
-    core::try_opt<grx_uniform<U>> get_uniform(const core::string& name) {
+    core::try_opt<grx_uniform<U>> try_get_uniform(const core::string& name) {
         try {
-            return get_uniform_unwrap<U>(name);
+            return get_uniform<U>(name);
         }
         catch (const shader_exception& e) {
             return shader_exception(e.what());
@@ -549,12 +549,12 @@ private:
 
 
 template <typename T>
-struct grx_add_const_to_span_element_type__ {
+struct grx_add_const_to_span_element_type_ {
     using type = T;
 };
 
 template <typename T>
-struct grx_add_const_to_span_element_type__<core::span<T>> {
+struct grx_add_const_to_span_element_type_<core::span<T>> {
     using type = core::span<const T>;
 };
 
@@ -566,7 +566,7 @@ struct grx_add_const_to_span_element_type__<core::span<T>> {
 template <UniformVal T>
 class grx_uniform {
 public:
-    using element_type = typename grx_add_const_to_span_element_type__<T>::type;
+    using element_type = typename grx_add_const_to_span_element_type_<T>::type;
 
     grx_uniform() = default;
 
@@ -593,7 +593,7 @@ public:
      */
     //template <typename TT>
     //auto& operator=(const TT& value) {
-    //    push_unwrap(T(value));
+    //    push(T(value));
     //    return *this;
     //}
 
@@ -607,7 +607,7 @@ public:
      * @return *this
      */
     auto& operator=(const element_type& value) const {
-        push_unwrap(value);
+        push(value);
         return *this;
     }
 
@@ -619,7 +619,7 @@ public:
      * @return true if successful, false otherwise
      */
     [[nodiscard]]
-    bool push(const element_type& value) const {
+    bool try_push(const element_type& value) const {
         if (auto program = _parent.lock())
             return grx_shader_helper::uniform(program->raw_id(), _gl_loc, value);
         else
@@ -633,7 +633,7 @@ public:
      *
      * @param value - the value to be pushed
      */
-    void push_unwrap(const element_type& value) const {
+    void push(const element_type& value) const {
         if (auto program = _parent.lock()) {
             if (!grx_shader_helper::uniform(program->raw_id(), _gl_loc, value))
                 throw shader_exception("Can't push a value to the uniform \"" + _name + '"');
@@ -650,7 +650,7 @@ private:
 };
 
 template <UniformVal U>
-grx_uniform<U> grx_shader_program::get_uniform_unwrap(const core::string& name) {
+grx_uniform<U> grx_shader_program::get_uniform(const core::string& name) {
     return grx_uniform<U>(weak_from_this(), name);
 }
 
@@ -663,8 +663,8 @@ grx_uniform<U> grx_shader_program::get_uniform_unwrap(const core::string& name) 
  * @return created shader or exception_ptr in try_opt
  */
 template <shader_type T>
-core::try_opt<grx_shader<T>> load_shader(const core::string& shader_path) {
-    auto file = core::read_file(shader_path);
+core::try_opt<grx_shader<T>> try_load_shader(const core::string& shader_path) {
+    auto file = core::try_read_file(shader_path);
 
     if (file) {
         try {
@@ -689,8 +689,8 @@ core::try_opt<grx_shader<T>> load_shader(const core::string& shader_path) {
  * @return created shader
  */
 template <shader_type T>
-grx_shader<T> load_shader_unwrap(const core::string& shader_path) {
-    auto file = core::read_file_unwrap(shader_path);
+grx_shader<T> load_shader(const core::string& shader_path) {
+    auto file = core::read_file(shader_path);
     return grx_shader<T>(file);
 }
 

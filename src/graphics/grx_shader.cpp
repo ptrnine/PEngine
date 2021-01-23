@@ -312,12 +312,12 @@ GEN_UNIFORM_MAT_FUNCS(const double*, dv)
 
 template <typename T>
 try_opt<T> read_cfg_value(const pair<const config_manager&, string_view> mgr_section_pair, string_view key) {
-    return mgr_section_pair.first.read<T>(mgr_section_pair.second, key);
+    return mgr_section_pair.first.try_read<T>(mgr_section_pair.second, key);
 }
 
 template <typename T>
 try_opt<T> read_cfg_value(const config_section& section, string_view key) {
-    return section.read<T>(string(key));
+    return section.try_read<T>(string(key));
 }
 
 string_view get_sectname(const pair<const config_manager&, string_view> mgr_section_pair) {
@@ -352,7 +352,7 @@ bool try_pass_to_program(string_view                          program_section,
                          string_view                          value) {
     try {
         T v = config_cast<T>(value);
-        program->get_uniform_unwrap<T>(key).push_unwrap(v);
+        program->get_uniform<T>(key).push(v);
         return true;
     }
     catch (...) {
@@ -432,7 +432,7 @@ void pass_config_values_to_program(shared_ptr<grx::grx_shader_program>& program,
 
     for (auto& [key, _] : sect.values()) {
         if (!grx::is_shader_type_name(key)) {
-            auto value = cm.read_unwrap<string>(section, key);
+            auto value = cm.read<string>(section, key);
             pass_config_value_to_program(section, program, key, value);
         }
     }
@@ -441,7 +441,7 @@ void pass_config_values_to_program(shared_ptr<grx::grx_shader_program>& program,
 void pass_config_values_to_program(shared_ptr<grx::grx_shader_program>& program, const config_section& section) {
     for (auto& [key, _] : section.values()) {
         if (!grx::is_shader_type_name(key)) {
-            auto value = section.read_unwrap<string>(key);
+            auto value = section.read<string>(key);
             pass_config_value_to_program(section.name(), program, key, value);
         }
     }
@@ -457,7 +457,7 @@ create_program_iter(const string& shaders_dir, SectInfoT section_info, T&&... sh
     else {
         if (auto shader_paths = read_cfg_value<vector<string>>(section_info, grx::shader_type_name_pairs[P].second)) {
             auto shader_codes = *shader_paths / transform<vector<string>>([&](auto& path) {
-                return read_file_unwrap(path_eval(shaders_dir / path));
+                return read_file(path_eval(shaders_dir / path));
             });
 
             return create_program_iter<P + 1>(shaders_dir,
@@ -478,7 +478,7 @@ grx::grx_shader_program::create_shared(const config_manager& cm, string_view sec
     if (!cm.sections().count(string(section)))
         throw shader_exception("Can't find section [" + string(section) + ']');
 
-    auto shaders_dir = path_eval(cm.entry_dir() / cm.read_unwrap<string>("shaders_dir"));
+    auto shaders_dir = path_eval(cm.entry_dir() / cm.read<string>("shaders_dir"));
     auto program     = create_program_iter(shaders_dir, pair<const config_manager&, string_view>(cm, section));
 
     pass_config_values_to_program(program, cm, section);
@@ -491,7 +491,7 @@ auto grx::grx_shader_program::create_shared(const config_section& section) -> sh
         throw shader_exception("Shader program section name must starts with 'shader_'");
 
     auto shaders_dir =
-        path_eval(DEFAULT_CFG_PATH() / ".." / config_section::direct_read().read_unwrap<string>("shaders_dir"));
+        path_eval(DEFAULT_CFG_PATH() / ".." / config_section::direct_read().read<string>("shaders_dir"));
     auto program = create_program_iter(shaders_dir, section);
 
     pass_config_values_to_program(program, section);

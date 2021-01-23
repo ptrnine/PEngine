@@ -106,7 +106,7 @@ public:
 
     auto load_async_cached(const core::cfg_path& path) {
         DLOG("resource_mgr[{}]: async load texture {}", this->mgr_tag(), path);
-        return load_color_map_async_unwrap<core::vec<core::u8, S>>(path.absolute());
+        return load_color_map_async<core::vec<core::u8, S>>(path.absolute());
     }
 
     static grx_color_map<core::u8, S> to_cache(grx_texture<S> texture) {

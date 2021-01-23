@@ -77,7 +77,7 @@ grx::grx_window::grx_window(
         "}"
     );
     _screen_quad_passthrough = grx_shader_program::create_shared(fs, vs);
-    _screen_quad_texture     = _screen_quad_passthrough->get_uniform_unwrap<int>("screen_quad_texture");
+    _screen_quad_texture     = _screen_quad_passthrough->get_uniform<int>("screen_quad_texture");
 
     window_map.insert_or_assign(_wnd, this);
 

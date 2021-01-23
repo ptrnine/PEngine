@@ -8,7 +8,7 @@ using namespace core;
 using namespace grx;
 
 auto load_image(const string& path, uint bs) {
-    auto img = load_color_map_unwrap<color_rgb>(path);
+    auto img = load_color_map<color_rgb>(path);
     auto wrapped_size = (img.size() / bs) * bs;
     return img.get_resized(wrapped_size);
 }
@@ -21,8 +21,8 @@ int pe_main(args_view args) {
     }
 
     auto bs    = args.by_key_default<uint>({"--quad", "-q"}, 16);
-    auto path1 = args.next_unwrap("Missing path to source image");
-    auto path2 = args.next_unwrap("Missing path to sample image");
+    auto path1 = args.next("Missing path to source image");
+    auto path2 = args.next("Missing path to sample image");
     args.require_end();
 
     auto img1 = load_image(path1, bs);
@@ -51,7 +51,7 @@ int pe_main(args_view args) {
             img1[src_start + bs_pos] = img2[best_pos + bs_pos].get();
     }
 
-    save_color_map_unwrap(img1, path1 + ".edit.jpg");
+    save_color_map(img1, path1 + ".edit.jpg");
 
     return 0;
 }

@@ -10,7 +10,7 @@ using namespace core;
 using namespace grx;
 
 auto load_texture(const string& path, uint bs) {
-    auto img = load_color_map_unwrap<float_color_rgba>(path);
+    auto img = load_color_map<float_color_rgba>(path);
     auto wrapped_size = (img.size() / bs) * bs;
     return grx_texture(img.get_resized(wrapped_size));
 }
@@ -26,8 +26,8 @@ int pe_main(args_view args) {
     fake_wnd.make_current();
 
     auto bs    = args.by_key_default<uint>({"--quad", "-q"}, 16);
-    auto path1 = args.next_unwrap("Missing path to source image");
-    auto path2 = args.next_unwrap("Missing path to sample image");
+    auto path1 = args.next("Missing path to source image");
+    auto path2 = args.next("Missing path to sample image");
     args.require_end();
 
     auto txt1  = load_texture(path1, bs);
@@ -74,15 +74,15 @@ int pe_main(args_view args) {
         "}"
     });
 
-    shader->get_uniform_unwrap<int>  ("bs")       = static_cast<int>(bs);
-    shader->get_uniform_unwrap<vec2i>("src_size") = static_cast<vec2i>(txt1.size());
-    shader->get_uniform_unwrap<vec2i>("smp_size") = static_cast<vec2i>(txt2.size());
+    shader->get_uniform<int>  ("bs")       = static_cast<int>(bs);
+    shader->get_uniform<vec2i>("src_size") = static_cast<vec2i>(txt1.size());
+    shader->get_uniform<vec2i>("smp_size") = static_cast<vec2i>(txt2.size());
 
     shader->activate();
     txt1.bind_level<0>(0, texture_access::readwrite);
     txt2.bind_level<1>(0);
     shader->dispatch_compute(txt1.size().x() / bs, 1, 1, txt1.size().y() / bs, 1, 1);
-    save_color_map_unwrap(txt1.to_color_map(), path1 + ".edit.jpg");
+    save_color_map(txt1.to_color_map(), path1 + ".edit.jpg");
 
     return 0;
 }

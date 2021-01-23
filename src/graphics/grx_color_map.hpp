@@ -578,7 +578,7 @@ using grx_float_color_map_rgba = grx_color_map<float, 4>;
  */
 template <core::MathVector T = color_rgb>
 core::try_opt<grx_color_map<typename T::value_type, T::size()>>
-load_color_map_from_bytes(core::span<core::byte> bytes) {
+try_load_color_map_from_bytes(core::span<core::byte> bytes) {
     static_assert(T::size() <= 4 && T::size() > 0,
                   "Wrong color type. T must be uint8_t or float, Size must be 1 "
                   "<= Size <= 4");
@@ -634,9 +634,9 @@ load_color_map_from_bytes(core::span<core::byte> bytes) {
 template <core::MathVector T = color_rgb>
 [[nodiscard]]
 core::try_opt<grx_color_map<typename T::value_type, T::size()>>
-load_color_map(const core::string& file_path) {
-    if (auto file = core::read_binary_file(core::path_eval(file_path)))
-        return load_color_map_from_bytes<T>(*file);
+try_load_color_map(const core::string& file_path) {
+    if (auto file = core::try_read_binary_file(core::path_eval(file_path)))
+        return try_load_color_map_from_bytes<T>(*file);
     else
         return {std::runtime_error("Can't open file \"" + file_path + "\"")};
 }
@@ -654,8 +654,8 @@ load_color_map(const core::string& file_path) {
 template <core::MathVector T = color_rgb>
 [[nodiscard]]
 grx_color_map<typename T::value_type, T::size()>
-load_color_map_unwrap(const core::string& file_path) {
-    return load_color_map<T>(file_path).value();
+load_color_map(const core::string& file_path) {
+    return try_load_color_map<T>(file_path).value();
 }
 
 /**
@@ -669,8 +669,8 @@ load_color_map_unwrap(const core::string& file_path) {
 template <core::MathVector T = color_rgb>
 [[nodiscard]]
 core::job_future<core::try_opt<grx_color_map<typename T::value_type, T::size()>>>
-load_color_map_async(const core::string& file_path) {
-    return core::submit_job(load_color_map<T>, file_path);
+try_load_color_map_async(const core::string& file_path) {
+    return core::submit_job(try_load_color_map<T>, file_path);
 }
 
 /**
@@ -686,8 +686,8 @@ load_color_map_async(const core::string& file_path) {
 template <core::MathVector T = color_rgb>
 [[nodiscard]]
 core::job_future<grx_color_map<typename T::value_type, T::size()>>
-load_color_map_async_unwrap(const core::string& file_path) {
-    return core::submit_job(load_color_map_unwrap<T>, file_path);
+load_color_map_async(const core::string& file_path) {
+    return core::submit_job(load_color_map<T>, file_path);
 }
 
 namespace color_map_save_bytes_helper
@@ -715,7 +715,7 @@ static constexpr int default_jpeg_quality = 95;
 template <typename T, size_t S>
 [[nodiscard]]
 core::try_opt<core::vector<core::byte>>
-save_color_map_to_bytes(const grx_color_map<T, S>& color_map, core::string_view extension = "png") {
+try_save_color_map_to_bytes(const grx_color_map<T, S>& color_map, core::string_view extension = "png") {
     if (extension == "petx")
         return color_map.to_bytes();
 
@@ -778,8 +778,8 @@ save_color_map_to_bytes(const grx_color_map<T, S>& color_map, core::string_view 
 template <typename T, size_t S>
 [[nodiscard]]
 core::vector<core::byte>
-save_color_map_to_bytes_unwrap(const grx_color_map<T, S>& color_map, core::string_view extension = "png") {
-    return save_color_map_to_bytes(color_map, extension).value();
+save_color_map_to_bytes_(const grx_color_map<T, S>& color_map, core::string_view extension = "png") {
+    return try_save_color_map_to_bytes(color_map, extension).value();
 }
 
 /**
@@ -795,7 +795,7 @@ save_color_map_to_bytes_unwrap(const grx_color_map<T, S>& color_map, core::strin
 template <typename T, size_t S>
 [[nodiscard]]
 core::try_opt<bool>
-save_color_map(const grx_color_map<T, S>& color_map, const core::string& file_path) {
+try_save_color_map(const grx_color_map<T, S>& color_map, const core::string& file_path) {
     constexpr size_t minimal_len = 5; // a.bmp, c.jpg, ...
 
     if (file_path.size() < minimal_len)
@@ -815,9 +815,9 @@ save_color_map(const grx_color_map<T, S>& color_map, const core::string& file_pa
 
     extension = extension.substr(1);
 
-    auto bytes = save_color_map_to_bytes(color_map, extension);
+    auto bytes = try_save_color_map_to_bytes(color_map, extension);
     if (bytes) {
-        if (core::write_file(file_path, *bytes))
+        if (core::try_write_file(file_path, *bytes))
             return true;
         else
             return {std::runtime_error("Can't create file \"" + file_path + "\"")};
@@ -837,8 +837,8 @@ save_color_map(const grx_color_map<T, S>& color_map, const core::string& file_pa
  * @param file_path - a path to new file with extension
  */
 template <typename T, size_t S>
-void save_color_map_unwrap(const grx_color_map<T, S>& color_map, const core::string& file_path) {
-    save_color_map(color_map, file_path).value();
+void save_color_map(const grx_color_map<T, S>& color_map, const core::string& file_path) {
+    try_save_color_map(color_map, file_path).value();
 }
 
 /**
@@ -854,8 +854,8 @@ void save_color_map_unwrap(const grx_color_map<T, S>& color_map, const core::str
 template <typename T, size_t S>
 [[nodiscard]]
 core::job_future<core::try_opt<bool>>
-save_color_map_async(const grx_color_map<T, S>& color_map, const core::string& file_path) {
-    return core::job_future(save_color_map<T, S>, color_map, file_path);
+try_save_color_map_async(const grx_color_map<T, S>& color_map, const core::string& file_path) {
+    return core::job_future(try_save_color_map<T, S>, color_map, file_path);
 }
 } // namespace grx
 

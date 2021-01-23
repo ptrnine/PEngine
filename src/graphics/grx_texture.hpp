@@ -695,7 +695,7 @@ namespace grx
      */
     template <core::MathVector T = color_rgb>
     core::optional<grx_texture<T::size()>>
-    load_texture(const core::string& file_path) {
+    try_load_texture(const core::string& file_path) {
         if (auto map = load_color_map<T>(file_path))
             return grx_texture<T::size()>(*map);
         else
@@ -715,8 +715,8 @@ namespace grx
      */
     template <core::MathVector T = color_rgb>
     grx_texture<T::size()>
-    load_texture_unwrap(const core::string& file_path) {
-        return grx_texture<T::size()>(load_color_map_unwrap<T>(file_path));
+    load_texture(const core::string& file_path) {
+        return grx_texture<T::size()>(load_color_map<T>(file_path));
     }
 
     /**
@@ -731,9 +731,9 @@ namespace grx
      */
     template <core::MathVector T = color_rgb>
     grx_texture_future<T::size(), core::optional<grx_color_map<uint8_t, T::size()>>>
-    load_texture_async(const core::string& file_path) {
+    try_load_texture_async(const core::string& file_path) {
         return grx_texture_future<T::size(), core::optional<grx_color_map<uint8_t, T::size()>>>(
-                load_color_map_async<T>(file_path));
+                try_load_color_map_async<T>(file_path));
     }
 
     /**
@@ -749,9 +749,9 @@ namespace grx
      */
     template <core::MathVector T = color_rgb>
     grx_texture_future<T::size(), grx_color_map<uint8_t, T::size()>>
-    load_texture_async_unwrap(const core::string& file_path) {
+    load_texture_async(const core::string& file_path) {
         return grx_texture_future<T::size(), grx_color_map<uint8_t, T::size()>>(
-                load_color_map_async_unwrap<T>(file_path));
+                load_color_map_async<T>(file_path));
     }
 
 } // namespace grx

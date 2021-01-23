@@ -136,7 +136,7 @@ public:
         return _data.empty();
     }
 
-    optional<string> next() {
+    optional<string> try_next() {
         if (!empty()) {
             auto res = _data.front();
             _data.pop_front();
@@ -145,15 +145,15 @@ public:
         return {};
     }
 
-    string next_unwrap(string_view error_message) {
-        if (auto arg = next())
+    string next(string_view error_message) {
+        if (auto arg = try_next())
             return *arg;
         else
             throw std::invalid_argument(string(error_message));
     }
 
     string next_default(string_view default_val) {
-        if (auto arg = next())
+        if (auto arg = try_next())
             return *arg;
         else
             return string(default_val);

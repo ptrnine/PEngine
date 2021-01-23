@@ -37,10 +37,10 @@ struct grx_ds_dir_light : grx_ds_light_base {
 
 struct grx_ds_dir_light_uniform : grx_ds_light_base_uniform {
     grx_ds_dir_light_uniform(core::shared_ptr<grx_shader_program>& sp) {
-        color             = sp->get_uniform_unwrap<vec3f>("dir_light.base.color");
-        ambient_intensity = sp->get_uniform_unwrap<float>("dir_light.base.ambient_intensity");
-        diffuse_intensity = sp->get_uniform_unwrap<float>("dir_light.base.diffuse_intensity");
-        direction         = sp->get_uniform_unwrap<vec3f>("dir_light.direction");
+        color             = sp->get_uniform<vec3f>("dir_light.base.color");
+        ambient_intensity = sp->get_uniform<float>("dir_light.base.ambient_intensity");
+        diffuse_intensity = sp->get_uniform<float>("dir_light.base.diffuse_intensity");
+        direction         = sp->get_uniform<vec3f>("dir_light.direction");
     }
     grx_ds_dir_light_uniform& operator=(const grx_ds_dir_light& l) {
         color             = l.color;
@@ -91,13 +91,13 @@ public:
 
 struct grx_ds_point_light_uniform : grx_ds_light_base_uniform {
     grx_ds_point_light_uniform(core::shared_ptr<grx_shader_program>& sp, const core::string& name = "point_light") {
-        color                 = sp->get_uniform_unwrap<vec3f>(name + ".base.color");
-        ambient_intensity     = sp->get_uniform_unwrap<float>(name + ".base.ambient_intensity");
-        diffuse_intensity     = sp->get_uniform_unwrap<float>(name + ".base.diffuse_intensity");
-        position              = sp->get_uniform_unwrap<vec3f>(name + ".position");
-        attenuation_constant  = sp->get_uniform_unwrap<float>(name + ".attenuation_constant");
-        attenuation_linear    = sp->get_uniform_unwrap<float>(name + ".attenuation_linear");
-        attenuation_quadratic = sp->get_uniform_unwrap<float>(name + ".attenuation_quadratic");
+        color                 = sp->get_uniform<vec3f>(name + ".base.color");
+        ambient_intensity     = sp->get_uniform<float>(name + ".base.ambient_intensity");
+        diffuse_intensity     = sp->get_uniform<float>(name + ".base.diffuse_intensity");
+        position              = sp->get_uniform<vec3f>(name + ".position");
+        attenuation_constant  = sp->get_uniform<float>(name + ".attenuation_constant");
+        attenuation_linear    = sp->get_uniform<float>(name + ".attenuation_linear");
+        attenuation_quadratic = sp->get_uniform<float>(name + ".attenuation_quadratic");
     }
 
     grx_ds_point_light_uniform& operator=(const grx_ds_point_light& l) {
@@ -161,8 +161,8 @@ private:
 struct grx_ds_spot_light_uniform : grx_ds_point_light_uniform {
     grx_ds_spot_light_uniform(core::shared_ptr<grx_shader_program>& sp):
         grx_ds_point_light_uniform(sp, "spot_light.base") {
-        direction = sp->get_uniform_unwrap<vec3f>("spot_light.direction");
-        cutoff    = sp->get_uniform_unwrap<float>("spot_light.cutoff");
+        direction = sp->get_uniform<vec3f>("spot_light.direction");
+        cutoff    = sp->get_uniform<float>("spot_light.cutoff");
     }
 
     grx_ds_spot_light_uniform& operator=(const grx_ds_spot_light& l) {
@@ -181,11 +181,11 @@ class grx_ds_light_mgr;
 
 struct grx_ds_light_param_uniform {
     grx_ds_light_param_uniform(core::shared_ptr<grx_shader_program>& sp) {
-        specular_power     = sp->get_uniform_unwrap<float>    ("specular_power");
-        specular_intensity = sp->get_uniform_unwrap<float>    ("specular_intensity");
-        eye_pos_ws         = sp->get_uniform_unwrap<vec3f>    ("eye_pos_ws");
-        light_type         = sp->get_uniform_unwrap<int>      ("light_type");
-        overlay_MVP        = sp->get_uniform_unwrap<glm::mat4>("MVP");
+        specular_power     = sp->get_uniform<float>    ("specular_power");
+        specular_intensity = sp->get_uniform<float>    ("specular_intensity");
+        eye_pos_ws         = sp->get_uniform<vec3f>    ("eye_pos_ws");
+        light_type         = sp->get_uniform<int>      ("light_type");
+        overlay_MVP        = sp->get_uniform<glm::mat4>("MVP");
     }
 
     grx_ds_light_param_uniform& operator=(const grx_ds_light_mgr&);

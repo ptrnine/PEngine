@@ -55,9 +55,9 @@ private:
     template <typename T>
     auto get_uniform(const core::string& name) {
         if constexpr (core::Optional<T>)
-            return _program->get_uniform<typename T::value_type>(name).to_optional();
+            return _program->try_get_uniform<typename T::value_type>(name).to_optional();
         else
-            return _program->get_uniform_unwrap<T>(name);
+            return _program->get_uniform<T>(name);
     }
 
 private:

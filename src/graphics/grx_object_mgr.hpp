@@ -126,7 +126,7 @@ struct grx_cached_mesh_t : public details::skeleton_storage<MeshT::has_bone_buf(
         auto relative_dir = core::path_eval(path.path / "..");
 
         if (core::has_extension(absolute_path, ".dae")) {
-            auto data = core::read_file(absolute_path);
+            auto data = core::try_read_file(absolute_path);
 
             if (!data)
                 pe_throw std::runtime_error("Can't load mesh at path '" + absolute_path + "'");
@@ -157,7 +157,7 @@ struct grx_cached_mesh_t : public details::skeleton_storage<MeshT::has_bone_buf(
             }
         }
         else {
-            auto bytes = core::read_binary_file(absolute_path);
+            auto bytes = core::try_read_binary_file(absolute_path);
             if (!bytes)
                 pe_throw std::runtime_error("Can't open object at path '" + absolute_path + "'");
 

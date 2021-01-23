@@ -58,8 +58,8 @@ private:
 
         _program = grx_shader_program::create_shared(shader_vs, shader_fs);
 
-        _mvp   = _program->get_uniform_unwrap<glm::mat4>("MVP");
-        _color = _program->get_uniform_unwrap<core::vec3f>("aabb_color");
+        _mvp   = _program->get_uniform<glm::mat4>("MVP");
+        _color = _program->get_uniform<core::vec3f>("aabb_color");
     }
 
 public:

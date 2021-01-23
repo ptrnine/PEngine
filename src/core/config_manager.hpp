@@ -459,7 +459,7 @@ private:
  */
 inline string cfg_reentry(string_view name, const string& file_path = DEFAULT_CFG_PATH()) {
     auto path = path_eval(file_path);
-    auto file = read_file_unwrap(path);
+    auto file = read_file(path);
 
     for (auto& line : file / split_view({'\n', '\r'})) {
         if (!line.empty() && line.front() == '#') {
@@ -507,7 +507,7 @@ public:
             size_t         i = 0;
         };
 
-        auto file_stack = vector<file_node>(1, file_node(read_file_unwrap(path)));
+        auto file_stack = vector<file_node>(1, file_node(read_file(path)));
         bool is_global  = name == "__global";
         bool on_section = is_global ? true : false;
 
@@ -540,7 +540,7 @@ public:
                             remove_brackets_if_exists(remove_brackets_if_exists(line, {'"', '"'}), {'\'', '\''}));
 
                         file_stack.back().i++; // Skip current line after incuded file processing
-                        file_stack.emplace_back(read_file_unwrap(new_path));
+                        file_stack.emplace_back(read_file(new_path));
                         file_stack.back().i--; // Prevent skipping first line of included file
                     }
                 }
@@ -626,7 +626,7 @@ public:
      */
     template <typename T>
     [[nodiscard]]
-    try_opt<T> read(const string& key) const {
+    try_opt<T> try_read(const string& key) const {
         auto found = _map.find(key);
         if (found != _map.end()) {
             try {
@@ -653,8 +653,8 @@ public:
      */
     template <typename T>
     [[nodiscard]]
-    T read_unwrap(const string& key) const {
-        return read<T>(key).value();
+    T read(const string& key) const {
+        return try_read<T>(key).value();
     }
 
     /**
@@ -668,7 +668,7 @@ public:
      */
     template <typename T>
     T read_default(const string& key, T&& default_value) const {
-        if (auto v = read<T>(key))
+        if (auto v = try_read<T>(key))
             return *v;
         else
             return forward<T>(default_value);
@@ -767,8 +767,8 @@ public:
      * @return the try_opt with the value or with the config_exception, if the value was not found
      */
     template <typename T>
-    try_opt<T> read(string_view key) const {
-        return read<T>("__global", key);
+    try_opt<T> try_read(string_view key) const {
+        return try_read<T>("__global", key);
     }
 
     /**
@@ -781,7 +781,7 @@ public:
      * @return the try_opt with the value or with the config_exception, if the value or the section was not found
      */
     template <typename T>
-    try_opt<T> read(string_view section, string_view key) const {
+    try_opt<T> try_read(string_view section, string_view key) const {
         auto found = _sections.find(string(section));
         if (found != _sections.end()) {
             try {
@@ -861,8 +861,8 @@ public:
      * @return the read value
      */
     template <typename T>
-    T read_unwrap(string_view key) const {
-        return read<T>(key).value();
+    T read(string_view key) const {
+        return try_read<T>(key).value();
     }
 
     /**
@@ -877,8 +877,8 @@ public:
      * @return the read value
      */
     template <typename T>
-    T read_unwrap(string_view section, string_view key) const {
-        return read<T>(section, key).value();
+    T read(string_view section, string_view key) const {
+        return try_read<T>(section, key).value();
     }
 
     /**
@@ -892,7 +892,7 @@ public:
      */
     template <typename T>
     T read_default(string_view key, T&& default_value) const {
-        if (auto v = read<T>(key))
+        if (auto v = try_read<T>(key))
             return *v;
         else
             return forward<T>(default_value);
@@ -910,7 +910,7 @@ public:
      */
     template <typename T>
     T read_default(string_view section, string_view key, const T& default_value) const {
-        if (auto v = read<T>(section, key))
+        if (auto v = try_read<T>(section, key))
             return *v;
         else
             return default_value;
@@ -967,7 +967,7 @@ private:
     }
 
     void do_file(const string& path) {
-        auto file = read_file(path);
+        auto file = try_read_file(path);
 
         PeRelRequireF(file.has_value(), "Can't open file '{}'", path);
 
@@ -1128,7 +1128,7 @@ inline string cfg_read_path(string_view section, const string& key) {
         return *cached;
     else {
         auto value =
-            DEFAULT_CFG_DIR() / config_section::direct_read(section).read_unwrap<string>(key);
+            DEFAULT_CFG_DIR() / config_section::direct_read(section).read<string>(key);
         CFG_STATE().set_cached_value(string(section), key, value);
         return value;
     }
@@ -1138,7 +1138,7 @@ inline string cfg_read_path(const string& key) {
     if (auto cached = CFG_STATE().cached_value(key))
         return *cached;
     else {
-        auto value = DEFAULT_CFG_DIR() / config_section::direct_read().read_unwrap<string>(key);
+        auto value = DEFAULT_CFG_DIR() / config_section::direct_read().read<string>(key);
         CFG_STATE().set_cached_value(key, value);
         return value;
     }

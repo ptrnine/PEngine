@@ -28,10 +28,10 @@ struct grx_dir_light : grx_light_base {
 
 struct grx_dir_light_uniform : grx_light_base_uniform {
     grx_dir_light_uniform(grx_shader_program& sp) {
-        color             = sp.get_uniform_unwrap<vec3f>("dir_light.base.color");
-        ambient_intensity = sp.get_uniform_unwrap<float>("dir_light.base.ambient_intensity");
-        diffuse_intensity = sp.get_uniform_unwrap<float>("dir_light.base.diffuse_intensity");
-        direction         = sp.get_uniform_unwrap<vec3f>("dir_light.direction");
+        color             = sp.get_uniform<vec3f>("dir_light.base.color");
+        ambient_intensity = sp.get_uniform<float>("dir_light.base.ambient_intensity");
+        diffuse_intensity = sp.get_uniform<float>("dir_light.base.diffuse_intensity");
+        direction         = sp.get_uniform<vec3f>("dir_light.direction");
     }
     grx_dir_light_uniform& operator=(const grx_dir_light& l) {
         color             = l.color;
@@ -53,13 +53,13 @@ struct grx_point_light : grx_light_base {
 
 struct grx_point_light_uniform : grx_light_base_uniform {
     grx_point_light_uniform(grx_shader_program& sp, const core::string& name) {
-        color                 = sp.get_uniform_unwrap<vec3f>(name + ".base.color");
-        ambient_intensity     = sp.get_uniform_unwrap<float>(name + ".base.ambient_intensity");
-        diffuse_intensity     = sp.get_uniform_unwrap<float>(name + ".base.diffuse_intensity");
-        position              = sp.get_uniform_unwrap<vec3f>(name + ".position");
-        attenuation_constant  = sp.get_uniform_unwrap<float>(name + ".attenuation_constant");
-        attenuation_linear    = sp.get_uniform_unwrap<float>(name + ".attenuation_linear");
-        attenuation_quadratic = sp.get_uniform_unwrap<float>(name + ".attenuation_quadratic");
+        color                 = sp.get_uniform<vec3f>(name + ".base.color");
+        ambient_intensity     = sp.get_uniform<float>(name + ".base.ambient_intensity");
+        diffuse_intensity     = sp.get_uniform<float>(name + ".base.diffuse_intensity");
+        position              = sp.get_uniform<vec3f>(name + ".position");
+        attenuation_constant  = sp.get_uniform<float>(name + ".attenuation_constant");
+        attenuation_linear    = sp.get_uniform<float>(name + ".attenuation_linear");
+        attenuation_quadratic = sp.get_uniform<float>(name + ".attenuation_quadratic");
     }
     grx_point_light_uniform(grx_shader_program& sp, size_t num):
         grx_point_light_uniform(sp, "point_lights[" + std::to_string(num) + "]") {}
@@ -96,10 +96,10 @@ struct grx_spot_light : grx_point_light {
 struct grx_spot_light_uniform : grx_point_light_uniform {
     grx_spot_light_uniform(grx_shader_program& sp, size_t num):
         grx_point_light_uniform(sp, "spot_lights[" + std::to_string(num) + "].base") {
-        direction = sp.get_uniform_unwrap<vec3f>(core::format("spot_lights[{}].direction", num));
-        cutoff    = sp.get_uniform_unwrap<float>(core::format("spot_lights[{}].cutoff", num));
-        MVP       = sp.get_uniform_unwrap<glm::mat4>("spot_MVP[" + std::to_string(num) + "]");
-        texture   = sp.get_uniform_unwrap<int>(core::format("spot_shadow_map[{}]", num));
+        direction = sp.get_uniform<vec3f>(core::format("spot_lights[{}].direction", num));
+        cutoff    = sp.get_uniform<float>(core::format("spot_lights[{}].cutoff", num));
+        MVP       = sp.get_uniform<glm::mat4>("spot_MVP[" + std::to_string(num) + "]");
+        texture   = sp.get_uniform<int>(core::format("spot_shadow_map[{}]", num));
     }
 
     grx_spot_light_uniform& operator=(const grx_spot_light& l) {
@@ -119,14 +119,14 @@ class grx_forward_light_mgr;
 
 struct grx_fr_light_param_uniform {
     grx_fr_light_param_uniform(grx_shader_program& sp) {
-        point_lights_count = sp.get_uniform_unwrap<int>("point_lights_count");
-        spot_lights_count  = sp.get_uniform_unwrap<int>("spot_lights_count");
-        point_lights_idxs  = sp.get_uniform_unwrap<core::span<int>>("point_lights_idxs");
-        spot_lights_idxs   = sp.get_uniform_unwrap<core::span<int>>("spot_lights_idxs");
-        specular_power     = sp.get_uniform_unwrap<float>("specular_power");
-        specular_intensity = sp.get_uniform_unwrap<float>("specular_intensity");
-        eye_pos_ws         = sp.get_uniform_unwrap<vec3f>("eye_pos_ws");
-        dir_light_enabled  = sp.get_uniform_unwrap<int>("dir_light_enabled");
+        point_lights_count = sp.get_uniform<int>("point_lights_count");
+        spot_lights_count  = sp.get_uniform<int>("spot_lights_count");
+        point_lights_idxs  = sp.get_uniform<core::span<int>>("point_lights_idxs");
+        spot_lights_idxs   = sp.get_uniform<core::span<int>>("spot_lights_idxs");
+        specular_power     = sp.get_uniform<float>("specular_power");
+        specular_intensity = sp.get_uniform<float>("specular_intensity");
+        eye_pos_ws         = sp.get_uniform<vec3f>("eye_pos_ws");
+        dir_light_enabled  = sp.get_uniform<int>("dir_light_enabled");
     }
 
     grx_fr_light_param_uniform& operator=(const grx_forward_light_mgr&);

@@ -30,9 +30,9 @@ TEST_CASE("config_manager") {
 
     SECTION("Config reading") {
         config_manager m(cfg_reentry("test", ::platform_dependent::get_exe_dir() / "../../../fs.cfg"));
-        REQUIRE(vector{1, 2, 3, 4, 5} == m.read_unwrap<vector<int>>("c", "nums"));
-        REQUIRE("1, 2, 3, 4, 5" == m.read_unwrap<string>("c", "nums_str"));
-        REQUIRE("1, 2, 3, 4, 5" == m.read_unwrap<string>("c", "nums_str2"));
+        REQUIRE(vector{1, 2, 3, 4, 5} == m.read<vector<int>>("c", "nums"));
+        REQUIRE("1, 2, 3, 4, 5" == m.read<string>("c", "nums_str"));
+        REQUIRE("1, 2, 3, 4, 5" == m.read<string>("c", "nums_str2"));
         REQUIRE(m.read_default("nine", 9) == 9);
         REQUIRE(m.read_default("one", 1) == 11);
     }
@@ -61,9 +61,9 @@ TEST_CASE("config_manager") {
     SECTION("Direct reading") {
         auto sect = config_section::direct_read("direct_test",
                 cfg_reentry("test", ::platform_dependent::get_exe_dir() / "../../../fs.cfg"));
-        REQUIRE(vector{1, 2, 3, 4, 5} == sect.read_unwrap<vector<int>>("nums"));
-        REQUIRE("its a string" == sect.read_unwrap<string>("str"));
-        REQUIRE(essentially_equal(sect.read_unwrap<float>("float"), 228.228f, 0.001f));
-        REQUIRE(tuple{true, string("string"), vec3i{1, 2, 3}} == sect.read_unwrap<tuple<bool, string, vec3i>>("multi"));
+        REQUIRE(vector{1, 2, 3, 4, 5} == sect.read<vector<int>>("nums"));
+        REQUIRE("its a string" == sect.read<string>("str"));
+        REQUIRE(essentially_equal(sect.read<float>("float"), 228.228f, 0.001f));
+        REQUIRE(tuple{true, string("string"), vec3i{1, 2, 3}} == sect.read<tuple<bool, string, vec3i>>("multi"));
     }
 }

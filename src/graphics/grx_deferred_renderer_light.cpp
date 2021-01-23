@@ -226,7 +226,7 @@ void grx_ds_light_mgr::light_pass(shared_ptr<grx_shader_program>& program, vec3f
             continue;
 
         auto mvp = vp * light.model_matrix();
-        sphere_program->get_uniform_unwrap<glm::mat4>("MVP") = mvp;
+        sphere_program->get_uniform<glm::mat4>("MVP") = mvp;
         sphere_program->activate();
         start_point_light_pass(gbuf_, light.mesh());
 
@@ -244,7 +244,7 @@ void grx_ds_light_mgr::light_pass(shared_ptr<grx_shader_program>& program, vec3f
             continue;
 
         auto mvp = vp * light.model_matrix();
-        sphere_program->get_uniform_unwrap<glm::mat4>("MVP") = mvp;
+        sphere_program->get_uniform<glm::mat4>("MVP") = mvp;
         sphere_program->activate();
         start_point_light_pass(gbuf_, light.mesh());
 

@@ -36,7 +36,7 @@ namespace core
  *
  * @return the file content or nullopt if the file cannot be opened
  */
-[[nodiscard]] inline optional<string> read_file(const string& file_path) {
+[[nodiscard]] inline optional<string> try_read_file(const string& file_path) {
     std::ifstream ifs(file_path, std::ios_base::binary | std::ios_base::in);
 
     if (!ifs.is_open())
@@ -60,7 +60,7 @@ namespace core
  *
  * @return the file content or nullopt if the file cannot be opened
  */
-[[nodiscard]] inline optional<vector<byte>> read_binary_file(const string& file_path) {
+[[nodiscard]] inline optional<vector<byte>> try_read_binary_file(const string& file_path) {
     std::ifstream ifs(file_path, std::ios_base::binary | std::ios_base::in);
 
     if (!ifs.is_open())
@@ -85,8 +85,8 @@ namespace core
  *
  * @return the file content
  */
-[[nodiscard]] inline string read_file_unwrap(const string& file_path) {
-    if (auto file = read_file(file_path))
+[[nodiscard]] inline string read_file(const string& file_path) {
+    if (auto file = try_read_file(file_path))
         return *file;
     else
         throw std::runtime_error("Can't open file '" + file_path + "'");
@@ -101,8 +101,8 @@ namespace core
  *
  * @return the file content
  */
-[[nodiscard]] inline vector<byte> read_binary_file_unwrap(const string& file_path) {
-    if (auto file = read_binary_file(file_path))
+[[nodiscard]] inline vector<byte> read_binary_file(const string& file_path) {
+    if (auto file = try_read_binary_file(file_path))
         return *file;
     else
         throw std::runtime_error("Can't open file '" + file_path + "'");
@@ -118,7 +118,7 @@ namespace core
  * @return true if write successful, false otherwise
  */
 [[nodiscard]] inline bool
-write_file(const string& file_path, string_view data, bool append = false) {
+try_write_file(const string& file_path, string_view data, bool append = false) {
     auto flags = std::ios_base::out;
     if (append)
         flags |= std::ios_base::app;
@@ -143,7 +143,7 @@ write_file(const string& file_path, string_view data, bool append = false) {
  * @return true if write successful, false otherwise
  */
 [[nodiscard]] inline bool
-write_file(const string& file_path, span<const byte> data, bool append = false) {
+try_write_file(const string& file_path, span<const byte> data, bool append = false) {
     auto flags = std::ios_base::out;
     if (append)
         flags |= std::ios_base::app;
@@ -168,8 +168,8 @@ write_file(const string& file_path, span<const byte> data, bool append = false) 
  * @param data - the file content
  * @param append - if true then appends data to the end of the file
  */
-inline void write_file_unwrap(const string& file_path, string_view data, bool append = false) {
-    if (!write_file(file_path, data, append))
+inline void write_file(const string& file_path, string_view data, bool append = false) {
+    if (!try_write_file(file_path, data, append))
         throw std::runtime_error("Can't write file '" + file_path + "'");
 }
 
@@ -182,8 +182,8 @@ inline void write_file_unwrap(const string& file_path, string_view data, bool ap
  * @param data - the file content
  * @param append - if true then appends data to the end of the file
  */
-inline void write_file_unwrap(const string& file_path, span<const byte> data, bool append = false) {
-    if (!write_file(file_path, data, append))
+inline void write_file(const string& file_path, span<const byte> data, bool append = false) {
+    if (!try_write_file(file_path, data, append))
         throw std::runtime_error("Can't write file '" + file_path + "'");
 }
 

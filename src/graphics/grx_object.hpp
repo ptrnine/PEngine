@@ -380,7 +380,7 @@ auto try_load_object(const core::shared_ptr<grx_texture_mgr<4>>& texture_mgr,
     auto relative_dir = core::path_eval(relative_path / "..");
 
     if (core::has_extension(absolute_path, ".dae")) {
-        auto data = core::read_file(absolute_path);
+        auto data = core::try_read_file(absolute_path);
 
         if (!data)
             return std::runtime_error("Can't load mesh at path '" + absolute_path + "'");
@@ -420,7 +420,7 @@ auto try_load_object(const core::shared_ptr<grx_texture_mgr<4>>& texture_mgr,
         }
     } else {
         ObjectT object;
-        auto obj_data = core::read_binary_file(absolute_path);
+        auto obj_data = core::try_read_binary_file(absolute_path);
         if (!obj_data)
             return std::runtime_error("Can't load object at path '" + absolute_path + "'");
         else {

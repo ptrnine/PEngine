@@ -23,7 +23,7 @@ static core::vector<core::byte> read_all_stdin_() {
 }
 
 int pe_main(core::args_view args) {
-    if (auto arg = args.next(); arg.has_value() && *arg == "GEN_RESOURCES") {
+    if (auto arg = args.try_next(); arg.has_value() && *arg == "GEN_RESOURCES") {
         auto workdir = fs::path(args.program_name()).filename().string() + "_workdir";
         auto corpus_dir = fs::path(platform_dependent::get_exe_dir()) / workdir;
         fs::create_directory(corpus_dir);
@@ -34,7 +34,7 @@ int pe_main(core::args_view args) {
 
         for (auto& [corpus, idx] : core::value_index_view(afl_corpus)) {
             auto path = corpus_dir / std::to_string(idx);
-            core::write_file_unwrap(path.string(), corpus);
+            core::write_file(path.string(), corpus);
         }
 
         return 0;

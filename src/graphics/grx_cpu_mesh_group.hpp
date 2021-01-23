@@ -572,7 +572,7 @@ try_load_mesh_group(const core::string& file_path) {
     T result;
 
     if (core::has_extension(file_path, ".dae")) {
-        auto data = core::read_file(file_path);
+        auto data = core::try_read_file(file_path);
 
         if (!data)
             return std::runtime_error("Can't load mesh at path '" + file_path + "'");
@@ -587,7 +587,7 @@ try_load_mesh_group(const core::string& file_path) {
         result = T::from_assimp(scene);
     }
     else {
-        auto data = core::read_binary_file(file_path);
+        auto data = core::try_read_binary_file(file_path);
 
         if (!data)
             return std::runtime_error("Can't load mesh at path '" + file_path + "'");
@@ -632,7 +632,7 @@ inline bool try_save_mesh_group(const core::string& file_path, const T& mesh_gro
     core::serializer s;
     s.write(mesh_group);
 
-    return core::write_file(file_path, s.data());
+    return core::try_write_file(file_path, s.data());
 }
 
 template <CpuMeshGroup T>
@@ -640,7 +640,7 @@ inline void save_mesh_group(const core::string& file_path, const T& mesh_group) 
     core::serializer s;
     s.write(mesh_group);
 
-    core::write_file_unwrap(file_path, s.data());
+    core::write_file(file_path, s.data());
 }
 
 template <CpuMeshGroup T>

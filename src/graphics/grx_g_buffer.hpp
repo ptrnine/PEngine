@@ -92,11 +92,11 @@ private:
     void _draw(const core::shared_ptr<grx_shader_program>& program, VboTupleT& vbo_tuple) {
         program->activate();
 
-        if (auto u = program->get_uniform<int>("position_depth"))
+        if (auto u = program->try_get_uniform<int>("position_depth"))
             *u = gbuf_position_depth;
-        if (auto u = program->get_uniform<int>("normal"))
+        if (auto u = program->try_get_uniform<int>("normal"))
             *u = gbuf_normal;
-        if (auto u = program->get_uniform<int>("albedo"))
+        if (auto u = program->try_get_uniform<int>("albedo"))
             *u = gbuf_albedo;
 
         vbo_tuple.bind_vao();

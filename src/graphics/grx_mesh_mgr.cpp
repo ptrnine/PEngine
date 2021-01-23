@@ -487,7 +487,7 @@ string collada_prepare(string_view path) {
 
 grx::grx_mesh_mgr::grx_mesh_mgr(const core::config_manager& cm, const core::string& mgr_tag) {
     _texture_mgr = grx_texture_mgr<4>::create_shared(mgr_tag);
-    _models_dir  = cm.entry_dir() / cm.read_unwrap<string>("models_dir");
+    _models_dir  = cm.entry_dir() / cm.read<string>("models_dir");
 }
 
 auto grx::grx_mesh_mgr::load_mesh(string_view path, bool instanced, grx_texture_mgr<4>* texture_mgr)
@@ -581,15 +581,15 @@ void draw(grx_mesh&                             m,
     if (m._cached_program != program.get() || !m._cached_program) {
         m._cached_program = program.get();
 
-        if (auto mvp = m._cached_program->get_uniform<glm::mat4>("MVP"))
+        if (auto mvp = m._cached_program->try_get_uniform<glm::mat4>("MVP"))
             m._cached_uniform_mvp.emplace(*mvp);
 
-        if (auto model_mat = m._cached_program->get_uniform<glm::mat4>("M"))
+        if (auto model_mat = m._cached_program->try_get_uniform<glm::mat4>("M"))
             m._cached_uniform_model.emplace(*model_mat);
 
         if (m._bone_data)
             m._bone_data->cached_bone_matrices_uniform.emplace(
-                m._cached_program->get_uniform_unwrap<core::span<glm::mat4>>("bone_matrices"));
+                m._cached_program->get_uniform<core::span<glm::mat4>>("bone_matrices"));
     }
 
     if (m._cached_uniform_mvp)
@@ -609,7 +609,7 @@ void draw(grx_mesh&                             m,
                 m._texture_sets[entry.material_index].get(grx_texture_set_tag::diffuse);
             if (auto texture = diffuse_id.try_access()) {
                 texture->bind_unit(0);
-                if (auto txtr = program->get_uniform<int>("texture0"))
+                if (auto txtr = program->try_get_uniform<int>("texture0"))
                     (*txtr) = 0;
             }
 
@@ -617,7 +617,7 @@ void draw(grx_mesh&                             m,
                 m._texture_sets[entry.material_index].get(grx_texture_set_tag::normal);
             if (auto texture = normal_id.try_access()) {
                 texture->bind_unit(1);
-                if (auto txtr = program->get_uniform<int>("texture1"))
+                if (auto txtr = program->try_get_uniform<int>("texture1"))
                     (*txtr) = 1;
             }
         }
@@ -667,7 +667,7 @@ void grx::grx_mesh::draw_instanced(const glm::mat4&                      vp,
                 _texture_sets[entry.material_index].get(grx_texture_set_tag::diffuse);
             if (auto texture = diffuse_id.try_access()) {
                 texture->bind_unit(0);
-                if (auto txtr = program->get_uniform<int>("texture0"))
+                if (auto txtr = program->try_get_uniform<int>("texture0"))
                     (*txtr) = 0;
             }
 
@@ -675,7 +675,7 @@ void grx::grx_mesh::draw_instanced(const glm::mat4&                      vp,
                 _texture_sets[entry.material_index].get(grx_texture_set_tag::normal);
             if (auto texture = normal_id.try_access()) {
                 texture->bind_unit(1);
-                if (auto txtr = program->get_uniform<int>("texture1"))
+                if (auto txtr = program->try_get_uniform<int>("texture1"))
                     (*txtr) = 1;
             }
         }

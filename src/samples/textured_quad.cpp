@@ -23,7 +23,7 @@ int pe_main(args_view) {
 
     auto texture_path = cfg_read_path("textures_dir");
 
-    deffered_resource texture = load_texture_async_unwrap(texture_path / "cake.jpg");
+    deffered_resource texture = load_texture_async(texture_path / "cake.jpg");
     auto shader  = grx_shader_program::create_shared(
         grx_shader<shader_type::vertex>(
             "uniform mat4 MVP;"
@@ -43,7 +43,7 @@ int pe_main(args_view) {
             "}"
         )
     );
-    auto MVP = shader->get_uniform_unwrap<glm::mat4>("MVP");
+    auto MVP = shader->get_uniform<glm::mat4>("MVP");
 
     grx_vbo_tuple<vbo_vector_vec3f> quad;
     quad.set_data<0>({
@@ -62,7 +62,7 @@ int pe_main(args_view) {
         quad.bind_vao();
         shader->activate();
         MVP = camera->view_projection() * glm::mat4(1.f);
-        texture.get_unwrap().bind_unit<0>();
+        texture.get().bind_unit<0>();
         quad.draw(18); // NOLINT
 
         window.present();

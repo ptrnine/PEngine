@@ -138,7 +138,7 @@ TEST_CASE("grx_cpu_mesh test") {
     auto rc = try_async_save_mesh_group("./test_mesh.pemesh", mesh5);
     REQUIRE(rc.get());
     deffered_resource mesh7 = try_async_load_mesh_group<mesh_t>("./test_mesh.pemesh");
-    REQUIRE(mesh7.get().value() == mesh5);
+    REQUIRE(mesh7.get() == mesh5);
 
     using mesh_t2 =
     grx_cpu_mesh_group<

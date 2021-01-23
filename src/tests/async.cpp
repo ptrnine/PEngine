@@ -23,7 +23,7 @@ TEST_CASE("async") {
         REQUIRE(!res.is_ready());
         REQUIRE(res.empty());
 
-        auto& opt = res.get();
+        auto& opt = res.try_get();
         REQUIRE(!opt);
 
         bool except = false;
@@ -37,7 +37,7 @@ TEST_CASE("async") {
         except = false;
         try {
             [[maybe_unused]]
-            auto& v = res.get_unwrap();
+            auto& v = res.get();
         } catch (...) {
             except = true;
         }
@@ -50,7 +50,7 @@ TEST_CASE("async") {
         // Increase latency if it fails
         REQUIRE(res.is_ready() == false);
 
-        REQUIRE(res.get_unwrap().v == 1337);
+        REQUIRE(res.get().v == 1337);
         REQUIRE(res.is_ready());
         REQUIRE(!res.empty());
 
@@ -58,7 +58,7 @@ TEST_CASE("async") {
         except = false;
         try {
             [[maybe_unused]]
-            auto& val = res.get().value();
+            auto& val = res.try_get().value();
         } catch (...) {
             except = true;
         }
