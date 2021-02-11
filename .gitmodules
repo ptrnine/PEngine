@@ -40,3 +40,6 @@
 [submodule "submodules/zlib"]
 	path = submodules/zlib
 	url = https://github.com/madler/zlib
+[submodule "submodules/readerwriterqueue"]
+	path = submodules/readerwriterqueue
+	url = https://github.com/cameron314/readerwriterqueue
