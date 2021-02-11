@@ -25,13 +25,11 @@ set(GRX_SOURCES
         grx_texture.cpp
         grx_texture_path_set.cpp
         grx_cpu_mesh_group.cpp
-        grx_mesh_mgr.cpp
         grx_mesh_gen.cpp
         grx_camera.cpp
         grx_camera_manipulator.cpp
         grx_camera_manipulator_fly.cpp
         grx_cascaded_shadow_mapping_tech.cpp
-        grx_forward_renderer_light.cpp
         grx_g_buffer.cpp
         grx_deferred_renderer_light.cpp
         grx_skeleton.cpp
@@ -52,7 +50,6 @@ set(GRX_HEADERS
         grx_postprocess_mgr.hpp
         grx_texture.hpp
         grx_texture_mgr.hpp
-        grx_mesh_mgr.hpp
         grx_camera.hpp
         grx_camera_manipulator.hpp
         grx_camera_manipulator_fly.hpp

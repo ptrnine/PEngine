@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graphics/grx_mesh.hpp"
+#include "graphics/grx_debug.hpp"
 #include "graphics/grx_texture_path_set.hpp"
 #include "grx_animation.hpp"
 #include "grx_vbo_tuple.hpp"
@@ -8,6 +8,7 @@
 #include "grx_uniform_cache.hpp"
 #include "grx_texture_set.hpp"
 #include "grx_shader_tech.hpp"
+#include "grx_ssbo.hpp"
 
 namespace grx {
 
@@ -29,25 +30,61 @@ public:
         _animations = core::move(animations);
     }
 
+    grx_aabb calc_overlap_aabb(grx_aabb aabb) {
+        core::vector<glm::mat4> final_transforms;
+
+        for (auto& [_, animation] : _animations) {
+            size_t max_keys = 0;
+            for (auto& chan : animation.channels())
+                if (max_keys < chan.size())
+                    max_keys = chan.size();
+
+            if (max_keys == 0)
+                continue;
+
+            double step = animation.duration() / static_cast<double>(max_keys);
+            double time = 0.0;
+            for ([[maybe_unused]] auto _ : core::index_seq(max_keys)) {
+                final_transforms = _skeleton.animation_transforms(animation, time);
+                time += step;
+
+                _skeleton.traverse([&](const grx_bone_node_optimized& node) {
+                    aabb.merge(node.aabb.get_transformed(final_transforms[node.idx]));
+                });
+            }
+        }
+
+        return aabb;
+    }
+
     grx_skeleton_optimized                                _skeleton;
     core::hash_map<core::string, grx_animation_optimized> _animations;
 };
 
+/*
 using grx_object_instance_id = core::u64;
 
-class grx_object_instance_storage {
+
+template <bool HasSkeleton>
+struct grx_object_instance_skeleton_storage {};
+
+template <>
+struct grx_object_instance_skeleton_storage<true> {
+    core::vector<glm::mat4> _final_transforms;
+};
+
+template <bool HasSkeleton>
+class grx_object_instance_storage : public grx_object_instance_skeleton_storage<HasSkeleton> {
 public:
     //PE_SERIALIZE(_current_id, _mvp_matrices, _m_matrices, _id_to_instance)
 
     struct instance_value {
         //PE_SERIALIZE(mvp, m)
-
-        glm::mat4 mvp;
         glm::mat4 m;
     };
 
     grx_object_instance_id create_instance() {
-        _id_to_instance.emplace(_current_id, instance_value{glm::mat4(1.f), glm::mat4(1.f)});
+        _id_to_instance.emplace(_current_id, instance_value{glm::mat4(1.f)});
         return _current_id++;
     }
 
@@ -69,12 +106,12 @@ public:
         return _id_to_instance.count(id);
     }
 
-    void setup_instance_buffers() {
+    void setup_instance_buffers(const glm::mat4& vp) {
         _mvp_matrices.resize(_id_to_instance.size());
         _m_matrices.resize(_id_to_instance.size());
 
         for (size_t i = 0; auto& [_, instance_val] : _id_to_instance) {
-            _mvp_matrices[i] = instance_val.mvp;
+            _mvp_matrices[i] = vp * instance_val.m;
             _m_matrices[i] = instance_val.m;
             ++i;
         }
@@ -85,32 +122,51 @@ public:
     core::vector<glm::mat4> _m_matrices;
     core::hash_map<grx_object_instance_id, instance_value> _id_to_instance;
 };
+*/
 
 namespace details {
-    template <bool HasSkeleton>
+    template <bool HasSkeleton, bool IsInstanced>
     struct skeleton_storage {};
 
     template <>
-    struct skeleton_storage<true> : public grx_object_skeleton {};
-
-    template <bool IsInstanced>
-    struct instance_storage {};
+    struct skeleton_storage<true, false> : public grx_object_skeleton {};
 
     template <>
-    struct instance_storage<true> : public grx_object_instance_storage {};
+    struct skeleton_storage<true, true> : public grx_object_skeleton {
+        grx_ssbo<core::vector<glm::mat4>> _final_transforms_ssbo;
+    };
+
+    /*
+    template <bool IsInstanced, bool HasSkeleton>
+    struct instance_storage {};
+
+    template <bool HasSkeleton>
+    struct instance_storage<true, HasSkeleton> : public grx_object_instance_storage<HasSkeleton> {};
+    */
 
     template <typename T, typename... Ts>
     constexpr bool has_type() {
         return false || ((std::is_same_v<T, Ts>) || ...);
     }
+
+    template <bool IsInstanced, typename... Ts>
+    auto get_vbo_tuple_type_f() {
+        if constexpr (IsInstanced)
+            return grx_vbo_tuple<Ts..., vbo_vector_matrix4, vbo_vector_matrix4>();
+        else
+            return grx_vbo_tuple<Ts...>();
+    }
+
+    template <bool IsInstanced, typename... Ts>
+    using vbo_tuple_type_t = decltype(get_vbo_tuple_type_f<IsInstanced, Ts...>());
 }
 
 struct grx_object_instanced_tag{};
 
 template <bool IsInstanced, typename MeshT, typename... Ts>
-class grx_object
-    : public details::skeleton_storage<details::has_type<core::vector<grx_bone_vertex_data>, Ts...>()>,
-      public details::instance_storage<IsInstanced> {
+class grx_object : public details::skeleton_storage<
+                       details::has_type<core::vector<grx_bone_vertex_data>, Ts...>(),
+                       IsInstanced> {
 public:
     static constexpr bool is_instanced() {
         return IsInstanced;
@@ -122,7 +178,7 @@ public:
 
     template <bool Instanced = IsInstanced, bool Skeleton = has_skeleton()>
     void serialize(core::vector<core::byte>& s) const {
-        core::serialize_all(s, to_mesh_group(), _texture_sets);
+        core::serialize_all(s, to_mesh_group(), _texture_sets, _aabb, _overlap_aabb);
         if constexpr (Skeleton)
             grx_object_skeleton::serialize(s);
     }
@@ -130,7 +186,7 @@ public:
     template <bool Instanced = IsInstanced, bool Skeleton = has_skeleton()>
     void deserialize(core::span<const core::byte>& d) {
         MeshT cpu_mesh;
-        core::deserialize_all(d, cpu_mesh, _texture_sets);
+        core::deserialize_all(d, cpu_mesh, _texture_sets, _aabb, _overlap_aabb);
 
         set_from_mesh_group(cpu_mesh);
 
@@ -176,72 +232,75 @@ public:
 
         _vbo.bind_vao();
         for (auto& element : _elements) {
-            if (enable_textures && element.material_index != core::numlim<uint>::max()) {
-                auto diffuse_ptr = _texture_sets[element.material_index].get_ptr(grx_texture_set_tag::diffuse);
-                if (diffuse_ptr) {
-                    auto diffuse = diffuse_ptr->try_access();
-                    if (auto& texture0 = _unicache.get<unitag_texture0>(); texture0 && diffuse) {
-                        diffuse->bind_unit(0);
-                        *texture0 = 0;
-                    }
-                }
-
-                auto normal_ptr = _texture_sets[element.material_index].get_ptr(grx_texture_set_tag::normal);
-                if (normal_ptr) {
-                    auto normal = normal_ptr->try_access();
-                    if (auto& texture1 = _unicache.get<unitag_texture1>(); texture1 && normal) {
-                        normal->bind_unit(1);
-                        *texture1 = 1;
-                    }
-                }
-            }
+            if (enable_textures)
+                draw_setup_textures(element);
 
             _vbo.draw(element.indices_count, element.start_vertex_pos, element.start_index_pos);
         }
     }
 
-    /* TODO: implement this */
-    template <bool Enable = IsInstanced, bool Skeleton = has_skeleton()>
-    std::enable_if_t<Enable> draw(const glm::mat4&,
+    template <bool Enable = IsInstanced && !has_skeleton()>
+    std::enable_if_t<Enable> draw(const glm::mat4& vp,
                                   const core::shared_ptr<grx_shader_program>& program,
+                                  core::vector<glm::mat4>& model_mats,
                                   bool enable_textures = true) {
-        if (this->_m_matrices.empty())
+        if (model_mats.empty())
             return;
 
         program->activate();
 
         _unicache.setup(program);
 
-        if constexpr (Skeleton) {
-            if (auto& bone_matrices = _unicache.get<unitag_bone_matrices>())
-                *bone_matrices = this->_skeleton.final_transforms();
-        }
+        _vbo.bind_vao();
 
-        this->setup_instance_buffers();
+        _vbo.template set_nth_type<vbo_vector_matrix4, 1>(model_mats);
+        for (auto& m : model_mats)
+            m = vp * m;
+        _vbo.template set_nth_type<vbo_vector_matrix4, 0>(model_mats);
+
+        for (auto& element : _elements) {
+            if (enable_textures)
+                draw_setup_textures(element);
+
+            _vbo.draw_instanced(model_mats.size(),
+                                element.indices_count,
+                                element.start_vertex_pos,
+                                element.start_index_pos);
+        }
+    }
+
+    template <bool Enable = IsInstanced && has_skeleton()>
+    std::enable_if_t<Enable> draw(const glm::mat4& vp,
+                                  const core::shared_ptr<grx_shader_program>& program,
+                                  core::vector<glm::mat4> model_mats,
+                                  const core::vector<glm::mat4>& all_final_transforms,
+                                  size_t bones_count,
+                                  bool enable_textures = true) {
+        if (model_mats.empty())
+            return;
+
+        program->activate();
+
+        _unicache.setup(program);
+
+        if (auto& bones_cnt = _unicache.get<unitag_bones_count>())
+            *bones_cnt = static_cast<int>(bones_count);
 
         _vbo.bind_vao();
+
+        _vbo.template set_nth_type<vbo_vector_matrix4, 1>(model_mats);
+        for (auto& m : model_mats)
+            m = vp * m;
+        _vbo.template set_nth_type<vbo_vector_matrix4, 0>(model_mats);
+
+        grx_ssbo<core::vector<glm::mat4>> ssbo;
+        ssbo.set(0, all_final_transforms);
+
         for (auto& element : _elements) {
-            if (enable_textures && element.material_index != core::numlim<uint>::max()) {
-                auto diffuse_ptr = _texture_sets[element.material_index].get_ptr(grx_texture_set_tag::diffuse);
-                if (diffuse_ptr) {
-                    auto diffuse = diffuse_ptr->try_access();
-                    if (auto& texture0 = _unicache.get<unitag_texture0>(); texture0 && diffuse) {
-                        diffuse->bind_unit(0);
-                        *texture0 = 0;
-                    }
-                }
+            if (enable_textures)
+                draw_setup_textures(element);
 
-                auto normal_ptr = _texture_sets[element.material_index].get_ptr(grx_texture_set_tag::normal);
-                if (normal_ptr) {
-                    auto normal = normal_ptr->try_access();
-                    if (auto& texture1 = _unicache.get<unitag_texture1>(); texture1 && normal) {
-                        normal->bind_unit(1);
-                        *texture1 = 1;
-                    }
-                }
-            }
-
-            _vbo.draw_instanced(this->_m_matrices.size(),
+            _vbo.draw_instanced(model_mats.size(),
                                 element.indices_count,
                                 element.start_vertex_pos,
                                 element.start_index_pos);
@@ -294,11 +353,58 @@ public:
         return core::move(_texture_sets);
     }
 
+    [[nodiscard]]
+    const grx_aabb& aabb() const {
+        return _aabb;
+    }
+
+    [[nodiscard]]
+    grx_aabb& aabb() {
+        return _aabb;
+    }
+
+    [[nodiscard]]
+    const grx_aabb& overlap_aabb() const {
+        return _overlap_aabb;
+    }
+
+    [[nodiscard]]
+    grx_aabb& overlap_aabb() {
+        return _overlap_aabb;
+    }
+
+private:
+    void draw_setup_textures(grx_mesh_element& element) {
+        if (element.material_index != core::numlim<uint>::max()) {
+            auto diffuse_ptr =
+                _texture_sets[element.material_index].get_ptr(grx_texture_set_tag::diffuse);
+            if (diffuse_ptr) {
+                auto diffuse = diffuse_ptr->try_access();
+                if (auto& texture0 = _unicache.get<unitag_texture0>(); texture0 && diffuse) {
+                    diffuse->bind_unit(0);
+                    *texture0 = 0;
+                }
+            }
+
+            auto normal_ptr =
+                _texture_sets[element.material_index].get_ptr(grx_texture_set_tag::normal);
+            if (normal_ptr) {
+                auto normal = normal_ptr->try_access();
+                if (auto& texture1 = _unicache.get<unitag_texture1>(); texture1 && normal) {
+                    normal->bind_unit(1);
+                    *texture1 = 1;
+                }
+            }
+        }
+    }
+
 private:
     template <MeshBufT... BufTs, size_t... Idxs>
     grx_object(const grx_cpu_mesh_group<BufTs...>& mesh_group, std::index_sequence<Idxs...>&&):
         _elements(mesh_group.elements()) {
         ((_vbo.template set_data<Idxs>(mesh_group.template get<BufTs::tag>())), ...);
+        //for (auto& e : _elements)
+        //    _aabb.merge(e.aabb);
     }
 
     template <MeshBufT... BufTs>
@@ -310,6 +416,10 @@ private:
     void _set_from_mesh_group(const grx_cpu_mesh_group<BufTs...>& mesh_group, std::index_sequence<Idxs...>&&) {
         _elements = mesh_group.elements();
         ((_vbo.template set_data<Idxs>(mesh_group.template get<BufTs::tag>())), ...);
+
+        //_aabb = grx_aabb::maximized();
+        //for (auto& e : _elements)
+        //    _aabb.merge(e.aabb);
     }
 
     template <size_t... Idxs>
@@ -321,24 +431,28 @@ private:
     }
 
 private:
-    grx_vbo_tuple<Ts...>           _vbo;
-    core::vector<grx_mesh_element> _elements;
+    details::vbo_tuple_type_t<IsInstanced, Ts...> _vbo;
+    core::vector<grx_mesh_element>                _elements;
 
     enum unitag : size_t {
         unitag_mvp = 0,
         unitag_model,
         unitag_bone_matrices,
         unitag_texture0,
-        unitag_texture1
+        unitag_texture1,
+        unitag_bones_count
     };
     grx_uniform_cache<core::optional<glm::mat4>,
                       core::optional<glm::mat4>,
                       core::optional<core::span<glm::mat4>>,
                       core::optional<int>,
+                      core::optional<int>,
                       core::optional<int>>
-        _unicache{"MVP", "M", "bone_matrices", "texture0", "texture1"};
+        _unicache{"MVP", "M", "bone_matrices", "texture0", "texture1", "bones_count"};
 
     core::vector<grx_texture_set<OBJECT_TEXTURE_CHANS>> _texture_sets;
+    grx_aabb _aabb = grx_aabb::maximized();
+    grx_aabb _overlap_aabb = grx_aabb::maximized();
 };
 
 template <MeshBufT... BufTs>
@@ -402,6 +516,7 @@ auto try_load_object(const core::shared_ptr<grx_texture_mgr<4>>& texture_mgr,
                 auto object = ObjectT(mesh_group);
                 object.set_skeleton(core::move(skeleton_optimized));
                 object.set_animations(core::move(animations));
+                object.overlap_aabb() = object.calc_overlap_aabb(object.aabb());
                 object.set_textures(load_texture_set_from_paths(
                     texture_mgr,
                     get_texture_paths_from_assimp("models_dir", relative_dir, scene)));
