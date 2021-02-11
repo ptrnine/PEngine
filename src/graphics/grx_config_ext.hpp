@@ -3,6 +3,7 @@
 #include <core/config_manager.hpp>
 #include <core/print.hpp>
 #include <glm/matrix.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 namespace core
 {
@@ -54,6 +55,13 @@ struct magic_printer<glm::mat<C, R, T, Q>> {
         memcpy(&array_mat[0][0], &transposed[0][0], sizeof(T) * cols * rows);
 
         magic_print(os, array_mat);
+    }
+};
+
+template <>
+struct magic_printer<glm::quat> {
+    void operator()(std::ostream& os, const glm::quat& q) {
+        magic_print(os, core::vec4f(q.w, q.x, q.y, q.z));
     }
 };
 
