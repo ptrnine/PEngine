@@ -27,7 +27,7 @@ grx::grx_window::grx_window(
      */
     grx::grx_context::instance();
 
-    glfwWindowHint( GLFW_DOUBLEBUFFER, GL_FALSE );
+    //glfwWindowHint( GLFW_DOUBLEBUFFER, GL_TRUE );
     _wnd = glfwCreateWindow(static_cast<int>(size.x()), static_cast<int>(size.y()), name.data(), nullptr,
             main_window_context ? main_window_context : nullptr);
     PeRelRequireF(_wnd, "{}", "Can't create GLFW window");
@@ -115,6 +115,8 @@ void grx::grx_window::poll_events() {
 }
 
 void grx::grx_window::swap_buffers() {
+    //while (_swap_timer.measure_count() < 1.0/60.0) {}
+    //_swap_timer.reset();
     glfwSwapBuffers(_wnd);
 }
 

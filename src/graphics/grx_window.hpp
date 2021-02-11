@@ -104,6 +104,7 @@ namespace grx {
         core::shared_ptr<gainput::InputManager>    _input_mgr;
         core::shared_ptr<class grx_camera>         _camera;
 
+        //core::timer _swap_timer;
         uint _mouse_id;
         uint _keyboard_id;
 
