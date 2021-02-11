@@ -9,6 +9,7 @@ namespace ssbo_details {
     //void ssbo_data(uint ssbo_name, uint size, const void* data);
     void ssbo_setup(uint ssbo_name, uint index, uint size, const void* data);
     void ssbo_retrieve(uint ssbo_name, uint size, void* data);
+    void setup_for_matrix(uint ssbo_name);
 
     template <typename T>
     concept FlatBuffer = requires (const T& v) { v.data(); };
@@ -37,6 +38,8 @@ class grx_ssbo {
 public:
     grx_ssbo() {
         ssbo_details::ssbo_gen(&ssbo_);
+        if (std::is_same_v<T, glm::mat4>)
+            ssbo_details::setup_for_matrix(ssbo_);
     }
 
     grx_ssbo(uint index, T data) {

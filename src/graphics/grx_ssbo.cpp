@@ -18,6 +18,16 @@ void ssbo_bind(uint ssbo_name) {
     GL_TRACE(glBindBuffer, GL_SHADER_STORAGE_BUFFER, ssbo_name);
 }
 
+void setup_for_matrix(uint ssbo_name) {
+    GL_TRACE(glBindBuffer, GL_SHADER_STORAGE_BUFFER, ssbo_name);
+    for (unsigned i = 0; i < 4; ++i) {
+        glEnableVertexAttribArray(i);
+        glVertexAttribPointer(i, 4, GL_FLOAT, GL_FALSE,
+                              sizeof(glm::mat4), reinterpret_cast<GLvoid*>(sizeof(GLfloat) * i * 4)); // NOLINT
+        glVertexAttribDivisor(i, 1);
+    }
+}
+
 void ssbo_data(uint ssbo_name, uint size, const void* data) {
     glNamedBufferData(ssbo_name, static_cast<GLsizeiptr>(size), data, GL_STATIC_DRAW);
 }
