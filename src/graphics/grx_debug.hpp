@@ -27,7 +27,10 @@ private:
     ~grx_aabb_debug_drawer() = default;
     grx_aabb_debug_drawer() {
         /* 2x2x2 rectangle */
-        _box.set_data<0>({{1.f, -1.f, -1.f},  {-1.f, -1.f, -1.f}, {-1.f, 1.f, -1.f},
+        _box.set_data<0>({0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11,
+                          12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+                          24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35});
+        _box.set_data<1>({{1.f, -1.f, -1.f},  {-1.f, -1.f, -1.f}, {-1.f, 1.f, -1.f},
                           {1.f, -1.f, -1.f},  {-1.f, 1.f, -1.f},  {1.f, 1.f, -1.f},
 
                           {1.f, -1.f, 1.f},   {1.f, -1.f, -1.f},  {1.f, 1.f, -1.f},
@@ -46,8 +49,8 @@ private:
                           {1.f, -1.f, 1.f},   {-1.f, -1.f, -1.f}, {1.f, -1.f, -1.f}});
 
         auto shader_vs = grx_shader<shader_type::vertex>(
-            "uniform mat4 MVP;",
-            "in vec3 position_ms;"
+            "in vec3 position_ms;",
+            "layout(location = 1) in mat4 MVP;",
             "void main() { gl_Position = MVP * vec4(position_ms, 1.0); }");
 
         auto shader_fs = grx_shader<shader_type::fragment>(
@@ -57,43 +60,76 @@ private:
             "void main() { color = vec4(aabb_color, 1.0); n.w = 1.0; }");
 
         _program = grx_shader_program::create_shared(shader_vs, shader_fs);
+        _color   = _program->get_uniform<core::vec3f>("aabb_color");
 
-        _mvp   = _program->get_uniform<glm::mat4>("MVP");
-        _color = _program->get_uniform<core::vec3f>("aabb_color");
+        auto ni_shader_vs = grx_shader<shader_type::vertex>(
+            "uniform mat4 MVP;",
+            "in vec3 position_ms;",
+            "void main() { gl_Position = MVP * vec4(position_ms, 1.0); }");
+
+        auto ni_shader_fs = grx_shader<shader_type::fragment>(
+            "uniform vec3 aabb_color;",
+            "layout(location = 0) out vec4 color;",
+            "layout(location = 1) out vec4 n;",
+            "void main() { color = vec4(aabb_color, 1.0); n.w = 1.0; }");
+
+        _non_inst_program = grx_shader_program::create_shared(ni_shader_vs, ni_shader_fs);
+        _non_inst_mvp     = _non_inst_program->get_uniform<glm::mat4>("MVP");
+        _non_inst_color   = _non_inst_program->get_uniform<core::vec3f>("aabb_color");
     }
 
 public:
-    /**
-     * @brief Draws aabb
-     *
-     * @param aabb - the aabb
-     * @param model - the model matrix
-     * @param view_projection - (projection * view) matrix from camera
-     * @param color - the color
-     */
-    void draw(const grx_aabb&    aabb,
-              const glm::mat4&   model,
-              const glm::mat4&   view_projection,
-              const core::vec3f& color) const {
+    void enable(bool value = true) {
+        _enable = value;
+    }
+
+    void disable() {
+        enable(false);
+    }
+
+    bool is_enabled() const {
+        return _enable;
+    }
+
+    void push(const grx_aabb&       aabb,
+              const glm::mat4&      model,
+              const grx::color_rgb& color) {
+        if (!_enable || aabb.is_maximized())
+            return;
+
         auto scale = (aabb.max - aabb.min) / core::vec{2.f, 2.f, 2.f}; // NOLINT
         auto pos   = (aabb.max + aabb.min) / core::vec{2.f, 2.f, 2.f}; // NOLINT
+        auto transform =
+            glm::scale(glm::translate(glm::mat4(1.f), core::to_glm(pos)), core::to_glm(scale));
+        auto m = model * transform;
+        _instances[color].push_back(m);
+    }
 
-        auto transform = glm::scale(glm::translate(glm::mat4(1.f), core::to_glm(pos)), core::to_glm(scale));
+    void draw_and_clear(const glm::mat4& view_projection) {
+        if (!_enable)
+            return;
 
         _box.bind_vao();
-
         _program->activate();
-        _mvp   = view_projection * (model * transform);
-        _color = color;
 
         grx_ctx().set_cull_face_enabled(false);
         grx_ctx().set_wireframe_enabled(true);
 
-        constexpr size_t rectangle_vertices_count = 36;
-        _box.draw(rectangle_vertices_count);
+        for (auto& [color, models] : _instances) {
+            _color = static_cast<vec3f>(color) * vec3f::filled_with(1/255.f);
+            constexpr size_t rectangle_vertices_count = 36;
+
+            for (auto& model : models)
+                model = view_projection * model;
+
+            _box.set_data<2>(models);
+            _box.draw_instanced(models.size(), rectangle_vertices_count);
+        }
 
         grx_ctx().set_wireframe_enabled(false);
         grx_ctx().set_cull_face_enabled(true);
+
+        _instances.clear();
     }
 
     template <typename... Ts>
@@ -102,11 +138,14 @@ public:
               const glm::mat4&                          model,
               const core::vec3f&                        color)
     {
+        if (!_enable)
+            return;
+
         drawable.bind_vao();
 
-        _program->activate();
-        _mvp = view_projection * model;
-        _color = color;
+        _non_inst_program->activate();
+        _non_inst_mvp   = view_projection * model;
+        _non_inst_color = color;
 
         grx_ctx().set_cull_face_enabled(false);
         grx_ctx().set_wireframe_enabled(true);
@@ -117,11 +156,25 @@ public:
         grx_ctx().set_cull_face_enabled(true);
     }
 
+    struct color_comparator {
+        bool operator()(const grx::color_rgb& lhs, const grx::color_rgb& rhs) const {
+            core::u32 lhs_i = 0, rhs_i = 0; // NOLINT
+            std::memcpy(&lhs_i, &lhs, sizeof(lhs));
+            std::memcpy(&rhs_i, &rhs, sizeof(rhs));
+            return lhs_i < rhs_i;
+        }
+    };
+
 private:
-    grx_vbo_tuple<vbo_vector_vec3f>      _box;
-    core::shared_ptr<grx_shader_program> _program;
-    grx_uniform<glm::mat4>               _mvp;
-    grx_uniform<core::vec3f>             _color;
+    grx_vbo_tuple<vbo_vector_indices, vbo_vector_vec3f, vbo_vector_matrix4> _box;
+    core::shared_ptr<grx_shader_program>                                    _program;
+    core::map<grx::color_rgb, core::vector<glm::mat4>, color_comparator>    _instances;
+    grx_uniform<core::vec3f>                                                _color;
+
+    core::shared_ptr<grx_shader_program> _non_inst_program;
+    grx_uniform<core::vec3f>             _non_inst_color;
+    grx_uniform<glm::mat4>               _non_inst_mvp;
+    bool                                 _enable = false;
 };
 
 /**
