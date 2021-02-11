@@ -1,7 +1,7 @@
 #!/bin/bash
 
 GPLUSPLUS="g++-10"
-CLANGPLUSPLUS="clang++-10"
+CLANGPLUSPLUS="clang++-11"
 
 C_COMPILER=gcc-10
 CXX_COMPILER="$GPLUSPLUS"
@@ -39,7 +39,7 @@ while [[ $1 == --* ]]; do
     case "$1" in
         "--clang")
             shift
-            C_COMPILER=clang-10
+            C_COMPILER=clang-11
             CXX_COMPILER="$CLANGPLUSPLUS"
         ;;
         "--debug")
@@ -116,14 +116,14 @@ fi
 
 
 if [ "$GEN_DB" == "true" ]; then
-    cmake . -Bbuild-"$BUILD_TYPE"-clang-10 \
-        -DCMAKE_C_COMPILER=/usr/bin/clang-10 \
-        -DCMAKE_CXX_COMPILER=/usr/bin/clang++-10 \
+    cmake . -Bbuild-"$BUILD_TYPE"-clang-11 \
+        -DCMAKE_C_COMPILER=/usr/bin/clang-11 \
+        -DCMAKE_CXX_COMPILER=/usr/bin/clang++-11 \
         -DCMAKE_BUILD_TYPE=release \
         -DENABLE_ASAN="$ENABLE_ASAN" \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DMAKE_NPROCS="$NPROCS"
-    cp -f build-"$BUILD_TYPE"-clang-10/compile_commands.json .
+    cp -f build-"$BUILD_TYPE"-clang-11/compile_commands.json .
     exit 0
 fi
 
@@ -148,7 +148,7 @@ fi
 
 if [ $? -eq 0 ] && [ ! -z "$EXEC_PATH" ]; then
     if [ "$GDB_EXEC" == "true" ]; then
-        LD_LIBRARY_PATH="./build-$BUILD_TYPE-$C_COMPILER/3rd/lib" gdb build-"$BUILD_TYPE"-"$C_COMPILER"/"$EXEC_PATH" $EXEC_ARGS
+        LD_LIBRARY_PATH="./build-$BUILD_TYPE-$C_COMPILER/3rd/lib" gdb --args build-"$BUILD_TYPE"-"$C_COMPILER"/"$EXEC_PATH" $EXEC_ARGS
     else
         LD_LIBRARY_PATH="./build-$BUILD_TYPE-$C_COMPILER/3rd/lib" build-"$BUILD_TYPE"-"$C_COMPILER"/"$EXEC_PATH" $EXEC_ARGS
     fi
