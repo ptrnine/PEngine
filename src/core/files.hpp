@@ -37,18 +37,24 @@ namespace core
  * @return the file content or nullopt if the file cannot be opened
  */
 [[nodiscard]] inline optional<string> try_read_file(const string& file_path) {
-    std::ifstream ifs(file_path, std::ios_base::binary | std::ios_base::in);
+    std::ifstream ifs(file_path, std::ios_base::in);
 
     if (!ifs.is_open())
         return nullopt;
 
-    ifs.seekg(0, std::ios_base::end);
-    auto size = ifs.tellg();
-    ifs.seekg(0, std::ios_base::beg);
+    auto stat = platform_dependent::get_file_stat(file_path);
+    if (!stat)
+        return nullopt;
+
+    if (stat->size == 0)
+        return core::string(std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>());
 
     std::string str;
-    str.resize(static_cast<size_t>(size));
-    ifs.read(str.data(), size);
+    str.resize(stat->size);
+    auto bs = ifs.readsome(str.data(), static_cast<std::streamsize>(stat->size));
+    if (bs < 0)
+        return nullopt;
+    str.resize(static_cast<size_t>(bs));
 
     return str;
 }
@@ -66,12 +72,23 @@ namespace core
     if (!ifs.is_open())
         return nullopt;
 
-    ifs.seekg(0, std::ios_base::end);
-    auto size = ifs.tellg();
-    ifs.seekg(0, std::ios_base::beg);
+    auto stat = platform_dependent::get_file_stat(file_path);
+    if (!stat)
+        return nullopt;
 
-    vector<byte> result(static_cast<size_t>(size));
-    ifs.read(reinterpret_cast<char*>(result.data()), size); // NOLINT
+    if (stat->size == 0) {
+        auto res = vector<char>(std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>());
+        vector<byte> r(res.size());
+        ::memcpy(r.data(), res.data(), r.size());
+        return r;
+    }
+
+    vector<byte> result(stat->size);
+    auto         bs = ifs.readsome(reinterpret_cast<char*>(result.data()), // NOLINT
+                           static_cast<std::streamsize>(stat->size));
+    if (bs < 0)
+        return nullopt;
+    result.resize(static_cast<size_t>(bs));
 
     return result;
 }
