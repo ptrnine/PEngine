@@ -68,14 +68,17 @@ struct grx_rotation_key {
  */
 struct grx_combined_key {
     PE_SERIALIZE(time, value)
+    TO_TUPLE_IMPL(time, value)
 
     struct combined_key_value {
         PE_SERIALIZE(position, scaling, rotation)
+        TO_TUPLE_IMPL(position, scaling, rotation)
 
         vec3f     position;
         vec3f     scaling;
         glm::quat rotation;
     };
+
 
     double time;
     combined_key_value value;
