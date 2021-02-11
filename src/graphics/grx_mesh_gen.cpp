@@ -3,6 +3,7 @@
 using namespace core;
 
 namespace grx {
+/*
 using namespace mesh_vbo_types;
 
 mesh_buf_t gen_cube(vec3f size) {
@@ -40,6 +41,7 @@ mesh_buf_t gen_cube(vec3f size) {
 
     return data;
 }
+*/
 
 grx_vbo_tuple<vbo_vector_indices, vbo_vector_vec3f>
 gen_light_sphere() {
