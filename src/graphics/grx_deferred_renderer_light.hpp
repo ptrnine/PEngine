@@ -1,6 +1,7 @@
 #pragma once
 
 #include <core/helper_macros.hpp>
+#include <core/math.hpp>
 #include "graphics/algorithms/grx_frustum_culling.hpp"
 #include "grx_shader_tech.hpp"
 #include "grx_types.hpp"

@@ -190,13 +190,13 @@ void grx_ds_light_mgr::light_pass(shared_ptr<grx_shader_program>& program, vec3f
         for (auto& light : point_lights_) {
             if (light.aabb_proxy_.is_visible(frustum_bits::csm_near | frustum_bits::csm_middle | frustum_bits::csm_far)) {
                 grx_aabb_debug().draw(light.mesh(), vp, light.model_matrix(), light.color);
-                grx_aabb_debug().draw(light.aabb_, light.model_matrix(), vp, {0.f, 1.f, 0.5f});
+                grx_aabb_debug().push(light.aabb_, light.model_matrix(), color_rgb{0, 255, 127});
             }
         }
         for (auto& light : spot_lights_) {
             if (light.aabb_proxy_.is_visible(frustum_bits::csm_near | frustum_bits::csm_middle | frustum_bits::csm_far)) {
                 grx_aabb_debug().draw(light.mesh(), vp, light.model_matrix(), light.color);
-                grx_aabb_debug().draw(light.aabb_, light.model_matrix(), vp, {0.f, 1.f, 0.5f});
+                grx_aabb_debug().push(light.aabb_, light.model_matrix(), color_rgb{0, 255, 127});
             }
         }
     }
