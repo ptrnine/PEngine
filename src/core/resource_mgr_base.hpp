@@ -151,6 +151,10 @@ public:
         load_significance_t load_significance;
     };
 
+    static mgr_lookup_t& global_mgr_weak_ptr() {
+        return mgr_lookup_t::instance();
+    }
+
     static shared_ptr<DerivedT> create_shared(const string& mgr_tag) {
         auto ptr = make_shared<DerivedT>(constructor_accessor<resource_mgr_base>{}, mgr_tag);
         mgr_lookup_t::instance().insert(mgr_tag, ptr);
