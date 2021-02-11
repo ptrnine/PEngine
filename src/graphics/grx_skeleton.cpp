@@ -192,6 +192,52 @@ void anim_traverse(const grx::grx_bone_node_optimized& node,
         anim_traverse(child, animation, time, global_inverse_transform, final_transforms, global_transform);
 }
 
+void anim_interpolate_traverse(const grx::grx_bone_node_optimized& node,
+                               const grx::grx_animation_optimized& anim_start,
+                               const grx::grx_animation_optimized& anim_end,
+                               double                              anim_start_time,
+                               double                              anim_end_time,
+                               double                              factor,
+                               const glm::mat4&                    global_inverse_transform,
+                               core::span<glm::mat4>               final_transforms,
+                               const glm::mat4& parent_transform = glm::mat4(1.0)) {
+    glm::mat4 tsr = node.transform;
+
+    auto& chan_start = anim_start.channels().at(node.idx);
+    auto& chan_end   = anim_end.channels().at(node.idx);
+
+    /* TODO: remove this if after fixing prune_non_bone_root */
+    if (!chan_start.empty() && !chan_end.empty()) {
+        auto [pos1, scal1, rot1] =
+            grx::grx_animation_key_lookup(chan_start).interstep(anim_start_time).interpolate();
+        auto [pos2, scal2, rot2] =
+            grx::grx_animation_key_lookup(chan_end).interstep(anim_end_time).interpolate();
+
+        auto position = lerp(pos1, pos2, static_cast<float>(factor));
+        auto scaling  = lerp(scal1, scal2, static_cast<float>(factor));
+        auto rotation = normalize(slerp(rot1, rot2, static_cast<float>(factor)));
+
+        auto t = glm::translate(glm::mat4(1.0), to_glm(position));
+        auto s = glm::scale(glm::mat4(1.0), to_glm(scaling));
+        auto r = glm::mat4_cast(rotation);
+        tsr    = t * s * r;
+    }
+
+    auto global_transform      = parent_transform * tsr;
+    final_transforms[node.idx] = global_inverse_transform * global_transform * node.offset;
+
+    for (auto& child : node.children)
+        anim_interpolate_traverse(child,
+                                  anim_start,
+                                  anim_end,
+                                  anim_start_time,
+                                  anim_end_time,
+                                  factor,
+                                  global_inverse_transform,
+                                  final_transforms,
+                                  global_transform);
+}
+
 } // namespace
 
 
@@ -347,7 +393,45 @@ grx_skeleton_optimized::animation_transforms(const grx_animation_optimized& anim
                                              double                         time) const {
     auto result = vector<glm::mat4>(_final_transforms.size());
     anim_traverse(
-        _storage.front(), animation, time, glm::inverse(_storage.front().transform), result);
+        _storage.front(), animation, time * animation.ticks_per_second(), glm::inverse(_storage.front().transform), result);
     return result;
 }
+
+vector<glm::mat4>
+grx_skeleton_optimized::animation_factor_transforms(const grx_animation_optimized& animation,
+                                                    double                         factor) const {
+    return animation_transforms(animation, animation.duration() * factor);
+}
+
+core::vector<glm::mat4> grx_skeleton_optimized::animation_interpolate_transform(
+    const class grx_animation_optimized& animation_start,
+    const class grx_animation_optimized& animation_end,
+    double                               animation_start_time,
+    double                               animation_end_time,
+    double                               factor) const {
+    auto result = vector<glm::mat4>(_final_transforms.size());
+    anim_interpolate_traverse(_storage.front(),
+                              animation_start,
+                              animation_end,
+                              animation_start_time,
+                              animation_end_time,
+                              factor,
+                              glm::inverse(_storage.front().transform),
+                              result);
+    return result;
+}
+
+core::vector<glm::mat4> grx_skeleton_optimized::animation_interpolate_factor_transform(
+    const class grx_animation_optimized& animation_start,
+    const class grx_animation_optimized& animation_end,
+    double                               animation_start_factor,
+    double                               animation_end_factor,
+    double                               factor) const {
+    return animation_interpolate_transform(animation_start,
+                                           animation_end,
+                                           animation_start_factor * animation_start.duration(),
+                                           animation_end_factor * animation_end.duration(),
+                                           factor);
+}
+
 } // namespace grx
