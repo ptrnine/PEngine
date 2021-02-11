@@ -64,7 +64,7 @@ namespace grx {
     struct grx_aabb {
         PE_SERIALIZE(min, max)
 
-        static grx_aabb maximized() {
+        static constexpr grx_aabb maximized() {
             return grx_aabb{
                 {std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()},
                 {std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest()}
@@ -109,6 +109,19 @@ namespace grx {
                 auto transformed = core::from_glm(matrix * point).xyz();
                 merge(grx_aabb{transformed, transformed});
             }
+        }
+
+        [[nodiscard]]
+        grx_aabb get_transformed(const glm::mat4& matrix) const {
+            auto result = *this;
+            result.transform(matrix);
+            return result;
+        }
+
+        [[nodiscard]]
+        bool is_maximized() const {
+            constexpr auto mx = maximized();
+            return min.binary_equal(mx.min) && max.binary_equal(mx.max);
         }
     };
 
