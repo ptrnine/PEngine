@@ -216,9 +216,9 @@ public:
 
     template <int UniqId>
     void write(Type type, string_view data) {
+        std::lock_guard lock(mtx);
         auto msg = build_string(current_datetime("[hh:mm:ss.xxx]"), str_types.at(type), data);
 
-        std::lock_guard lock(mtx);
         if (_last_id == UniqId) {
             for (auto& [_, stream] : _streams) {
                if (stream.try_drop_postfix(_last_write_len))
@@ -254,6 +254,8 @@ public:
      * @param data - the data to be written
      */
     void write(Type type, string_view data) {
+        std::lock_guard lock(mtx);
+
         auto message = string(str_types.at(type)) + string(data);
         auto datetime = current_datetime("[hh:mm:ss.xxx]");
         string msg;
@@ -262,7 +264,6 @@ public:
             msg = build_string(
                 datetime, " ("sv, std::to_string(_write_repeats + 1), " times)"sv, message);
 
-            std::lock_guard lock(mtx);
             for (auto& [_, stream] : _streams) {
                if (stream.try_drop_postfix(_last_write_len))
                    stream.write("\n");
@@ -275,14 +276,12 @@ public:
         else {
             msg = build_string("\n"sv, datetime, message);
 
-            std::lock_guard lock(mtx);
             _last_write = message;
             _last_id = numlim<int>::max();
             _write_repeats = 1;
             _last_write_len = msg.size() - (message.size() + 1);
         }
 
-        std::lock_guard lock(mtx);
         for (auto& [_, stream] : _streams) {
             stream.write(msg);
             stream.flush();
