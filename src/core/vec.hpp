@@ -410,6 +410,10 @@ namespace core {
             return vec_float_approx_equal(this->v, vec.v, epsilon, std::make_index_sequence<S>());
         }
 
+        bool binary_equal(const DerivedT<T, S>& vec) const {
+            return ::memcmp(this->v.data(), vec.v.data(), sizeof(T) * S) == 0;
+        }
+
         T magnitude() const {
             return vec_magnitude(this->v);
         }
