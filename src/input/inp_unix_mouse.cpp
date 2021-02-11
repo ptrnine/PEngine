@@ -68,7 +68,8 @@ void mouse_input_service::mouse_input_service_f(std::atomic<bool>&          awor
             }
         }
 
-        std::this_thread::yield();
+        /* TODO: test this? */
+        //std::this_thread::yield();
     }
 }
 
