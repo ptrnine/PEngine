@@ -78,6 +78,7 @@ namespace details {
     uint assimp_load_tangents  (const aiMesh*, vector<vec3f>&                buff, uint start_index);
     uint assimp_load_bitangents(const aiMesh*, vector<vec3f>&                buff, uint start_index);
     uint assimp_load_bones     (const aiMesh*, vector<grx_bone_vertex_data>& buff, uint start_index);
+    grx_aabb assimp_get_aabb   (const aiMesh*);
     grx_skeleton_data assimp_load_skeleton_data_map(const aiScene* scene);
     core::span<aiMesh*> assimp_get_meshes(const aiScene*);
     uint assimp_get_material_index(const aiMesh*);
@@ -272,6 +273,8 @@ public:
         else if constexpr (tag == mesh_buf_tag::uv)        count = assimp_load_uvs       (mesh, buff, start_index);
         else if constexpr (tag == mesh_buf_tag::index)     count = assimp_load_indices   (mesh, buff, start_index);
         else if constexpr (tag == mesh_buf_tag::bone)      count = assimp_load_bones     (mesh, buff, start_index);
+
+        element.aabb = assimp_get_aabb(mesh);
 
         if constexpr (tag == mesh_buf_tag::index) {
             if (element.indices_count == 0)

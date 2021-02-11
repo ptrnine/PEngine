@@ -130,6 +130,13 @@ uint assimp_load_bones(const aiMesh* m, vector<grx_bone_vertex_data>& buff, uint
     return m->mNumVertices;
 }
 
+grx_aabb assimp_get_aabb(const aiMesh* m) {
+    constexpr auto to_glm = [](const aiVector3D& v) {
+        return vec3f{v.x, v.y, v.z};
+    };
+    return grx_aabb{to_glm(m->mAABB.mMin), to_glm(m->mAABB.mMax)};
+}
+
 grx_skeleton_data assimp_load_skeleton_data_map(const aiScene* scene) {
     if (!scene->HasMeshes())
         throw std::runtime_error("Mesh does not have meshes");
