@@ -7,7 +7,6 @@
 #include <GL/glew.h>
 
 #include "algorithms/grx_frustum_culling.hpp"
-#include "grx_mesh_instance.hpp"
 #include "grx_camera.hpp"
 #include "grx_shader_tech.hpp"
 
@@ -155,7 +154,7 @@ void grx_cascade_shadow_map_tech::bind_framebuffer() {
         glClear(GL_DEPTH_BUFFER_BIT);
     }
 }
-
+/*
 void grx_cascade_shadow_map_tech::draw(const shared_ptr<grx_shader_program>& shader, grx_mesh_instance& mesh_instance) {
     // We has shadom_maps.size() * mesh_instance_count glFramebufferTexture calls now
     // Worst, TODO: make only 3 glFramebufferTexture calls for all meshes
@@ -165,6 +164,7 @@ void grx_cascade_shadow_map_tech::draw(const shared_ptr<grx_shader_program>& sha
         mesh_instance.draw(light_projection * _light_view, shader);
     }
 }
+*/
 
 void grx_cascade_shadow_map_tech::bind_shadow_maps(int start) {
     //glEnable(GL_CULL_FACE);
@@ -216,6 +216,7 @@ void grx_cascade_shadow_map_tech::culling_stage(const grx_camera& camera) const 
                                              frustum_bits::csm_far);
 }
 
+/*
 void grx_cascade_shadow_map_tech::shadow_path(core::span<grx_mesh_instance> objects,
                                               const grx_shader_tech&        sp) const
 {
@@ -239,6 +240,7 @@ void grx_cascade_shadow_map_tech::shadow_path(grx_mesh_pack&         mesh_pack,
         mesh_pack.draw(light_projection * _light_view, sp, false, bit);
     }
 }
+*/
 
 
 } // namespace grx
