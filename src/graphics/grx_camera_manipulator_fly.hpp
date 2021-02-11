@@ -5,6 +5,7 @@
 #include <core/time.hpp>
 #include <gainput/gainput.h>
 #include "grx_camera_manipulator.hpp"
+#include "input/inp_linux.hpp"
 
 namespace grx {
     class grx_camera_manipulator_fly : public grx_camera_manipulator {
@@ -14,13 +15,21 @@ namespace grx {
         static constexpr float high_push    = 1.f - low_push;
         static constexpr float diff_push    = high_push - low_push - outline_push;
 
-
-        explicit grx_camera_manipulator_fly(float speed = 4.f, float mouse_speed = 4.f):
-            _speed(speed), _mouse_speed(mouse_speed) {}
+        explicit grx_camera_manipulator_fly(float speed = 4.f, float mouse_speed = 0.01f):
+            _speed(speed),
+            _mouse_speed(mouse_speed),
+            _input(inp::input().create_keyboard_mouse_receiver()) {
+            _pos_states.setup_states(core::array{inp::key::W,
+                                                 inp::key::A,
+                                                 inp::key::S,
+                                                 inp::key::D,
+                                                 inp::key::BTN_LEFT,
+                                                 inp::key::BTN_RIGHT,
+                                                 inp::key::LEFTSHIFT});
+            _orient_states.setup_states(core::array{inp::key::Q, inp::key::E});
+        }
 
     protected:
-        core::shared_ptr<gainput::InputMap> map_lock(class grx_window* window);
-
         void update_fov(class grx_window* window, float& fov) override;
         void update_orientation(class grx_window* window, float& yaw, float& pitch, float& roll) override;
         void update_position(
@@ -34,7 +43,9 @@ namespace grx {
         float _speed =  0.f;
         float _mouse_speed;
 
-        core::weak_ptr<gainput::InputMap> _input_map;
+        core::shared_ptr<inp::inp_event_receiver> _input;
+        inp::inp_event_states                     _orient_states;
+        inp::inp_event_states                     _pos_states;
         class grx_window* _cached_wnd = nullptr;
 
     public:

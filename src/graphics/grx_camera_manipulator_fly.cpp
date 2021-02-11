@@ -7,6 +7,7 @@
 #include "grx_window.hpp"
 #include "grx_camera.hpp"
 
+/*
 namespace input_event {
     enum {
         RotateX,
@@ -24,9 +25,11 @@ namespace input_event {
         FovOut
     };
 }
+*/
 
 using namespace core;
 
+/*
 core::shared_ptr<gainput::InputMap> grx::grx_camera_manipulator_fly::map_lock(grx_window* window) {
     if (window == nullptr)
         return {};
@@ -58,61 +61,68 @@ core::shared_ptr<gainput::InputMap> grx::grx_camera_manipulator_fly::map_lock(gr
 
     return _input_map.lock();
 }
+*/
 
 void grx::grx_camera_manipulator_fly::update_fov(grx_window* wnd, float& fov) {
-    if (auto map = map_lock(wnd)) {
-        if (map->GetBool(input_event::FovIn))
-            fov += 1.f;
-        else if (map->GetBool(input_event::FovOut))
-            fov -= 1.f;
-    }
+    auto t = _input->start_transaction();
+    fov += t.trackpos_float(inp::track::mouse_scroll);
 }
 
-void grx::grx_camera_manipulator_fly::update_orientation(grx_window* window, float& yaw, float& pitch, float& roll) {
-    if (auto map = map_lock(window)) {
-        if (window->on_focus())
-            window->reset_mouse_pos();
+void grx::grx_camera_manipulator_fly::update_orientation(grx_window* window,
+                                                         float&      yaw,
+                                                         float&      pitch,
+                                                         float&      roll) {
+    auto t = _input->start_transaction();
+    _orient_states.update(t);
 
-        float zero = 0.f;
-        vec2f mov;
+    if (window->on_focus())
+        window->reset_mouse_pos();
 
-        if (inp::inp_ctx().is_raw_mouse_input_enabled()) {
-            mov = inp::inp_ctx().raw_mouse_movement() * 2.5f;
+    float zero = 0.f;
+    vec2f mov;
+
+    mov.set(t.trackpos_float(inp::track::mouse_x), t.trackpos_float(inp::track::mouse_y));
+    mov *= 0.01f;
+
+    /*
+    if (inp::inp_ctx().is_raw_mouse_input_enabled()) {
+        mov = inp::inp_ctx().raw_mouse_movement() * 2.5f;
+    }
+    else {
+        auto pos = vec{map->GetFloat(input_event::RotateX), map->GetFloat(input_event::RotateY)};
+
+        if (!memcmp(&pos.x(), &zero, sizeof(float)))
+            pos.x() = 0.5f;
+
+        if (!memcmp(&pos.y(), &zero, sizeof(float)))
+            pos.y() = 0.5f;
+
+        mov = (pos - vec{0.5f, 0.5f}) * _mouse_speed;
+    }
+    */
+
+    yaw += mov.x();
+    pitch += mov.y();
+
+    // Roll
+    auto rollSp = 4 * _timestep;
+
+    roll = std::clamp(roll, -0.5f, 0.5f);
+
+    if (_orient_states.state_of(inp::key::Q))
+        roll += rollSp;
+    else if (_orient_states.state_of(inp::key::E))
+        roll -= rollSp;
+    else if (memcmp(&roll, &zero, sizeof(float)) != 0) {
+        if (roll > 0.f) {
+            roll -= rollSp;
+            if (roll < 0.f)
+                roll = 0.f;
         }
         else {
-            auto pos = vec{map->GetFloat(input_event::RotateX), map->GetFloat(input_event::RotateY)};
-
-            if (!memcmp(&pos.x(), &zero, sizeof(float)))
-                pos.x() = 0.5f;
-
-            if (!memcmp(&pos.y(), &zero, sizeof(float)))
-                pos.y() = 0.5f;
-
-            mov = (pos - vec{0.5f, 0.5f}) * _mouse_speed;
-        }
-
-        yaw   += mov.x();
-        pitch += mov.y();
-
-        // Roll
-        auto rollSp = 4 * _timestep;
-
-        roll = std::clamp(roll, -0.5f, 0.5f);
-
-        if (map->GetBool(input_event::RollLeft))
             roll += rollSp;
-        else if (map->GetBool(input_event::RollRight))
-            roll -= rollSp;
-        else if (memcmp(&roll, &zero, sizeof(float)) != 0) {
-            if (roll > 0.f) {
-                roll -= rollSp;
-                if (roll < 0.f)
-                    roll = 0.f;
-            } else {
-                roll += rollSp;
-                if (roll > 0.f)
-                    roll = 0.f;
-            }
+            if (roll > 0.f)
+                roll = 0.f;
         }
     }
 }
@@ -124,25 +134,26 @@ void grx::grx_camera_manipulator_fly::update_position(
         const core::vec3f& right,
         const core::vec3f& up
 ) {
-    if (auto map = map_lock(wnd)) {
-        auto speed = map->GetBool(input_event::Accel) ? _speed * _shift_factor : _speed;
+    auto t = _input->start_transaction();
+    _pos_states.update(t);
 
-        if (map->GetBool(input_event::MoveFront))
-            position += direction * _timestep * speed;
+    auto speed = _pos_states.state_of(inp::key::LEFTSHIFT) ? _speed * _shift_factor : _speed;
 
-        if (map->GetBool(input_event::MoveBack))
-            position -= direction * _timestep * speed;
+    if (_pos_states.state_of(inp::key::BTN_LEFT))
+        position += direction * _timestep * speed;
 
-        if (map->GetBool(input_event::MoveUp))
-            position += up * _timestep * speed;
+    if (_pos_states.state_of(inp::key::BTN_RIGHT))
+        position -= direction * _timestep * speed;
 
-        if (map->GetBool(input_event::MoveDown))
-            position -= up * _timestep * speed;
+    if (_pos_states.state_of(inp::key::W))
+        position += up * _timestep * speed;
 
-        if (map->GetBool(input_event::MoveRight))
-            position += right * _timestep * speed;
+    if (_pos_states.state_of(inp::key::S))
+        position -= up * _timestep * speed;
 
-        if (map->GetBool(input_event::MoveLeft))
-            position -= right * _timestep * speed;
-    }
+    if (_pos_states.state_of(inp::key::D))
+        position += right * _timestep * speed;
+
+    if (_pos_states.state_of(inp::key::A))
+        position -= right * _timestep * speed;
 }
