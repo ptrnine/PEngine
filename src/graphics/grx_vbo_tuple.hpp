@@ -5,6 +5,7 @@
 #include <glm/mat4x4.hpp>
 #include <type_traits>
 
+#include "graphics/grx_context.hpp"
 #include "grx_vbo_types.hpp"
 #include <core/assert.hpp>
 
@@ -86,6 +87,11 @@ protected:
         (set_data<Idxs>(std::get<Idxs>(data)), ...);
     }
 
+    template <size_t... Idxs>
+    core::tuple<Ts...> _get_data(std::index_sequence<Idxs...>) {
+        return core::tuple{get_data<Idxs>()...};
+    }
+
 public:
     template <size_t S>
     using vbo_type = std::tuple_element_t<S, std::tuple<Ts...>>;
@@ -158,6 +164,21 @@ public:
         return core::numlim<size_t>::max();
     }
 
+    template <VboData T, size_t N = 0, size_t I = 0, size_t CurN = 0>
+    static constexpr size_t nth_type_idx() {
+        if constexpr (I < sizeof...(Ts)) {
+            if constexpr (std::is_same_v<T, std::tuple_element_t<I, std::tuple<Ts...>>>) {
+                if constexpr (CurN == N)
+                    return I;
+                else
+                    return nth_type_idx<T, N, I + 1, CurN + 1>();
+            } else {
+                return nth_type_idx<T, N, I + 1, CurN>();
+            }
+        }
+        return core::numlim<size_t>::max();
+    }
+
     template <VboData T, size_t ArrayPos = 0, size_t Idx = 0, size_t ArraySize>
     static constexpr void _vbo_type_positions_iter(std::array<size_t, ArraySize>& positions) {
         if constexpr (Idx < sizeof...(Ts) && ArrayPos < ArraySize) {
@@ -185,6 +206,15 @@ public:
         _setup_matrices_iter();
     }
 
+    grx_vbo_tuple(const grx_vbo_tuple& vbo_tuple) : grx_vbo_tuple() {
+        set_data(vbo_tuple.get_data());
+    }
+
+    grx_vbo_tuple& operator=(const grx_vbo_tuple& vbo_tuple) {
+        set_data(vbo_tuple.get_data());
+        return *this;
+    }
+
     grx_vbo_tuple(grx_vbo_tuple&& vbo_tuple) noexcept = default;
     grx_vbo_tuple& operator=(grx_vbo_tuple&& vbo_tuple) noexcept = default;
 
@@ -194,8 +224,24 @@ public:
             _grx_delete_vao_and_vbos(_win_vao_map, _vbo_ids.data(), _vbo_ids.size());
     }
 
+    template <VboData T, size_t N = 0>
+    void set_nth_type(const T& data) {
+        set_data<nth_type_idx<T, N>()>(data);
+    }
+
+    template <bool Enable = vbo_type_count<vbo_vector_matrix4>()>
+    void set_matrices(const vbo_vector_matrix4& models, const vbo_vector_matrix4& mvps) {
+        constexpr auto mvp_idx = first_type_idx<vbo_vector_matrix4>();
+        set_data<mvp_idx>(mvps);
+        set_data<mvp_idx + 1>(models);
+    }
+
     void set_data(const core::tuple<Ts...>& data) {
         _set_data(data, std::make_index_sequence<sizeof...(Ts)>());
+    }
+
+    core::tuple<Ts...> get_data() const {
+        return _get_data(std::make_index_sequence<sizeof...(Ts)>());
     }
 
     template <size_t I>
@@ -275,6 +321,7 @@ public:
             _grx_draw_elements_base_vertex(indices_count, start_index_pos, start_vertex_pos);
         else
             _grx_draw_arrays(indices_count, start_vertex_pos);
+        grx_ctx().append_drawed_vertices(indices_count);
     }
 
     void draw_instanced(size_t                  instances_count,
@@ -282,6 +329,7 @@ public:
                         size_t                  start_vertex_pos = 0,
                         [[maybe_unused]] size_t start_index_pos  = 0) const {
         _grx_draw_elements_instanced_base_vertex(instances_count, indices_count, start_index_pos, start_vertex_pos);
+        grx_ctx().append_drawed_vertices(instances_count * indices_count);
     }
 
 private:
@@ -293,14 +341,15 @@ private:
 class grx_vbo_tuple_generic {
 private:
     struct holder_base {
-        virtual ~holder_base()                                                                         = default;
-        virtual void bind_vao() const                                                                  = 0;
-        virtual void bind_vbo(size_t pos, uint gl_target) const                                        = 0;
-        virtual void draw(size_t indices_count, size_t start_vertex_pos, size_t start_index_pos) const = 0;
+        virtual ~holder_base()                                  = default;
+        virtual void bind_vao() const                           = 0;
+        virtual void bind_vbo(size_t pos, uint gl_target) const = 0;
+        virtual void
+        draw(size_t indices_count, size_t start_vertex_pos, size_t start_index_pos) const = 0;
         virtual void draw_instanced(size_t instances_count,
                                     size_t indices_count,
                                     size_t start_vertex_pos,
-                                    size_t start_index_pos) const                                      = 0;
+                                    size_t start_index_pos) const                         = 0;
     };
 
     template <typename T>
@@ -395,4 +444,5 @@ public:
         return false;
     }
 };
+
 } // namespace grx
