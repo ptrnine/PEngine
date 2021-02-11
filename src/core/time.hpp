@@ -21,6 +21,31 @@ namespace core {
     using std::chrono::duration_cast;
     using namespace std::chrono_literals;
 
+    namespace details {
+        template <typename T>
+        struct is_ratio : std::false_type {};
+
+        template <intmax_t Num, intmax_t Den>
+        struct is_ratio<std::ratio<Num, Den>> : std::true_type {};
+    }
+    template <typename T>
+    concept Ratio = details::is_ratio<T>::value;
+
+    namespace details {
+        template <typename T>
+        struct is_duration : std::false_type {};
+
+        template <typename T, Ratio R>
+        struct is_duration<core::duration<T, R>> : std::true_type {};
+    }
+    template <typename T>
+    concept Duration = details::is_duration<T>::value;
+
+    template <typename T = double>
+    T duration_to_float_seconds(Duration auto iduration) {
+        return duration_cast<duration<T, std::ratio<1, 1>>>(iduration).count();
+    }
+
     class timer {
     public:
         template <typename T = double, typename Period = seconds::period>
