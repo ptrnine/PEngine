@@ -11,11 +11,16 @@
 #include <memory>
 #include <list>
 #include <functional>
+#include <algorithm>
+#include <map>
+#include <set>
 #include <flat_hash_map.hpp>
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 #include <libcuckoo/cuckoohash_map.hh>
+#include <readerwriterqueue/readerwriterqueue.h>
 
+#include <boost/hana.hpp>
 #include "try_opt.hpp"
 
 namespace core
@@ -35,6 +40,7 @@ namespace core
     using f32 = float;
     using f64 = double;
 
+    namespace hana = boost::hana;
     namespace chrono = std::chrono;
     using namespace std::literals;
 
@@ -90,6 +96,21 @@ namespace core
 
     template <typename K, typename V>
     using mpmc_hash_map = libcuckoo::cuckoohash_map<K, V>;
+
+    template<
+            typename K, typename V,
+            typename Compare = std::less<K>,
+            typename A = std::allocator<std::pair<const K, V>>>
+    using map = std::map<K, V, Compare, A>;
+
+    template<
+            typename K,
+            typename Compare = std::less<K>,
+            typename A = std::allocator<K>>
+    using set = std::set<K, Compare, A>;
+
+    template <typename T, size_t MaxBlockSize = 512> // NOLINT
+    using spsc_queue = moodycamel::ReaderWriterQueue<T, MaxBlockSize>;
 
     using gsl::not_null;
     using gsl::span;
@@ -206,5 +227,42 @@ namespace core
     constexpr bool contains_type(tuple<Ts...>&&) {
         return false || (std::is_same_v<T, Ts> || ...);
     }
+
+    template <typename T>
+    concept CopyablePointer = std::is_pointer_v<T> || is_specialization<T, shared_ptr>::value;
+
+    template <typename T>
+    concept Pointer = CopyablePointer<T> || is_specialization<T, unique_ptr>::value;
+
+    template <CopyablePointer T>
+    class safeptr {
+    public:
+        safeptr(T ptr): data(move(ptr)) {}
+
+        template <typename F>
+        auto operator()(F&& access_callback) {
+            using R = std::invoke_result_t<F, T>;
+            if constexpr (std::is_reference_v<std::remove_const_t<R>> && !Pointer<std::decay_t<R>>) {
+                if (data)
+                    return &access_callback(data);
+                else
+                    return std::add_pointer_t<std::remove_reference_t<R>>{nullptr};
+            } else if constexpr (Pointer<std::decay_t<R>>) {
+                if (data)
+                    return access_callback(data);
+                else
+                    return std::decay_t<R>{nullptr};
+            } else {
+                if (data)
+                    return optional{access_callback(data)};
+                else
+                    return optional<R>{nullptr};
+            }
+        }
+
+    private:
+        T data;
+    };
+
 
 } // namespace core
