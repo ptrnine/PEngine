@@ -114,6 +114,7 @@ git_submodule_copy_files(libcuckoo NO_NAME_INCLUDE INCLUDES
         libcuckoo/bucket_container.hh)
 git_submodule_copy_files(flat_hash_map NO_NAME_INCLUDE INCLUDES flat_hash_map.hpp)
 git_submodule_copy_files(readerwriterqueue INCLUDES atomicops.h readerwriterqueue.h)
+git_submodule_copy_files(magic_enum EXPLICIT_INCLUDE_DIR ./ INCLUDES include/magic_enum.hpp)
 
 if (CMAKE_BUILD_TYPE STREQUAL "RELEASE" AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
