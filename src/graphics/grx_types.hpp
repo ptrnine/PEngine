@@ -10,6 +10,7 @@
 #include <core/helper_macros.hpp>
 #include <core/serialization.hpp>
 
+#include "core/math.hpp"
 #include "grx_config_ext.hpp"
 
 namespace grx {
@@ -44,6 +45,11 @@ namespace grx {
     using float_color_rg   = core::vec<float, 2>;
     using float_color_rgb  = core::vec<float, 3>;
     using float_color_rgba = core::vec<float, 4>;
+
+    template <size_t S>
+    core::vec<uint8_t, S> hdr_color_cut_to_u8(const core::vec<float, S>& s) {
+        return core::vec_map(s, [](float v) { return static_cast<uint8_t>(core::unit_clamp(v) * 255); });
+    }
 
     enum class grx_load_significance {
         low = 0, medium, high
@@ -163,24 +169,31 @@ namespace grx {
         };
     };
 
-    /*
-    struct grx_texture {
-        uint width = 0, height = 0, channels = 0;
-        texture_id_t id = static_cast<texture_id_t>(std::numeric_limits<uint>::max());
-
-        TO_TUPLE_IMPL(width, height, channels, id)
-    };
-    */
-
-    template <grx_color_fmt ColorFmt, grx_filtering Filtering>
+    template <grx_color_fmt ColorFmt, grx_filtering Filtering, bool EnableMipmaps>
     struct grx_render_target_settings {
         using grx_render_target_settings_check = void;
         static constexpr grx_color_fmt color_fmt = ColorFmt;
         static constexpr grx_filtering filtering = Filtering;
+        static constexpr bool          enable_mipmaps = EnableMipmaps;
     };
 
     template <typename T>
     concept RenderTargetSettings = requires { typename T::grx_render_target_settings_check; };
+
+    template <typename T>
+    concept ColorComponent = std::same_as<T, uint8_t> || std::same_as<T, float>;
+
+    template <ColorComponent T, core::u32 channels_count>
+    struct texture_typeparams {
+        using component_t = T;
+        static constexpr core::u32 channels = channels_count;
+    };
+
+    template <typename T>
+    concept TextureParams = requires (T&& v) {
+        {T::component_t} -> ColorComponent;
+        {v.channels()} -> std::convertible_to<core::u32>;
+    };
 }
 
 namespace core {

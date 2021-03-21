@@ -9,20 +9,20 @@
 
 namespace grx {
 
-template <size_t S>
+template <ColorComponent T, size_t S>
 class grx_texture_mgr;
 
 
-template <size_t S>
-class grx_texture_provider : public core::resource_provider_t<grx_texture_mgr<S>> {
+template <ColorComponent T, size_t S>
+class grx_texture_provider : public core::resource_provider_t<grx_texture_mgr<T, S>> {
 public:
-    using super_t = core::resource_provider_t<grx_texture_mgr<S>>;
+    using super_t = core::resource_provider_t<grx_texture_mgr<T, S>>;
 
     grx_texture_provider() = default;
     ~grx_texture_provider() = default;
 
     grx_texture_provider(
-        core::shared_ptr<grx_texture_mgr<S>> mgr,
+        core::shared_ptr<grx_texture_mgr<T, S>> mgr,
         const core::cfg_path&                file_path,
         core::load_significance_t            load_significance = core::load_significance_t::medium):
         super_t(core::move(mgr), file_path, load_significance) {}
@@ -93,27 +93,27 @@ private:
 };
 
 
-template <size_t S>
-class grx_texture_mgr : public core::resource_mgr_base<grx_color_map<core::u8, S>,
-                                                       grx_texture<S>,
-                                                       grx_texture_mgr<S>,
-                                                       grx_texture_provider<S>> {
+template <ColorComponent T, size_t S>
+class grx_texture_mgr : public core::resource_mgr_base<grx_color_map<T, S>,
+                                                       grx_texture<T, S>,
+                                                       grx_texture_mgr<T, S>,
+                                                       grx_texture_provider<T, S>> {
 public:
-    using core::resource_mgr_base<grx_color_map<core::u8, S>,
-                                  grx_texture<S>,
-                                  grx_texture_mgr<S>,
-                                  grx_texture_provider<S>>::resource_mgr_base;
+    using core::resource_mgr_base<grx_color_map<T, S>,
+                                  grx_texture<T, S>,
+                                  grx_texture_mgr<T, S>,
+                                  grx_texture_provider<T, S>>::resource_mgr_base;
 
     auto load_async_cached(const core::cfg_path& path) {
         DLOG("resource_mgr[{}]: async load texture {}", this->mgr_tag(), path);
         return load_color_map_async<core::vec<core::u8, S>>(path.absolute());
     }
 
-    static grx_color_map<core::u8, S> to_cache(grx_texture<S> texture) {
+    static grx_color_map<T, S> to_cache(grx_texture<T, S> texture) {
         return texture.to_color_map();
     }
 
-    static grx_texture<S> from_cache(grx_color_map<core::u8, S>&& color_map) {
+    static grx_texture<T, S> from_cache(grx_color_map<T, S>&& color_map) {
         return grx_texture(color_map);
     }
 };

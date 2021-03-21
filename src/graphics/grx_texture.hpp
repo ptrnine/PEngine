@@ -16,7 +16,7 @@ namespace grx
 
     namespace grx_texture_helper {
         uint create_texture();
-        uint create_texture(uint w, uint h, uint channels);
+        uint create_texture(uint w, uint h, uint channels, bool is_float);
         uint create_texture(uint        w,
                             uint        h,
                             uint        channels,
@@ -25,7 +25,7 @@ namespace grx
                             bool        has_pregen_mipmaps);
 
         void delete_texture(uint name);
-        void generate_storage(uint name, uint w, uint h, uint channels);
+        void generate_storage(uint name, uint w, uint h, uint channels, bool is_float);
         void set_storage(uint        name,
                          uint        w,
                          uint        h,
@@ -38,18 +38,19 @@ namespace grx
 
         void get_texture(void* dst, uint src_name, uint x, uint y, uint channels, bool is_float);
 
-        void bind_unit         (uint name, uint number);
-        void active_texture    (uint number);
-        void bind_texture      (uint name);
-        void bind_image_texture(uint unit, uint name, int level, texture_access access, uint channels);
-    }
+        void bind_unit     (uint name, uint number);
+        void active_texture(uint number);
+        void bind_texture  (uint name);
+        void bind_image_texture(
+            uint unit, uint name, int level, texture_access access, uint channels, bool is_float);
+    } // namespace grx_texture_helper
 
     /**
      * @brief Represents a texture in the video memory
      *
      * @tparam S - count of pixel components (1 - red, 2 - rg, 3 - rgb, 4 - rgba)
      */
-    template <size_t S>
+    template <ColorComponent T, size_t S>
     class grx_texture {
     public:
         static_assert(S > 0 && S <= 4, "S must be 0 < S <= 4");
@@ -66,6 +67,9 @@ namespace grx
             return S;
         }
 
+        using value_type = T;
+        using component_type = T;
+
         /**
          * @brief Construct empty texture
          *
@@ -73,7 +77,7 @@ namespace grx
          */
         grx_texture(const core::vec2u& size): _size(size) {
             _gl_name = grx_texture_helper::create_texture(
-                    _size.x(), _size.y(), static_cast<uint>(S));
+                    _size.x(), _size.y(), static_cast<uint>(S), std::is_floating_point_v<T>);
         }
 
         /**
@@ -82,7 +86,6 @@ namespace grx
          * @tparam T - type of pixel component. Must be float or uint8_t
          * @param color_map - color map for constructing texture
          */
-        template <typename T>
         grx_texture(const grx_color_map<T, S>& color_map): _size(color_map.size()) {
             static_assert(std::is_same_v<T, uint8_t> || std::is_same_v<T, float>, "T must be uint8_t or float only");
 
@@ -123,7 +126,6 @@ namespace grx
             }
         }
 
-        template <typename T>
         grx_texture& operator=(const grx_color_map<T, S>& color_map) {
             static_assert(std::is_same_v<T, uint8_t> || std::is_same_v<T, float>,
                           "T must be uint8_t or float only");
@@ -200,7 +202,7 @@ namespace grx
          */
         grx_texture(const grx_texture& texture): _size(texture._size) {
             _gl_name = grx_texture_helper::create_texture(
-                    _size.x(), _size.y(), static_cast<uint>(S));
+                    _size.x(), _size.y(), static_cast<uint>(S), std::is_floating_point_v<T>);
 
             grx_texture_helper::copy_texture(
                     _gl_name, texture._gl_id, _size.x(), _size.y());
@@ -220,7 +222,7 @@ namespace grx
                 grx_texture_helper::delete_texture(_gl_name);
 
                 _gl_name = grx_texture_helper::create_texture(
-                        _size.x(), _size.y(), static_cast<uint>(S));
+                        _size.x(), _size.y(), static_cast<uint>(S), std::is_floating_point_v<T>);
 
                 grx_texture_helper::copy_texture(
                         _gl_name, texture._gl_id, _size.x(), _size.y());
@@ -338,7 +340,8 @@ namespace grx
         template <uint N>
         void bind_level(int level, texture_access access = texture_access::read) {
             static_assert(N < 32, "N must be < 32"); // NOLINT
-            grx_texture_helper::bind_image_texture(N, _gl_name, level, access, static_cast<uint>(S));
+            grx_texture_helper::bind_image_texture(
+                N, _gl_name, level, access, static_cast<uint>(S), std::is_floating_point_v<T>);
         }
 
         /**
@@ -352,16 +355,15 @@ namespace grx
          */
         void bind_level(uint number, int level, texture_access access = texture_access::read) {
             Expects(number < 32);
-            grx_texture_helper::bind_image_texture(number, _gl_name, level, access, static_cast<uint>(S));
+            grx_texture_helper::bind_image_texture(
+                number, _gl_name, level, access, static_cast<uint>(S), std::is_floating_point_v<T>);
         }
 
         /**
          * @brief Load texture to color map from video memory
          *
-         * @tparam - type of pixel component
          * @return color map with texture data
          */
-        template <typename T = uint8_t>
         [[nodiscard]]
         grx_color_map<T, S> to_color_map() const {
             grx_color_map<T, S> result(_size, MIPMAPS_COUNT);
@@ -462,23 +464,23 @@ namespace grx
         };
 
     public:
-        template <size_t S>
-        grx_texture_generic(grx_texture<S>&& texture):
-            _holder(core::make_unique<holder<grx_texture<S>>>(std::move(texture))) {}
+        template <ColorComponent T, size_t S>
+        grx_texture_generic(grx_texture<T, S>&& texture):
+            _holder(core::make_unique<holder<grx_texture<T, S>>>(std::move(texture))) {}
 
-        template <size_t S>
-        grx_texture_generic& operator= (grx_texture<S>&& texture) noexcept {
-            _holder = core::make_unique<holder<grx_texture<S>>>(std::move(texture));
+        template <ColorComponent T, size_t S>
+        grx_texture_generic& operator= (grx_texture<T, S>&& texture) noexcept {
+            _holder = core::make_unique<holder<grx_texture<T, S>>>(std::move(texture));
             return *this;
         }
 
-        template <size_t S>
-        grx_texture_generic(const grx_texture<S>& texture):
-            _holder(core::make_unique<holder<grx_texture<S>>>(texture)) {}
+        template <ColorComponent T, size_t S>
+        grx_texture_generic(const grx_texture<T, S>& texture):
+            _holder(core::make_unique<holder<grx_texture<T, S>>>(texture)) {}
 
-        template <size_t S>
-        grx_texture_generic& operator= (const grx_texture<S>& texture) {
-            _holder = core::make_unique<holder<grx_texture<S>>>(texture);
+        template <ColorComponent T, size_t S>
+        grx_texture_generic& operator= (const grx_texture<T, S>& texture) {
+            _holder = core::make_unique<holder<grx_texture<T, S>>>(texture);
             return *this;
         }
 
@@ -556,62 +558,62 @@ namespace grx
         }
 
         /**
-         * @brief Try cast to T pointer
+         * @brief Try cast to P pointer
          *
-         * @tparam T - target type
+         * @tparam P - target type
          *
-         * @return pointer to T if cast successful or nullptr
+         * @return pointer to P if cast successful or nullptr
          */
-        template <typename T>
+        template <typename P>
         [[nodiscard]]
-        T* ptr_cast() {
-            auto ptr = dynamic_cast<holder<T>*>(_holder.get());
+        P* ptr_cast() {
+            auto ptr = dynamic_cast<holder<P>*>(_holder.get());
             return ptr ? &ptr->val : nullptr;
         }
 
         /**
-         * @brief Try cast to const T pointer
+         * @brief Try cast to const P pointer
          *
-         * @tparam T - target type
+         * @tparam P - target type
          *
-         * @return const pointer to T if cast successful or nullptr
+         * @return const pointer to P if cast successful or nullptr
          */
-        template <typename T>
+        template <typename P>
         [[nodiscard]]
-        const T* ptr_cast() const {
-            auto ptr = dynamic_cast<holder<T>*>(_holder.get());
+        const P* ptr_cast() const {
+            auto ptr = dynamic_cast<holder<P>*>(_holder.get());
             return ptr ? &ptr->val : nullptr;
         }
 
         /**
-         * @brief Try cast to T
+         * @brief Try cast to P
          *
          * throws std::runtime_error if cast impossible
          *
-         * @tparam T - target type
+         * @tparam P - target type
          *
-         * @return reference to T if cast successful
+         * @return reference to P if cast successful
          */
-        template <typename T>
-        T& cast() {
-            auto res = ptr_cast<T>();
+        template <typename P>
+        P& cast() {
+            auto res = ptr_cast<P>();
             if (!res)
                 throw std::runtime_error("Invalid grx_texture_generic cast");
             return *res;
         }
 
         /**
-         * @brief Try cast to T
+         * @brief Try cast to P
          *
          * Throws std::runtime_error if cast impossible
          *
-         * @tparam T - target type
+         * @tparam P - target type
          *
-         * @return const reference to T if cast successful
+         * @return const reference to P if cast successful
          */
-        template <typename T>
-        const T& cast() const {
-            auto res = ptr_cast<T>();
+        template <typename P>
+        const P& cast() const {
+            auto res = ptr_cast<P>();
             if (!res)
                 throw std::runtime_error("Invalid grx_texture_generic cast");
             return *res;
@@ -622,10 +624,10 @@ namespace grx
     };
 
 
-    template <size_t S, typename T>
+    template <typename T, size_t S, typename TT>
     class grx_texture_future {
     public:
-        using future_t = core::job_future<T>;
+        using future_t = core::job_future<TT>;
 
         grx_texture_future(future_t&& init) noexcept: _future(std::move(init)) {}
 
@@ -634,16 +636,16 @@ namespace grx
             return _future / core::is_ready();
         }
 
-        template <typename Enable = void> requires (!core::Optional<T>)
-        grx_texture<S> get() {
-            return grx_texture<S>(std::move(_future.get()));
+        template <typename Enable = void> requires (!core::Optional<TT>)
+        grx_texture<T, S> get() {
+            return grx_texture<T, S>(std::move(_future.get()));
         }
 
-        template <typename Enable = void> requires core::Optional<T>
-        core::optional<grx_texture<S>> get() {
+        template <typename Enable = void> requires core::Optional<TT>
+        core::optional<grx_texture<T, S>> get() {
             auto map = std::move(_future.get());
             if (map)
-                return grx_texture<S>(std::move(*map));
+                return grx_texture<T, S>(std::move(*map));
             else
                 return core::nullopt;
         }
@@ -678,9 +680,9 @@ namespace grx
      * @return result texture
      */
     template <core::MathVector T = color_rgb>
-    grx_texture<T::size()>
+    grx_texture<typename T::value_type, T::size()>
     load_texture_from_bytes(core::span<core::byte> bytes) {
-        return grx_texture<T::size()>(load_color_map_from_bytes<T>(bytes));
+        return grx_texture<typename T::value_type, T::size()>(load_color_map_from_bytes<T>(bytes));
     }
 
     /**
@@ -694,10 +696,10 @@ namespace grx
      * @return result texture if loading successful or std::nullopt
      */
     template <core::MathVector T = color_rgb>
-    core::optional<grx_texture<T::size()>>
+    core::optional<grx_texture<typename T::value_type, T::size()>>
     try_load_texture(const core::string& file_path) {
         if (auto map = load_color_map<T>(file_path))
-            return grx_texture<T::size()>(*map);
+            return grx_texture<typename T::value_type, T::size()>(*map);
         else
             return core::nullopt;
     }
@@ -714,9 +716,9 @@ namespace grx
      * @return result texture
      */
     template <core::MathVector T = color_rgb>
-    grx_texture<T::size()>
+    grx_texture<typename T::value_type, T::size()>
     load_texture(const core::string& file_path) {
-        return grx_texture<T::size()>(load_color_map<T>(file_path));
+        return grx_texture<typename T::value_type, T::size()>(load_color_map<T>(file_path));
     }
 
     /**
@@ -730,9 +732,9 @@ namespace grx
      * @return future to texture on success or future with std::nullopt
      */
     template <core::MathVector T = color_rgb>
-    grx_texture_future<T::size(), core::optional<grx_color_map<uint8_t, T::size()>>>
+    grx_texture_future<typename T::value_type, T::size(), core::optional<grx_color_map<uint8_t, T::size()>>>
     try_load_texture_async(const core::string& file_path) {
-        return grx_texture_future<T::size(), core::optional<grx_color_map<uint8_t, T::size()>>>(
+        return grx_texture_future<typename T::value_type, T::size(), core::optional<grx_color_map<uint8_t, T::size()>>>(
                 try_load_color_map_async<T>(file_path));
     }
 
@@ -748,9 +750,9 @@ namespace grx
      * @return future to texture
      */
     template <core::MathVector T = color_rgb>
-    grx_texture_future<T::size(), grx_color_map<uint8_t, T::size()>>
+    grx_texture_future<typename T::value_type, T::size(), grx_color_map<uint8_t, T::size()>>
     load_texture_async(const core::string& file_path) {
-        return grx_texture_future<T::size(), grx_color_map<uint8_t, T::size()>>(
+        return grx_texture_future<typename T::value_type, T::size(), grx_color_map<uint8_t, T::size()>>(
                 load_color_map_async<T>(file_path));
     }
 

@@ -12,7 +12,9 @@
 
 namespace grx {
 
-static constexpr size_t OBJECT_TEXTURE_CHANS = 4;
+using object_texture_t = grx_texture<core::u8, 4>;
+using object_texture_set_t = grx_texture_set<core::u8, 4>;
+using object_texture_mgr_t = grx_texture_mgr<core::u8, 4>;
 
 class grx_object_skeleton {
 public:
@@ -336,20 +338,20 @@ public:
         return to_mesh_group(std::make_index_sequence<MeshT::buffers_count>());
     }
 
-    void set_textures(core::vector<grx_texture_set<OBJECT_TEXTURE_CHANS>> texture_sets) {
+    void set_textures(core::vector<object_texture_set_t> texture_sets) {
         _texture_sets = core::move(texture_sets);
     }
 
     [[nodiscard]]
-    const core::vector<grx_texture_set<OBJECT_TEXTURE_CHANS>>& texture_sets() const& {
+    const core::vector<object_texture_set_t>& texture_sets() const& {
         return _texture_sets;
     }
     [[nodiscard]]
-    core::vector<grx_texture_set<OBJECT_TEXTURE_CHANS>>& texture_sets() & {
+    core::vector<object_texture_set_t>& texture_sets() & {
         return _texture_sets;
     }
     [[nodiscard]]
-    core::vector<grx_texture_set<OBJECT_TEXTURE_CHANS>> texture_sets() && {
+    core::vector<object_texture_set_t> texture_sets() && {
         return core::move(_texture_sets);
     }
 
@@ -450,7 +452,7 @@ private:
                       core::optional<int>>
         _unicache{"MVP", "M", "bone_matrices", "texture0", "texture1", "bones_count"};
 
-    core::vector<grx_texture_set<OBJECT_TEXTURE_CHANS>> _texture_sets;
+    core::vector<object_texture_set_t> _texture_sets;
     grx_aabb _aabb = grx_aabb::maximized();
     grx_aabb _overlap_aabb = grx_aabb::maximized();
 };
@@ -483,8 +485,8 @@ namespace details {
 }
 
 template <CpuMeshGroup M, bool Instanced = false>
-auto try_load_object(const core::shared_ptr<grx_texture_mgr<4>>& texture_mgr,
-                     const core::string&                         relative_path)
+auto try_load_object(const core::shared_ptr<object_texture_mgr_t>& texture_mgr,
+                     const core::string&                           relative_path)
     -> core::try_opt<details::object_type_t<M, Instanced>> {
     using ObjectT = details::object_type_t<M, Instanced>;
     using namespace core;
@@ -549,8 +551,8 @@ auto try_load_object(const core::shared_ptr<grx_texture_mgr<4>>& texture_mgr,
 }
 
 template <CpuMeshGroup M, bool Instanced = false>
-auto load_object(const core::shared_ptr<grx_texture_mgr<4>>& texture_mgr,
-                 const core::string&                         relative_path) {
+auto load_object(const core::shared_ptr<object_texture_mgr_t>& texture_mgr,
+                 const core::string&                           relative_path) {
     return core::move(try_load_object<M, Instanced>(texture_mgr, relative_path).value());
 }
 

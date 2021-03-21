@@ -332,8 +332,10 @@ struct grx_cached_mesh_t : public details::skeleton_storage<MeshT::has_bone_buf(
     template <typename M = grx_cpu_mesh_group<Ts...>>
     gpu_t to_object() && {
         gpu_t object{mesh};
-        object.set_textures(load_texture_sets_from_paths<OBJECT_TEXTURE_CHANS>(texture_path_sets));
-        object.aabb() = aabb;
+        object.set_textures(
+            load_texture_sets_from_paths<object_texture_t::component_type,
+                                         object_texture_t::channels_count()>(texture_path_sets));
+        object.aabb()         = aabb;
         object.overlap_aabb() = overlap_aabb;
 
         if constexpr (M::has_bone_buf()) {
@@ -426,14 +428,12 @@ public:
     static core::shared_ptr<grx_object_mgr> create_shared(const core::string& mgr_tag) {
         auto result = super_t::create_shared(mgr_tag);
 
-        using txtr_mgr_t = grx_texture_mgr<OBJECT_TEXTURE_CHANS>;
-
-        if (auto txtr_mgr = txtr_mgr_t::global_mgr_weak_ptr().try_get(mgr_tag + "_txtr"))
+        if (auto txtr_mgr = object_texture_mgr_t::global_mgr_weak_ptr().try_get(mgr_tag + "_txtr"))
             if (auto txtr_m = txtr_mgr->lock())
                 result->_texture_mgr = core::move(txtr_m);
 
         if (!result->_texture_mgr)
-            result->_texture_mgr = grx_texture_mgr<OBJECT_TEXTURE_CHANS>::create_shared(mgr_tag + "_txtr");
+            result->_texture_mgr = object_texture_mgr_t::create_shared(mgr_tag + "_txtr");
         return result;
     }
 
@@ -452,17 +452,17 @@ public:
     }
 
     [[nodiscard]]
-    const grx_texture_mgr<OBJECT_TEXTURE_CHANS>& texture_mgr() const {
+    const object_texture_mgr_t& texture_mgr() const {
         return *_texture_mgr;
     }
 
     grx_object_mgr(typename core::constructor_accessor<grx_object_mgr>::cref,
                    const core::string& imgr_tag):
         super_t(core::constructor_accessor<super_t>{}, imgr_tag),
-        _texture_mgr(grx_texture_mgr<OBJECT_TEXTURE_CHANS>::create_shared(imgr_tag + "_txtr")) {}
+        _texture_mgr(object_texture_mgr_t::create_shared(imgr_tag + "_txtr")) {}
 
 private:
-    core::shared_ptr<grx_texture_mgr<OBJECT_TEXTURE_CHANS>> _texture_mgr;
+    core::shared_ptr<object_texture_mgr_t> _texture_mgr;
 };
 
 template <bool IsInstanced, typename MeshT>

@@ -7,9 +7,9 @@
 
 namespace grx {
 
-template <size_t S>
+template <ColorComponent T, size_t S>
 class grx_texture_set
-    : public core::option_array<grx_texture_provider<S>,
+    : public core::option_array<grx_texture_provider<T, S>,
                                 grx_texture_set_tag,
                                 static_cast<size_t>(
                                     grx_texture_set_tag::grx_texture_set_tag_count)> {
@@ -24,8 +24,8 @@ public:
 
     grx_texture_set() = default;
 
-    grx_texture_set(const core::shared_ptr<grx_texture_mgr<S>>& texture_mgr,
-                    const grx_texture_path_set&                 texture_paths) {
+    grx_texture_set(const core::shared_ptr<grx_texture_mgr<T, S>>& texture_mgr,
+                    const grx_texture_path_set&                    texture_paths) {
         for (auto& [path, i] : core::value_index_view(texture_paths.options())) {
             auto tag = static_cast<grx_texture_set_tag>(i);
 
@@ -39,7 +39,7 @@ public:
             auto tag = static_cast<grx_texture_set_tag>(i);
 
             if (path) {
-                auto mgr = core::mgr_lookup<grx_texture_mgr<S>>(path->mgr_tag);
+                auto mgr = core::mgr_lookup<grx_texture_mgr<T, S>>(path->mgr_tag);
                 this->set(tag, mgr->load(path->path, path->load_significance));
             }
         }
@@ -57,29 +57,29 @@ public:
     }
 };
 
-template <size_t S>
-core::vector<grx_texture_set<S>>
-load_texture_set_from_paths(const core::shared_ptr<grx_texture_mgr<S>>& texture_mgr,
-                            const core::vector<grx_texture_path_set>&   paths) {
-    core::vector<grx_texture_set<S>> textures;
+template <ColorComponent T, size_t S>
+core::vector<grx_texture_set<T, S>>
+load_texture_set_from_paths(const core::shared_ptr<grx_texture_mgr<T, S>>& texture_mgr,
+                            const core::vector<grx_texture_path_set>&      paths) {
+    core::vector<grx_texture_set<T, S>> textures;
     for (auto& path_set : paths)
-        textures.emplace_back(grx_texture_set<S>(texture_mgr, path_set));
+        textures.emplace_back(grx_texture_set<T, S>(texture_mgr, path_set));
 
     return textures;
 }
 
-template <size_t S>
-core::vector<grx_texture_set<S>>
+template <ColorComponent T, size_t S>
+core::vector<grx_texture_set<T, S>>
 load_texture_sets_from_paths(const core::vector<grx_texture_path_set>& paths) {
-    core::vector<grx_texture_set<S>> textures;
+    core::vector<grx_texture_set<T, S>> textures;
     for (auto& path_set : paths)
-        textures.emplace_back(grx_texture_set<S>(path_set));
+        textures.emplace_back(grx_texture_set<T, S>(path_set));
 
     return textures;
 }
 
-template <size_t S>
-core::vector<grx_texture_path_set> texture_sets_to_paths(const core::vector<grx_texture_set<S>>& texture_sets) {
+template <ColorComponent T, size_t S>
+core::vector<grx_texture_path_set> texture_sets_to_paths(const core::vector<grx_texture_set<T, S>>& texture_sets) {
     core::vector<grx_texture_path_set> texture_paths;
     for (auto& texture_provider : texture_sets)
         texture_paths.emplace_back(texture_provider.to_path_set());

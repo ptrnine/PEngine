@@ -24,16 +24,16 @@ namespace grx::grx_texture_helper {
         }
     }
 
-    inline GLenum internal_format_from_channels(uint channels_count) {
+    inline GLenum internal_format(uint channels_count, bool is_float) {
         switch (channels_count) {
         case 1:
-            return GL_R8;
+            return is_float ? GL_R16F : GL_R8;
         case 2:
-            return GL_RG8;
+            return is_float ? GL_RG16F : GL_RG8;
         case 3:
-            return GL_RGB8;
+            return is_float ? GL_RGB16F : GL_RGB8;
         case 4:
-            return GL_RGBA8;
+            return is_float ? GL_RGBA16F : GL_RGBA8;
         default:
             PeAbortF("Wrong color channels count {}", channels_count);
             return 0;
@@ -58,12 +58,12 @@ namespace grx::grx_texture_helper {
     }
 
     void delete_texture(uint name) {
-        if (name != grx_texture<1>::no_name)
+        if (name != grx_texture<uint8_t, 1>::no_name)
             GL_TRACE(glDeleteTextures, 1, &name);
     }
 
-    void generate_storage(uint name, uint w, uint h, uint channels) {
-        auto internal_fmt = internal_format_from_channels(channels);
+    void generate_storage(uint name, uint w, uint h, uint channels, bool is_float) {
+        auto internal_fmt = internal_format(channels, is_float);
 
         GL_TRACE(glTextureStorage2D,
                 name,
@@ -73,9 +73,9 @@ namespace grx::grx_texture_helper {
                 static_cast<GLsizei>(h));
     }
 
-    uint create_texture(uint w, uint h, uint channels) {
+    uint create_texture(uint w, uint h, uint channels, bool is_float) {
         auto name = create_texture();
-        generate_storage(name, w, h, channels);
+        generate_storage(name, w, h, channels, is_float);
         return name;
     }
 
@@ -124,7 +124,7 @@ namespace grx::grx_texture_helper {
                         bool        is_float,
                         const void* color_map_data,
                         bool        has_pregen_mipmaps) {
-        auto name = create_texture(w, h, channels);
+        auto name = create_texture(w, h, channels, is_float);
         set_storage(name, w, h, channels, is_float, color_map_data, has_pregen_mipmaps);
         return name;
     }
@@ -195,7 +195,8 @@ namespace grx::grx_texture_helper {
         GL_TRACE(glBindTexture, GL_TEXTURE_2D, name);
     }
 
-    void bind_image_texture(uint unit, uint name, int level, texture_access access, uint channels) {
+    void bind_image_texture(
+        uint unit, uint name, int level, texture_access access, uint channels, bool is_float) {
         GL_TRACE(glBindImageTexture,
                 unit,
                 name,
@@ -203,7 +204,7 @@ namespace grx::grx_texture_helper {
                 GL_FALSE,
                 0,
                 gl_texture_access(access),
-                internal_format_from_channels(channels));
+                internal_format(channels, is_float));
     }
 }
 
