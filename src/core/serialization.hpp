@@ -15,6 +15,16 @@
         core::deserialize_all(_d, __VA_ARGS__);                                                    \
     }
 
+#define PE_SERIALIZE_SUPER(SUPER_CLASS, ...)                                                       \
+    void serialize(core::vector<core::byte>& _s) const {                                           \
+        SUPER_CLASS::serialize(_s);                                                                \
+        core::serialize_all(_s, __VA_ARGS__);                                                      \
+    }                                                                                              \
+    void deserialize(core::span<const core::byte>& _d) {                                           \
+        SUPER_CLASS::deserialize(_d);                                                              \
+        core::deserialize_all(_d, __VA_ARGS__);                                                    \
+    }
+
 namespace core
 {
     class serializable_base {
@@ -52,13 +62,15 @@ namespace core
     concept SerializableStaticCortege =
             !SerializableExternalF<T> &&
             !SerializableMemberF<T> &&
-            std::tuple_size<std::remove_const_t<std::remove_reference_t<T>>>::value < 32;
+            std::tuple_size<std::remove_const_t<std::remove_reference_t<T>>>::value < 32 &&
+            !std::is_bounded_array_v<T>;
 
     template <typename T>
     concept SerializableIterable =
             !SerializableExternalF<T> &&
             !SerializableMemberF<T> &&
             !SerializableStaticCortege<T> &&
+            !std::is_bounded_array_v<T> &&
             requires (T& t) { begin(t); end(t); back_inserter(t) = *begin(t); end(t) - begin(t); };
 
     template <typename T>
@@ -66,6 +78,7 @@ namespace core
             !SerializableExternalF<T> &&
             !SerializableMemberF<T> &&
             !SerializableStaticCortege<T> &&
+            !std::is_bounded_array_v<T> &&
             StdArray<T>;
 
     template <typename T>
@@ -126,6 +139,9 @@ namespace core
 
     template <SerializableMap T>
     inline void serialize(const T& map, byte_vector& out);
+
+    template <typename T, size_t S>
+    inline void serialize(const T(&)[S], byte_vector& out); // NOLINT
 
     template <SerializableMemberF T>
     inline void serialize(const T& v, byte_vector& out) {
@@ -193,6 +209,9 @@ namespace core
 
     template <SerializableMap T>
     inline void deserialize(T& map, span<const byte>& in);
+
+    template <typename T, size_t S>
+    inline void deserialize(T(&)[S], span<const byte>& in); // NOLINT
 
     template <SerializableMemberF T>
     inline void deserialize(T& v, span<const byte>& in) {
@@ -422,6 +441,19 @@ namespace core
             deserialize(v, in);
             map.emplace(move(v));
         }
+    }
+
+    //==================== C-array
+    template <typename T, size_t S>
+    void serialize(const T(&arr)[S], byte_vector& out) { // NOLINT
+        for (auto& v : arr)
+            serialize(v, out);
+    }
+
+    template <typename T, size_t S>
+    void deserialize(T(&arr)[S], span<const byte>& in) { // NOLINT
+        for (auto& v : arr)
+            deserialize(v, in);
     }
 
     //===================== Span
