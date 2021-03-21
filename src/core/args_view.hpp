@@ -9,8 +9,9 @@ class args_view {
 public:
     args_view() = delete;
 
-    args_view(int argc, char** argv) {
+    args_view(int argc, char** argv, std::vector<string_view> default_args = {}) {
         _name = argv[0];
+        std::copy(default_args.begin(), default_args.end(), std::back_inserter(_data));
         std::copy(argv + 1, argv + argc, std::back_inserter(_data));
     }
 
@@ -38,6 +39,14 @@ public:
             return "unknown";
     }
 
+    template <typename T>
+    static T opt_cast(string_view value) {
+        if constexpr (Number<T>)
+            return value / to_number<T>();
+        else
+            return value;
+    }
+
     template <typename T = string>
     optional<T> by_key_opt(string_view name) {
         auto starts_with = [&](string_view v) { return v.starts_with(name); };
@@ -49,19 +58,13 @@ public:
                     auto str = static_cast<string>(found->substr(name.length() + 1));
                     _data.erase(found);
 
-                    if constexpr (std::is_integral_v<T>)
-                        return ston<T>(str);
-                    else
-                        return str;
+                    return opt_cast<T>(str);
                 }
                 else if (std::next(found) != _data.end()) {
                     auto str = static_cast<string>(*std::next(found));
                     _data.erase(found, std::next(found, 2));
 
-                    if constexpr (std::is_integral_v<T>)
-                        return ston<T>(str);
-                    else
-                        return str;
+                    return opt_cast<T>(str);
                 }
             }
             catch (const std::exception& e) {
