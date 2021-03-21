@@ -80,6 +80,11 @@ namespace core {
             return res;
         }
 
+        template <typename T, typename Period>
+        void add_to_timepoint(const duration<T, Period>& duration) {
+            _start += duration;
+        }
+
     private:
         time_point<steady_clock> _start = steady_clock::now();
     };
