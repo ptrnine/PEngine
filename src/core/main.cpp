@@ -8,7 +8,45 @@
 
 #define STACKTRACE_DUMP_FILE "~stacktrace.dump"
 
+#define PE_HELP(STR) \
+const static auto _pe_help_declaration = []() { \
+    help_details::optional_help::instance(STR); \
+    return 0; \
+}()
+
+#define PE_DEFAULT_ARGS(...) \
+const static auto _pe_default_args_declaration = []() { \
+    default_args_details::default_args::instance({__VA_ARGS__}); \
+    return 0; \
+}()
+
 int pe_main(core::args_view args);
+
+namespace help_details {
+struct optional_help {
+    optional_help(core::string_view ihelp = ""): help(ihelp) {}
+
+    static optional_help& instance(core::string_view ihelp = "") {
+        static optional_help h{ihelp};
+        return h;
+    }
+
+    core::string_view help;
+};
+}
+
+namespace default_args_details {
+struct default_args {
+    default_args(std::initializer_list<core::string_view> iargs): args(iargs) {}
+
+    static default_args& instance(std::initializer_list<core::string_view> iargs = {}) {
+        static default_args a{iargs};
+        return a;
+    }
+
+    std::vector<core::string_view> args;
+};
+}
 
 namespace details {
 namespace {
@@ -18,7 +56,11 @@ namespace {
             "  --disable-stdout-logs                - disables stdout log output\n"
             "  --disable-file-logs                  - disables file log output\n"
             "  -h, --help                           - shows this help\n";
-        std::cout << std::endl;
+
+        if (!help_details::optional_help::instance().help.empty())
+            std::cout << std::endl
+                      << "Options:\n"
+                      << help_details::optional_help::instance().help << std::endl;
     }
 
     void signal_handler(int signum) {
@@ -53,7 +95,7 @@ namespace {
             core::global_fiber_pool().close();
         });
 
-        auto args = core::args_view(argc, argv);
+        auto args = core::args_view(argc, argv, default_args_details::default_args::instance().args);
 
         if (args.get("--disable-stdout-logs"))
             core::log().remove_output_stream("stdout");
