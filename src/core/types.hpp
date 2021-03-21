@@ -19,6 +19,7 @@
 #include <glm/vec3.hpp>
 #include <libcuckoo/cuckoohash_map.hh>
 #include <readerwriterqueue/readerwriterqueue.h>
+#include <magic_enum.hpp>
 
 #include <boost/hana.hpp>
 #include "try_opt.hpp"
@@ -168,6 +169,19 @@ namespace core
     };
 
     template<typename T>
+    concept RandomAccessIterable = requires(T && v) {
+        std::begin(v);
+        std::end(v);
+        std::end(v) - std::begin(v);
+    };
+
+
+    template <typename T>
+    concept Resizable = Iterable<T> && requires(T&& v) {
+        v.resize(0);
+    };
+
+    template<typename T>
     concept IndexAccessible = requires(T && v) {
         v[0];
     };
@@ -184,6 +198,12 @@ namespace core
 
     template <typename T>
     concept Exception = std::is_base_of_v<std::exception, T>;
+
+    template <typename T>
+    concept TupleSerializable = requires (T& v) {
+        {v.to_tuple()};
+        {v.set_from_tuple(v.to_tuple())};
+    };
 
     template <typename T, typename F> requires IsAdapter<F>
     inline auto operator/(const T& v, F f) {
