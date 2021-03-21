@@ -1,5 +1,10 @@
+#pragma once
+
 #include <type_traits>
 #include <cstdint>
+#include "core/math.hpp"
+#include "serialization.hpp"
+#include <boost/algorithm/string/find.hpp>
 
 /**
  * Flag type implementation
@@ -38,6 +43,13 @@ class flag_tmpl {
                   "Flag type must be unsigned int!");
 public:
     using value_type = Type;
+    void serialize(vector<byte>& out) const {
+        core::serialize(_data, out);
+    }
+
+    void deserialize(span<const byte>& in) {
+        core::deserialize(_data, in);
+    }
 
     template <Type flag>
     struct _define_helper {
@@ -69,15 +81,98 @@ using flag32_t = flag_tmpl<uint32_t>;
 using flag64_t = flag_tmpl<uint64_t>;
 using flag_t   = flag_tmpl<unsigned int>;
 
+inline pair<string_view, u32> flag_definition_to_name_bitnum(string_view flag_def) {
+    string_view name;
+    u32 num = 65; // NOLINT
+
+    auto name_end = flag_def.find(' ');
+    if (name_end != string_view::npos)
+        name = flag_def.substr(0, name_end);
+    else {
+        name = flag_def;
+        return pair{name, num};
+    }
+
+    auto def_start = flag_def.find('=', name_end);
+    if (def_start == string_view::npos)
+        return pair{name, num};
+
+    ++def_start;
+    if (def_start >= flag_def.size())
+        return pair{name, num};
+
+    while (def_start < flag_def.size() && (flag_def[def_start] == ' ' || flag_def[def_start] == '\t'))
+        ++def_start;
+
+    if (def_start >= flag_def.size())
+        return pair{name, num};
+
+    string_view def = flag_def.substr(def_start);
+    if (!def.empty() && std::isdigit(def.front())) {
+        u64 bit = 3;
+        try {
+            bit = def.starts_with("0x") ? std::stoull(string(def.substr(2)), nullptr, 16) // NOLINT
+                                        : std::stoull(string(def));
+        } catch (...) {
+            bit = 3;
+        }
+
+        if (is_power_of_two(bit)) {
+            decltype(bit) mask = 1;
+            num = 0;
+            while (!(bit & mask)) {
+                mask = mask << 1;
+                ++num;
+            }
+        }
+    } else {
+        auto start = def.find("::def<");
+        if (start != string_view::npos) {
+            start += sizeof("::def<") - 1;
+            auto end = def.find('>', start);
+            if (end != string_view::npos) {
+                auto strnum = def.substr(start, end - start);
+                try {
+                    auto bitnum = std::stoull(string(strnum));
+                    num = static_cast<u32>(bitnum);
+                } catch (...) {}
+            }
+        }
+    }
+
+    return pair{name, num};
+}
 } // namespace core
 
-#define DEF_FLAG_TYPE(NAME, TYPE, ...) /*NOLINT*/ \
-struct NAME : TYPE {                              \
-    using t____ = TYPE;                           \
-    using t____::t____;                           \
-    NAME() : t____() {}                           \
-    enum : t____::value_type {                    \
-        __VA_ARGS__                               \
-    };                                            \
-}
-
+#define DEF_FLAG_TYPE(NAME, TYPE, ...) /*NOLINT*/                                                  \
+    struct NAME : TYPE {                                                                           \
+        using t____ = TYPE;                                                                        \
+        using t____::t____;                                                                        \
+        NAME(): t____() {}                                                                         \
+        enum EnumFlag : t____::value_type { __VA_ARGS__ };                                         \
+        static constexpr core::array _introspect = {PE_ARGNAMES(__VA_ARGS__)};             \
+        struct _introspect_details { \
+            static constexpr size_t bitsize = 8; \
+            _introspect_details() { \
+                for (auto& def_str : _introspect) { \
+                    auto name_bitnum = core::flag_definition_to_name_bitnum(def_str); \
+                    if (name_bitnum.second < sizeof(t____::value_type) * bitsize) \
+                        _numbit_to_name.at(name_bitnum.second) = name_bitnum.first; \
+                } \
+            } \
+            core::array<core::string_view, sizeof(t____::value_type) * bitsize> _numbit_to_name; \
+            static _introspect_details& instance() { static _introspect_details i; return i; } \
+        }; \
+        core::vector<core::string_view> enabled_info() const { \
+            core::u32 bitnum = 0; \
+            t____::value_type mask = 1; \
+            core::vector<core::string_view> result; \
+            while (mask) { \
+                if (this->data() & mask) \
+                    result.push_back(_introspect_details::instance()._numbit_to_name.at(bitnum)); \
+                ++bitnum;\
+                mask = mask << 1; \
+            } \
+            return result; \
+        } \
+    }
