@@ -37,6 +37,8 @@ private:
     core::function<void(grx_animation_player&, const grx_anim_params&)> callback;
 };
 
+using grx_anim_callback = core::function<void(grx_animation_player&, const grx_anim_params&)>;
+
 class grx_anim_params {
 public:
     grx_anim_params() = default;
@@ -81,9 +83,11 @@ public:
 class grx_animation_player {
 public:
     struct anim_spec_t {
-        double          progress = 0.0;
-        grx_anim_params params;
-        grx_anim_hook   hook;
+        double            progress = 0.0;
+        grx_anim_params   params;
+        grx_anim_hook     hook;
+        grx_anim_callback on_suspend = {};
+        grx_anim_callback on_resume = {};
     };
 
     struct transition_t {
@@ -119,12 +123,25 @@ public:
         }
     }
 
-    void play_animation(grx_anim_params params, grx_anim_hook hook) {
+    void play_animation(grx_anim_params   params,
+                        grx_anim_hook     hook,
+                        grx_anim_callback on_suspend = {},
+                        grx_anim_callback on_resume  = {}) {
         if (!_anims.empty() && _anims.back().params.permit == grx_anim_permit::replace)
-            _anims.back() = anim_spec_t{0.0, core::move(params), core::move(hook)};
+            _anims.back() = anim_spec_t{0.0,
+                                        core::move(params),
+                                        core::move(hook),
+                                        core::move(on_suspend),
+                                        core::move(on_resume)};
         else {
             setup_suspend_transition(params);
-            _anims.emplace_back(anim_spec_t{0.0, core::move(params), core::move(hook)});
+            if (!_anims.empty() && _anims.back().on_suspend)
+                _anims.back().on_suspend(*this, _anims.back().params);
+            _anims.emplace_back(anim_spec_t{0.0,
+                                            core::move(params),
+                                            core::move(hook),
+                                            core::move(on_suspend),
+                                            core::move(on_resume)});
         }
     }
 
@@ -301,9 +318,11 @@ public:
                 hook.update(*this, params, 1.0);
 
                 /* Skip previous in this frame if resume success */
-                if (setup_resume_transition(params))
+                if (setup_resume_transition(params)) {
+                    _anims.back().on_resume(*this, _anims.back().params);
                     if (transition_update(animations, skeleton, framestep))
                         return;
+                }
                 continue;
             }
 
