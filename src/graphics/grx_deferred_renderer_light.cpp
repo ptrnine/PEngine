@@ -50,6 +50,7 @@ grx_ds_spot_light::grx_ds_spot_light() {
         spot_shape.emplace_back(vec2f{std::cos(angle), std::sin(angle)});
         start -= step;
     }
+    recalc_mesh();
 }
 
 float grx_ds_point_light::max_ray_length() const {
@@ -184,8 +185,6 @@ void grx_ds_light_mgr::light_pass(shared_ptr<grx_shader_program>& program, vec3f
     for (auto& light : spot_lights_)
         light.calc_model_matrix();
 
-    gbuf_.clear_result_attachment();
-
     if (enable_debug_draw_) {
         for (auto& light : point_lights_) {
             if (light.aabb_proxy_.is_visible(frustum_bits::csm_near | frustum_bits::csm_middle | frustum_bits::csm_far)) {
@@ -200,6 +199,8 @@ void grx_ds_light_mgr::light_pass(shared_ptr<grx_shader_program>& program, vec3f
             }
         }
     }
+
+    gbuf_.clear_result_attachment();
 
     auto found = cached_uniforms_.find(program.get());
     if (found == cached_uniforms_.end())
@@ -286,6 +287,19 @@ void grx_ds_light_mgr::present(vec2u out_size) {
                       static_cast<GLint>(out_size.y()),
                       GL_COLOR_BUFFER_BIT,
                       GL_LINEAR);
+    glBlitFramebuffer(0,
+                      0,
+                      static_cast<GLint>(gbuf_.fbo_size().x()),
+                      static_cast<GLint>(gbuf_.fbo_size().y()),
+                      0,
+                      0,
+                      static_cast<GLint>(out_size.x()),
+                      static_cast<GLint>(out_size.y()),
+                      GL_DEPTH_BUFFER_BIT,
+                      GL_NEAREST);
+    glDepthMask(GL_TRUE);
+    glEnable(GL_DEPTH_TEST);
+    glDisable(GL_BLEND);
 }
 
 }

@@ -67,8 +67,8 @@ public:
 
     vec3f position              = {0.f, 0.f, 0.f};
     float attenuation_constant  = 1.f;
-    float attenuation_linear    = 0.f;
-    float attenuation_quadratic = 0.f;
+    float attenuation_linear    = 1.f;
+    float attenuation_quadratic = 0.001f;
 
     light_mesh_t           mesh_;
     grx_aabb               aabb_;
@@ -156,7 +156,7 @@ private:
     void recalc_mesh();
 
     core::vector<vec2f> spot_shape = {{-1.f, -1.f}, {-1.f, 1.f}, {1.f, 1.f}, {1.f, -1.f}};
-    float cutoff_ = 0.4f;
+    float cutoff_ = 0.9f;
 };
 
 struct grx_ds_spot_light_uniform : grx_ds_point_light_uniform {
