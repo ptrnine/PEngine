@@ -10,6 +10,7 @@
 #include "grx_context.hpp"
 #include "grx_shader.hpp"
 #include "grx_types.hpp"
+#include "grx_mesh_gen.hpp"
 
 namespace grx
 {
@@ -26,27 +27,7 @@ class grx_aabb_debug_drawer {
 private:
     ~grx_aabb_debug_drawer() = default;
     grx_aabb_debug_drawer() {
-        /* 2x2x2 rectangle */
-        _box.set_data<0>({0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11,
-                          12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
-                          24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35});
-        _box.set_data<1>({{1.f, -1.f, -1.f},  {-1.f, -1.f, -1.f}, {-1.f, 1.f, -1.f},
-                          {1.f, -1.f, -1.f},  {-1.f, 1.f, -1.f},  {1.f, 1.f, -1.f},
-
-                          {1.f, -1.f, 1.f},   {1.f, -1.f, -1.f},  {1.f, 1.f, -1.f},
-                          {1.f, -1.f, 1.f},   {1.f, 1.f, -1.f},   {1.f, 1.f, 1.f},
-
-                          {-1.f, -1.f, 1.f},  {1.f, -1.f, 1.f},   {1.f, 1.f, 1.f},
-                          {-1.f, -1.f, 1.f},  {1.f, 1.f, 1.f},    {-1.f, 1.f, 1.f},
-
-                          {-1.f, -1.f, -1.f}, {-1.f, -1.f, 1.f},  {-1.f, 1.f, 1.f},
-                          {-1.f, -1.f, -1.f}, {-1.f, 1.f, 1.f},   {-1.f, 1.f, -1.f},
-
-                          {1.f, 1.f, -1.f},   {-1.f, 1.f, -1.f},  {-1.f, 1.f, 1.f},
-                          {1.f, 1.f, -1.f},   {-1.f, 1.f, 1.f},   {1.f, 1.f, 1.f},
-
-                          {1.f, -1.f, 1.f},   {-1.f, -1.f, 1.f},  {-1.f, -1.f, -1.f},
-                          {1.f, -1.f, 1.f},   {-1.f, -1.f, -1.f}, {1.f, -1.f, -1.f}});
+        vbo_setup_as_box(_box);
 
         auto shader_vs = grx_shader<shader_type::vertex>(
             "in vec3 position_ms;",
