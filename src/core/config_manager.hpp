@@ -334,6 +334,19 @@ T config_cast(string_view str, const cast_helper& helper = {});
 template <typename T> requires requires { typename tuple_size<T>::type; }
 T config_cast(string_view str, const cast_helper& helper = {});
 
+template <TupleSerializable T>
+T config_cast(string_view str, const cast_helper& helper = {});
+
+template <typename T> requires std::is_enum_v<T> && (!Integral<T>)
+T config_cast(string_view str, const cast_helper& helper = {}) {
+    auto v = helper.try_interpolation(str);
+    auto opt = magic_enum::enum_cast<T>(v);
+    if (opt)
+        return *opt;
+    else
+        throw config_exception("Invalid enum '" + v + "'");
+}
+
 template <typename T, size_t... idxs>
 T config_cast_tuple_like_impl(const vector<string_view>& unpacked,
                               const cast_helper&         helper,
@@ -349,6 +362,13 @@ T config_cast(string_view str, const cast_helper& helper) {
         throw config_exception(format("Invalid tuple size. Requested: {} Has: {}", tuple_size_v<T>, unpacked.size()));
 
     return config_cast_tuple_like_impl<T>(unpacked, helper, std::make_index_sequence<tuple_size_v<T>>());
+}
+
+template <TupleSerializable T>
+T config_cast(string_view str, const cast_helper& helper) {
+    T value;
+    value.set_from_tuple(config_cast<decltype(value.to_tuple())>(str, helper));
+    return value;
 }
 
 template <typename T> requires ConfigHasEmplaceBack<T> || ConfigHasEmplaceOnly<T>
