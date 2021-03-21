@@ -642,10 +642,18 @@ struct transform_t {
 
     transform_t(F callback): functor(std::move(callback)) {}
 
-    template <Iterable T>
+    template <RandomAccessIterable T> requires Resizable<C> && IndexAccessible<C>
     C operator()(const T& c) {
         C r;
-        std::transform(std::begin(c), std::end(c), std::back_inserter(r), functor);
+        r.resize(static_cast<size_t>(std::end(c) - std::begin(c)));
+        std::transform(std::begin(c), std::end(c), std::begin(r), functor);
+        return r;
+    }
+
+    template <RandomAccessIterable T> requires IndexAccessible<C> && std::is_trivial_v<C>
+    C operator()(const T& c) {
+        C r;
+        std::transform(std::begin(c), std::end(c), std::begin(r), functor);
         return r;
     }
 
@@ -788,6 +796,50 @@ struct to_number {
         return ston<NumberT>(str);
     }
 };
+
+template <typename T1, typename T2>
+struct replace {
+    using adapter = void;
+
+    replace(T1 iwhat, T2 iby): what(std::move(iwhat)), by(std::move(iby)) {}
+
+    template <typename U>
+    U operator()(const U& v) {
+        using std::begin, std::end;
+        auto v_begin = begin(v), v_end = end(v);
+        auto w_begin = begin(what), w_end = end(what);
+        auto mid = std::search(v_begin, v_end, w_begin, w_end);
+
+        if (mid == v_end)
+            return v;
+
+        auto b_begin = begin(by), b_end = end(by);
+
+        U result;
+        result.resize(
+            static_cast<size_t>((v_end - v_begin) - (w_end - w_begin) + (b_end - b_begin)));
+        auto r_begin = begin(result);
+
+        auto pos = std::copy(v_begin, mid, r_begin);
+        pos = std::copy(b_begin, b_end, pos);
+        std::copy(mid + (w_end - w_begin), v_end, pos);
+
+        return result;
+    }
+
+    T1 what;
+    T2 by;
+};
+
+namespace details {
+    template <typename T>
+    concept AnyChar = std::same_as<T, char> || std::same_as<T, char16_t> ||
+                      std::same_as<T, char32_t> || std::same_as<T, char8_t>;
+}
+
+template <details::AnyChar T1, size_t N1, details::AnyChar T2, size_t N2>
+replace(const T1 (&)[N1], const T2 (&)[N2]) // NOLINT
+    -> replace<std::basic_string_view<T1>, std::basic_string_view<T2>>;
 
 /**
  * @brief Adapter for removing trailing whitespaces
