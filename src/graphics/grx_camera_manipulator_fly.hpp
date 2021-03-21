@@ -30,14 +30,16 @@ namespace grx {
         }
 
     protected:
-        void update_fov(class grx_window* window, float& fov) override;
-        void update_orientation(class grx_window* window, float& yaw, float& pitch, float& roll) override;
-        void update_position(
-                class grx_window* window,
-                core::vec3f& position,
-                const core::vec3f& direction,
-                const core::vec3f& right,
-                const core::vec3f& up) override;
+        void update_fov(float timestep, class grx_window* window, float& fov) override;
+        void update_orientation(float             timestep,
+                                class grx_window* window,
+                                core::vec3f&      ypr) override;
+        void update_position(float              timestep,
+                             class grx_window*  window,
+                             core::vec3f&       position,
+                             const core::vec3f& direction,
+                             const core::vec3f& right,
+                             const core::vec3f& up) override;
 
         float _shift_factor = 10.f;
         float _speed =  0.f;

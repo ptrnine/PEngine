@@ -12,24 +12,26 @@ using namespace core::angle;
 
 void grx::grx_camera::look_at(const core::vec3f& pos) {
     if (!pos.essentially_equal(_pos, 0.001f)) {
-        _dir   = (pos - _pos).normalize();
-        _pitch = std::clamp   (asinf(-_dir.y()), -PITCH_LOCK, PITCH_LOCK);
-        _yaw   = constraint_pi(-atan2f(-_dir.x(), -_dir.z()));
-        _roll  = 0.0f;
+        _dir     = (pos - _pos).normalize();
+        _ypr.y() = std::clamp(asinf(-_dir.y()), -PITCH_LOCK, PITCH_LOCK);
+        _ypr.x() = constraint_pi(-atan2f(-_dir.x(), -_dir.z()));
+        _ypr.z() = 0.0f;
 
-        _orientation = glm::rotate(glm::mat4(1.f), _pitch, glm::vec3(1.f, 0.f, 0.f));
-        _orientation = glm::rotate(_orientation,   _yaw,   glm::vec3(0.f, 1.f, 0.f));
+        _orientation = glm::rotate(glm::mat4(1.f), _ypr.y(), glm::vec3(1.f, 0.f, 0.f));
+        _orientation = glm::rotate(_orientation,   _ypr.x(),   glm::vec3(0.f, 1.f, 0.f));
         glm::mat4 inv_orientation = glm::inverse(_orientation);
 
         _right       = core::from_glm(inv_orientation * glm::vec4(1.f, 0.f, 0.f, 1.f)).xyz();
         _up          = _right.cross(_dir);
-        _orientation = glm::rotate(_orientation, _roll, to_glm(_dir));
+        _orientation = glm::rotate(_orientation, _ypr.z(), to_glm(_dir));
     }
 }
 
 void grx::grx_camera::calc_orientation() {
-    _orientation = glm::rotate(glm::mat4(1.f), _pitch, glm::vec3(1.f, 0.f, 0.f));
-    _orientation = glm::rotate(_orientation,   _yaw,   glm::vec3(0.f, 1.f, 0.f));
+    auto [yaw, pitch, roll] = ypr();
+
+    _orientation = glm::rotate(glm::mat4(1.f), pitch, glm::vec3(1.f, 0.f, 0.f));
+    _orientation = glm::rotate(_orientation,   yaw,   glm::vec3(0.f, 1.f, 0.f));
 
     glm::mat4 inv_orient = glm::inverse(_orientation);
 
@@ -37,31 +39,37 @@ void grx::grx_camera::calc_orientation() {
     _right = core::from_glm(inv_orient * glm::vec4(1.f, 0.f,  0.f, 1.f)).xyz();
 
     _up          = _right.cross(_dir);
-    _orientation = glm::rotate(_orientation, _roll, to_glm(_dir));
+    _orientation = glm::rotate(_orientation, roll, to_glm(_dir));
 }
 
 void grx::grx_camera::calc_view_projection() {
-    _view        = _orientation * glm::translate(glm::mat4(1.f), to_glm(-_pos));
+    _view        = _orientation * glm::translate(glm::mat4(1.f), to_glm(-position()));
     _projection  = glm::perspective(glm::radians(_fov), _aspect_ratio, _z_near, _z_far);
 }
 
-void grx::grx_camera::update(grx_window* window) {
+void grx::grx_camera::update(float timestep, grx_window* window) {
+    _anim_player.update(*_anim_holder);
+
     bool wnd_test = window ? window->on_focus() : true;
     if (_camera_manipulator && wnd_test) {
-        _camera_manipulator->update_start();
-        _camera_manipulator->update_fov(window, _fov);
-        _camera_manipulator->update_orientation(window, _yaw, _pitch, _roll);
+        _camera_manipulator->update_fov(timestep, window, _fov);
+        auto new_ypr = _ypr;
+        _camera_manipulator->update_orientation(timestep, window, new_ypr);
 
-        _yaw   = constraint_pi(_yaw);
-        _fov   = std::clamp(_fov,    FOV_MIN,    FOV_MAX);
-        _pitch = std::clamp(_pitch, -PITCH_LOCK, PITCH_LOCK);
-        _roll  = std::clamp(_roll,  -ROLL_LOCK,  ROLL_LOCK);
+        new_ypr.y() = std::clamp(new_ypr.y(), -PITCH_LOCK, PITCH_LOCK);
+        new_ypr.z() = std::clamp(new_ypr.z(), -ROLL_LOCK, ROLL_LOCK);
+
+        _ypr_speed = (new_ypr - _ypr) / timestep;
+        _ypr = new_ypr;
+
+        _ypr.x() = constraint_pi(_ypr.x());
+        _fov     = std::clamp(_fov, FOV_MIN, FOV_MAX);
     }
 
     calc_orientation();
 
     if (_camera_manipulator && wnd_test)
-        _camera_manipulator->update_position(window, _pos, _dir, _right, _up);
+        _camera_manipulator->update_position(timestep, window, _pos, _dir, _right, _up);
 
     calc_view_projection();
 }
