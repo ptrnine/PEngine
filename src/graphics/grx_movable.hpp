@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/helper_macros.hpp"
+#include "graphics/grx_joint_animation.hpp"
 #include "grx_types.hpp"
 
 namespace grx
@@ -33,11 +34,41 @@ public:
         return *_last_aabb;
     }
 
+    void direct_combine_transforms(std::initializer_list<glm::mat4> matrices) {
+        recalc_mat();
+        for (auto& mat : matrices)
+            _model_matrix = glm::inverse(mat) * _model_matrix;
+    }
+
+    void setup_joint_animations(const core::shared_ptr<grx_joint_animation_holder>& anim_holder) {
+        _joint_animator = std::make_unique<grx_joint_animation_player>();
+        _joint_anim_holder = anim_holder;
+    }
+
+    void update_joint_animations() {
+        if (_joint_anim_holder && _joint_animator)
+            _joint_animator->update(*_joint_anim_holder);
+    }
+
+    [[nodiscard]]
+    const core::unique_ptr<grx_joint_animation_player>& animation_player() const {
+        return _joint_animator;
+    }
+
 private:
     void recalc_mat() {
         _last_aabb.reset();
-        _model_matrix = glm::translate(glm::mat4(1.f), core::to_glm(_position)) *
-                        glm::mat4(_rotation) * glm::scale(glm::mat4(1.f), core::to_glm(_scale));
+
+        auto pos_shift = vec3f::filled_with(0.f);
+        glm::quat rot_shift = glm::quat({0.f, 0.f, 0.f});
+
+        if (_joint_animator) {
+            pos_shift = _joint_animator->position();
+            rot_shift = glm::quat(core::to_glm(_joint_animator->rotation()));
+        }
+
+        _model_matrix = glm::translate(glm::mat4(1.f), core::to_glm(_position + pos_shift)) *
+                        glm::mat4(_rotation * rot_shift) * glm::scale(glm::mat4(1.f), core::to_glm(_scale));
     }
 
 private:
@@ -46,6 +77,8 @@ private:
     vec3f     _scale{1.f, 1.f, 1.f};
     glm::quat _rotation{glm::vec3{0.f, 0.f, 0.f}};
     core::optional<grx_aabb> _last_aabb;
+    core::unique_ptr<grx_joint_animation_player> _joint_animator;
+    core::shared_ptr<grx_joint_animation_holder> _joint_anim_holder;
 
 public:
     DECLARE_GET(model_matrix)
