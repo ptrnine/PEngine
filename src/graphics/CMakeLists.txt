@@ -27,13 +27,13 @@ set(GRX_SOURCES
         grx_cpu_mesh_group.cpp
         grx_mesh_gen.cpp
         grx_camera.cpp
-        grx_camera_manipulator.cpp
         grx_camera_manipulator_fly.cpp
         grx_cascaded_shadow_mapping_tech.cpp
         grx_g_buffer.cpp
         grx_deferred_renderer_light.cpp
         grx_skeleton.cpp
         grx_animation.cpp
+        grx_skybox.cpp
 )
 
 set(GRX_HEADERS
