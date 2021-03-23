@@ -130,22 +130,24 @@ void grx::grx_window::bind_and_clear_render_target() {
 }
 
 void grx::grx_window::present() {
-    auto luminance_time = _luminance_calc_timer.measure_count<float>();
-    if (luminance_time > 0.2f) {
-        _luminance_calc_timer.reset();
-        auto sz = size();
-        vec3f pixel = {0.f, 0.f, 0.f};
-        glGetTextureImage(_render_target->texture_id(),
-                          core::ilog2(std::max(sz.x(), sz.y())),
-                          GL_RGB,
-                          GL_FLOAT,
-                          sizeof(pixel),
-                          pixel.v.data());
-        _scene_luminance = luminance(pixel);
-        if (_scene_luminance < 0.001f)
-            _scene_luminance = 0.001f;
+    if (_enable_luminance_calc) {
+        auto luminance_time = _luminance_calc_timer.measure_count<float>();
+        if (luminance_time > _luminance_calc_step) {
+            _luminance_calc_timer.reset();
+            auto sz = size();
+            vec3f pixel = {0.f, 0.f, 0.f};
+            glGetTextureImage(_render_target->texture_id(),
+                              core::ilog2(std::max(sz.x(), sz.y())),
+                              GL_RGB,
+                              GL_FLOAT,
+                              sizeof(pixel),
+                              pixel.v.data());
+            _scene_luminance = luminance(pixel);
+            if (_scene_luminance < 0.001f)
+                _scene_luminance = 0.001f;
 
-        _render_target->generate_mipmaps();
+            _render_target->generate_mipmaps();
+        }
     }
 
     _render_target->do_postprocess_queue();

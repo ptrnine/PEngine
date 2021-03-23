@@ -93,9 +93,31 @@ namespace grx {
 
         void set_pos(const core::vec2i& position);
 
+        void enable_luminance_calculation(bool value = true) {
+            _enable_luminance_calc = value;
+        }
+
+        void disable_luminance_calculation() {
+            enable_luminance_calculation(false);
+        }
+
+        [[nodiscard]]
+        bool is_luminance_calculation_enabled() const {
+            return _enable_luminance_calc;
+        }
+
         [[nodiscard]]
         float scene_luminance() const {
             return _scene_luminance;
+        }
+
+        void luminance_calculation_step(float value) {
+            _luminance_calc_step = value;
+        }
+
+        [[nodiscard]]
+        float luminance_calculation_step() const {
+            return _luminance_calc_step;
         }
 
     private:
@@ -116,6 +138,8 @@ namespace grx {
         core::timer _update_timer;
         core::timer _luminance_calc_timer;
         float       _scene_luminance = 1.f;
+        float       _luminance_calc_step = 0.2f;
+        bool        _enable_luminance_calc = false;
 
     public:
         DECLARE_GET          (render_target)
