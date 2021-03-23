@@ -17,7 +17,7 @@ namespace core {
 namespace grx {
     using grx_window_render_target =
             grx_postprocess_mgr<
-                grx_render_target_settings<grx::grx_color_fmt::RGB, grx::grx_filtering::Nearest>>;
+                grx_render_target_settings<grx::grx_color_fmt::RGB16F, grx::grx_filtering::Linear, false>>;
 
     class grx_window {
     public:
@@ -93,6 +93,11 @@ namespace grx {
 
         void set_pos(const core::vec2i& position);
 
+        [[nodiscard]]
+        float scene_luminance() const {
+            return _scene_luminance;
+        }
+
     private:
         GLFWwindow*                           _wnd;
         core::shared_ptr<grx_shader_program>  _screen_quad_passthrough;
@@ -107,6 +112,10 @@ namespace grx {
         //core::timer _swap_timer;
         uint _mouse_id;
         uint _keyboard_id;
+
+        core::timer _update_timer;
+        core::timer _luminance_calc_timer;
+        float       _scene_luminance = 1.f;
 
     public:
         DECLARE_GET          (render_target)

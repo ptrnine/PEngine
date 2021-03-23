@@ -7,7 +7,7 @@
 namespace grx {
     // OpenGL backend
     void _grx_render_target_tuple_init(
-            core::pair<grx_color_fmt, grx_filtering>* settings,
+            core::tuple<grx_color_fmt, grx_filtering, bool>* settings,
             const core::vec2u& size,
             uint* framebuffer_ids,
             uint* texture_ids,
@@ -25,6 +25,7 @@ namespace grx {
     void _grx_render_target_tuple_bind(uint framebuffer_id, const core::vec2u& size);
     void _grx_render_target_tuple_active_texture(uint texture_id);
     void _grx_render_target_tuple_clear();
+    void _grx_render_target_tuple_generate_mipmap(uint texture_id);
 
     template <RenderTargetSettings... Ts>
     class grx_render_target_tuple {
@@ -39,7 +40,7 @@ namespace grx {
         }
 
         grx_render_target_tuple(const core::vec2u& isize): _size(isize) {
-            core::array settings = {core::pair{Ts::color_fmt, Ts::filtering}...};
+            core::array settings = {core::tuple{Ts::color_fmt, Ts::filtering, Ts::enable_mipmaps}...};
             _grx_render_target_tuple_init(
                 settings.data(),
                 _size,
@@ -113,7 +114,6 @@ namespace grx {
             _grx_render_target_tuple_clear();
         }
 
-
         template <size_t S1, size_t S2>
         void swap_targets() {
             static_assert(std::is_same_v<
@@ -123,6 +123,11 @@ namespace grx {
             std::swap(std::get<S1>(_framebuffer_ids), std::get<S2>(_framebuffer_ids));
             std::swap(std::get<S1>(_texture_ids),     std::get<S2>(_texture_ids));
             std::swap(std::get<S1>(_depthbuffer_ids), std::get<S2>(_depthbuffer_ids));
+        }
+
+        template <size_t S>
+        void generate_mipmaps() {
+            _grx_render_target_tuple_generate_mipmap(std::get<S>(_texture_ids));
         }
 
     private:

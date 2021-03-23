@@ -54,6 +54,14 @@ namespace grx {
             _render_target_tuple.template activate_texture<1>();
         }
 
+        uint texture_id() const {
+            return _render_target_tuple.template texture_id<1>();
+        }
+
+        void generate_mipmaps() {
+            _render_target_tuple.template generate_mipmaps<1>();
+        }
+
         void push(const grx_postprocess& postprocess) {
             _postprocesses.push_back(postprocess);
         }
@@ -76,5 +84,7 @@ namespace grx {
         grx_vbo_tuple<vbo_vector_vec3f> _vbo_tuple;
         grx_render_target_tuple<T, T>   _render_target_tuple;
         core::vector<grx_postprocess>   _postprocesses;
+        uint                            _brightness_texture;
+        uint                            _brightness_fbo;
     };
 }

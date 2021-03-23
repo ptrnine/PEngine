@@ -6,7 +6,7 @@ namespace {
 void gen_vec4_attachment(uint& id, core::vec2i size, GLenum attachment) {
     glGenTextures(1, &id);
     glBindTexture(GL_TEXTURE_2D, id);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, size.x(), size.y(), 0, GL_RGBA, GL_FLOAT, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, size.x(), size.y(), 0, GL_RGBA, GL_FLOAT, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, id, 0);
@@ -36,7 +36,7 @@ uint grx::details::gen_g_buffer(vec2i size, uint* attachments) {
 
     glGenTextures(1, &attachments[grx_g_buffer::gbuf_depth]);
     glBindTexture(GL_TEXTURE_2D, attachments[grx_g_buffer::gbuf_depth]);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH32F_STENCIL8, size.x(), size.y(),
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, size.x(), size.y(),
             0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D,
             attachments[grx_g_buffer::gbuf_depth], 0);

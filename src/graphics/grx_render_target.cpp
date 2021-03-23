@@ -6,11 +6,11 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
-inline GLenum color_fmt_to_opengl(grx::grx_color_fmt fmt) {
+inline auto color_fmt_to_opengl(grx::grx_color_fmt fmt) {
     core::array map = {
             GL_RGB, GL_SRGB, GL_RGB16, GL_RGB16F, GL_RGB32F
     };
-    return static_cast<uint>(map[static_cast<uint>(fmt)]); // NOLINT
+    return map[static_cast<uint>(fmt)]; // NOLINT
 }
 
 inline GLint filtering_to_opengl(grx::grx_filtering filtering) {
@@ -21,13 +21,15 @@ inline GLint filtering_to_opengl(grx::grx_filtering filtering) {
 }
 
 void grx::_grx_render_target_tuple_init(
-        core::pair<grx_color_fmt, grx_filtering>* settings,
+        core::tuple<grx_color_fmt, grx_filtering, bool>* settings,
         const core::vec2u& size,
         uint* framebuffer_ids,
         uint* texture_ids,
         uint* depthbuffer_ids,
         size_t count
 ) {
+    auto [color_fmt, filtering, enable_mipmaps] = *settings;
+
     grx_ctx();
 
     glGenFramebuffers (static_cast<GLsizei>(count), framebuffer_ids);
@@ -38,15 +40,25 @@ void grx::_grx_render_target_tuple_init(
         glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_ids[i]);
         glBindTexture(GL_TEXTURE_2D, texture_ids[i]);
 
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, static_cast<GLsizei>(size.x()), static_cast<GLsizei>(size.y()),
-                0, color_fmt_to_opengl(settings[i].first), GL_FLOAT, nullptr);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filtering_to_opengl(settings[i].second));
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filtering_to_opengl(settings[i].second));
+        glTexImage2D(GL_TEXTURE_2D,
+                     0,
+                     color_fmt_to_opengl(color_fmt),
+                     static_cast<GLsizei>(size.x()),
+                     static_cast<GLsizei>(size.y()),
+                     0,
+                     GL_RGB,
+                     GL_FLOAT,
+                     nullptr);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filtering_to_opengl(filtering));
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filtering_to_opengl(filtering));
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
+        if (enable_mipmaps)
+            glGenerateMipmap(GL_TEXTURE_2D);
+
         glBindRenderbuffer(GL_RENDERBUFFER, depthbuffer_ids[i]);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT,
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24,
                 static_cast<GLsizei>(size.x()), static_cast<GLsizei>(size.y()));
         glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthbuffer_ids[i]);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture_ids[i], 0);
@@ -81,4 +93,8 @@ void grx::_grx_render_target_tuple_active_texture(uint texture_id) {
 
 void grx::_grx_render_target_tuple_clear() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
+void grx::_grx_render_target_tuple_generate_mipmap(uint texture_id) {
+    glGenerateTextureMipmap(texture_id);
 }
