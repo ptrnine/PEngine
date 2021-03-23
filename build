@@ -147,6 +147,12 @@ if [ $? -eq 0 ]; then
 fi
 
 if [ $? -eq 0 ] && [ ! -z "$EXEC_PATH" ]; then
+    exec_path=$(grep "${EXEC_PATH}.dir" "build-$BUILD_TYPE-$C_COMPILER/Makefile")
+    if [ -n "$exec_path" ]; then
+        exec_path="${exec_path%%CMakeFiles/$EXEC_PATH*}"
+        EXEC_PATH="${exec_path##*-f }$EXEC_PATH"
+    fi
+
     if [ "$GDB_EXEC" == "true" ]; then
         LD_LIBRARY_PATH="./build-$BUILD_TYPE-$C_COMPILER/3rd/lib" gdb --args build-"$BUILD_TYPE"-"$C_COMPILER"/"$EXEC_PATH" $EXEC_ARGS
     else
