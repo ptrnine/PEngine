@@ -26,7 +26,7 @@ int pe_main(args_view args) {
     auto wnd = grx_window("wnd", {1600, 900});
     wnd.make_current();
     wnd.set_pos({300, 0});
-
+    wnd.enable_luminance_calculation();
 
     auto avg_exp = core::avg_counter<float>(200);
 
