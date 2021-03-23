@@ -1,8 +1,4 @@
-
 #include <random>
-#define DEFERRED
-
-#ifdef DEFERRED
 
 #include "core/fps_counter.hpp"
 #include <core/main.cpp>
@@ -11,8 +7,6 @@
 #include <graphics/grx_camera.hpp>
 #include <graphics/grx_camera_manipulator_fly.hpp>
 #include <graphics/grx_shader_tech.hpp>
-#include <graphics/grx_mesh_mgr.hpp>
-#include <graphics/grx_mesh_instance.hpp>
 #include <input/inp_input_ctx.hpp>
 #include <graphics/grx_deferred_renderer_light.hpp>
 #include <graphics/grx_cpu_mesh_group.hpp>
@@ -50,7 +44,7 @@ int pe_main(args_view args) {
     wnd.attach_camera(cam);
 
     auto ds_mgr = grx_ds_light_mgr::create_shared(wnd.size());
-    //ds_mgr->enable_debug_draw();
+    ds_mgr->enable_debug_draw();
     auto dir_light = ds_mgr->create_dir_light();
     ds_mgr->specular_power(12.f);
     ds_mgr->specular_intensity(1.5f);
@@ -83,28 +77,55 @@ int pe_main(args_view args) {
 
     auto shadow_sp = grx_shader_tech(cm, "shader_tech_csm_fr_shadow");
     auto geom_tech = grx_shader_tech(cm, "shader_tech_ds_geometry");
+    auto si_prog =
+        grx_shader_program::create_shared(cm, "shader_ds_geometry_textured_skeleton_instanced");
+    auto i_prog =
+        grx_shader_program::create_shared(cm, "shader_ds_geometry_textured_instanced");
     auto ds_prog   = grx_shader_program::create_shared(cm, "shader_csm_ds");
-    grx_mesh_mgr mm(cm, "mesh_mgr");
+    //grx_mesh_mgr mm(cm, "mesh_mgr");
     //grx_mesh_instance mesh(mm, "cz805/cz805.dae");
-    grx_mesh_instance mesh(mm, "glock19x/glock19x.dae");
-    mesh.move({5.f, 0.f, 0.f});
+    //grx_mesh_instance mesh(mm, "glock19x/glock19x.dae");
+    //mesh.move({5.f, 0.f, 0.f});
 
     //auto ttmgr = grx_texture_mgr<4>::create_shared("manager");
     //auto obj = load_object<grx_cpu_boned_mesh_group_t>(ttmgr, "glock19x/glock19x.dae");
     //using obj_t = decltype(load_object<grx_cpu_boned_mesh_group_t>(ttmgr, ""));
-    using obj_mgr_t = grx_object_type_to_mgr_t<false, grx_cpu_boned_mesh_group_t>;
+    using obj_mgr_t = grx_object_type_to_mgr_t<true, grx_cpu_mesh_group_t>;
 
     auto obj_mgr = obj_mgr_t::create_shared("default");
 
     //obj_t obj;
 
-    core::printline("load start");
     //auto obj = obj_mgr->load({"models_dir", "glock19x/glock19x.dae"});
-    auto obj2 = core::optional{obj_mgr->load({"models_dir", "glock19x/glock19x.dae"})};
+
+    /*
+    core::vector<decltype(obj_mgr->load({"", ""}))> instances;
+    instances.reserve(200);
+    for (int i = 0; i < 200; ++i) {
+        instances.push_back(obj_mgr->load({"models_dir", "glock19x/glock19x.dae"}));
+        instances.back().move({1.f * float(i), 0.f, 0.f});
+        instances.back().rotation_angles({-90.f, 0.f, 0.f});
+        //instances.back().play_animation(
+        //    {"dh_idle", 1.0, false, grx_anim_permit::suspend});
+    }
+    **/
+    auto obj2 = obj_mgr->load({"models_dir", "glock19x/glock19x.dae"});
+    core::vector<decltype(obj2.create_instance())> instances;
+    instances.reserve(200);
+    for (int i = 0; i < 200; ++i) {
+        instances.push_back(obj2.create_instance());
+        instances.back().movable().move({1.f * float(i), 0.f, 0.f});
+        instances.back().movable().rotation_angles({-90.f, 0.f, 0.f});
+        //instances.back().animation_player().play_animation(
+        //    {"dh_idle", 1.0, false, grx_anim_permit::suspend});
+    }
+
+
+    //obj2.rotation_angles({-90.f, 0.f, 0.f});
+    //obj2.play_animation({"dh_idle", 1.0, false, grx_anim_permit::suspend});
     //auto obj_data = read_binary_file_unwrap("/home/ptrnine/Desktop/glock-pe.xxx");
     //deserializer_view deser(obj_data);
     //deser.read(obj);
-    core::printline("load end");
 
     //while (obj.try_access() == nullptr);
     //serializer ser;
@@ -126,26 +147,38 @@ int pe_main(args_view args) {
 
     fps_counter counter;
 
-    timer tim;
-    bool state = false;
+    timer anim_timer;
 
     std::mt19937 mt;
-    while (!wnd.should_close()) {
-        inp::inp_ctx().update();
 
+    auto update_anim = [&input_map](grx_animation_player& animation_player) {
         if (auto map = input_map.lock()) {
-            if (map->GetBoolIsNew('R')) {
-                if (obj2)
-                obj2->play_animation("shot");
-                mesh.mesh().skeleton()->animations.at("shot").ticks_per_second(8.0);
-                mesh.play_animation("shot");
-            }
-            /*
             if (map->GetBoolIsNew('Z')) {
-                mesh.mesh().skeleton()->animations.at("shot").ticks_per_second(55.0);
-                mesh.play_animation("shot");
+                string name = "dh_shot";
+                if (auto anim = animation_player.current_animation()) {
+                    if (anim->params.name == "dh_reload") {
+                        if (anim->progress > 0.1 && anim->progress < 0.6)
+                            name = "shot_empty";
+                        else if (anim->progress < 0.75)
+                            name += "_empty";
+                    }
+                }
+
+                animation_player.play_animation(
+                    grx_anim_params(name, 300ms),
+                    grx_anim_hook(0.0, [](grx_animation_player& player, const grx_anim_params&) {
+                        player.foreach_back([](grx_animation_player::anim_spec_t& anim) {
+                            if (anim.progress <= 0.75 && anim.params.name == "dh_reload") {
+                                anim.params.name += "_empty";
+                                return true;
+                            }
+                            return false;
+                        });
+                    }));
             }
-            */
+            if (map->GetBoolIsNew('R'))
+                animation_player.play_animation(
+                    {"dh_reload", 1600ms, true, grx_anim_permit::suspend, 200ms, 150ms});
 
             /*
             if (map->GetBool('Z'))
@@ -158,35 +191,38 @@ int pe_main(args_view args) {
                 sl2.beam_angle(sl2.beam_angle() + 0.2f);
                 */
         }
+    };
+
+    while (!wnd.should_close()) {
+        inp::inp_ctx().update();
+        grx_ctx().update_states();
+
+        //auto tickss = anim_timer.tick_count();
+        //for (auto& i : instances) {
+        //    update_anim(i);
+        //    i.persistent_update(tickss);
+        //}
 
         //          printline("ray len: {}", sl2.max_ray_length());
-
-        LOG_UPDATE("FPS: {}, fov: {.3f} pos:{.4f} dir:{.4f}",
-                   static_cast<uint>(counter.get()),
-                   cam->horizontal_fov(),
-                   cam->position(),
-                   cam->directory());
 
         /*
                 sl2.position(cam->position());
                 sl2.direction(cam->directory());
         */
 
-        mesh.update_animation_transforms();
+        //mesh.update_animation_transforms();
 
+        wnd.update_input();
         grx::grx_frustum_mgr().calculate_culling(cam->extract_frustum());
 
         ds_mgr->start_geometry_pass();
-        mesh.draw(cam->view_projection(), geom_tech);
+        //mesh.draw(cam->view_projection(), geom_tech);
 
         //obj.draw(cam->view_projection(), geom_tech);
-        if (obj2) {
-            obj2->draw(cam->view_projection(), geom_tech);
-
-            if (!state) {
-                state = true;
-            }
-        }
+        //obj2.persistent_update(anim_timer.tick_count());
+        obj2.draw(cam->view_projection(), i_prog);
+        //for (auto& obj : instances)
+        //    obj.draw(cam->view_projection(), geom_tech);
 
         //if (state && tim.measure_count() > 0.5)
             //obj2.reset();
@@ -220,171 +256,16 @@ int pe_main(args_view args) {
         */
 
         wnd.present();
-        wnd.update_input();
         counter.update();
+
+        LOG_UPDATE("FPS: {}, vertices: {}, fov: {.3f} pos:{.4f} dir:{.4f}",
+                   static_cast<uint>(counter.get()),
+                   grx_ctx().drawed_vertices(),
+                   cam->horizontal_fov(),
+                   cam->position(),
+                   cam->directory());
     }
 
     return 0;
 }
 
-
-#else
-
-#include "graphics/grx_mesh_mgr.hpp"
-#include "src/core/config_manager.hpp"
-#include "src/core/time.hpp"
-//#include "src/graphics/grx_context.hpp"
-#include "graphics/grx_shader_mgr.hpp"
-//#include "src/graphics/grx_render_target_tuple.hpp"
-#include "src/graphics/grx_window.hpp"
-#include "graphics/grx_vbo_tuple.hpp"
-#include <graphics/grx_postprocess_mgr.hpp>
-#include <graphics/grx_mesh_instance.hpp>
-#include <graphics/grx_camera.hpp>
-#include <graphics/grx_camera_manipulator_fly.hpp>
-#include <graphics/grx_debug.hpp>
-#include <graphics/algorithms/grx_frustum_culling.hpp>
-#include <core/fps_counter.hpp>
-#include <graphics/grx_color_map.hpp>
-#include <graphics/grx_texture.hpp>
-#include <graphics/grx_texture_mgr.hpp>
-#include <graphics/grx_shader.hpp>
-#include <graphics/grx_shader_tech.hpp>
-#include <graphics/grx_config_ext.hpp>
-#include <core/keyboard_fuzzy_search.hpp>
-#include <graphics/grx_forward_renderer_light.hpp>
-#include <graphics/grx_cascaded_shadow_mapping_tech.hpp>
-
-#include <core/async.hpp>
-
-#include <core/main.cpp>
-
-int pe_main(core::args_view) {
-    std::ios_base::sync_with_stdio(false);
-    core::config_manager cm;
-
-    auto wnd = grx::grx_window("wnd", {1600, 900});
-    wnd.set_pos({300, 0});
-    wnd.make_current();
-
-    auto input_map = wnd.create_input_map();
-    if (auto map = input_map.lock()) {
-        auto keyboard = wnd.keyboard_id();
-        map->MapBool('R', keyboard, gainput::KeyR);
-    }
-
-    auto cam = grx::grx_camera::make_shared({0.f, 0.f, 5.f}, 16.f/9.f);
-    cam->create_camera_manipulator<grx::grx_camera_manipulator_fly>();
-    cam->horizontal_fov(110.f);
-    wnd.attach_camera(cam);
-
-    auto tmgr = grx::grx_texture_mgr::create_shared(cm);
-
-    auto shadow_sp     = grx::grx_shader_tech(cm, "shader_tech_csm_fr_shadow");
-    auto light_sp_tech = grx::grx_shader_tech(cm, "shader_tech_csm_fr_textured");
-    auto light_mgr     = grx::grx_forward_light_mgr::create_shared(wnd.size() * 4U, {1024, 1024});
-    auto dir_light     = light_mgr->create_dir_light();
-    //auto spot_light    = light_mgr->create_point_light();
-    //light_sp_tech.skeleton()->get_uniform_unwrap<int>("texture0") = 0;
-    //light_sp_tech.skeleton()->get_uniform_unwrap<int>("texture1") = 1;
-    light_mgr->specular_power(32.f);
-    light_mgr->specular_intensity(4.f);
-
-    grx::grx_mesh_mgr mm(cm);
-
-    grx::grx_mesh_instance mesh(mm, "cz805/cz805.dae");
-    mesh.set_rotation({-90.f, 180.f, 0.f});
-    grx::grx_mesh_pack mpack(mm, "basic/cube1.dae", 1000);
-    for (size_t i = 1; i < mpack.count(); ++i) {
-        mpack.move(i, {static_cast<float>(i) * 4.f, 0.f, 0.f});
-    }
-
-    //core::vector<grx::grx_mesh_instance> models;
-    //bool flag = false;
-    //for (auto _ : core::index_seq(1000)) {
-        //models.emplace_back(grx::grx_mesh_instance(mm, "skate/skate.dae"));
-        //if (flag)
-    //        models.emplace_back(grx::grx_mesh_instance(mm, "basic/cube1.dae"));
-        //else
-        //    models.emplace_back(grx::grx_mesh_instance(mm, "cz805/cz805.dae"));
-        //flag = !flag;
-    //}
-
-    //for (float pos = 0; auto& m : core::skip_view(models, 1)) {
-        //m.set_debug_aabb_draw(true);
-        //m.set_debug_bone_aabb_draw(true);
-    //    m.move({pos += 3.5f, 0.f, 0.f});
-    //}
-    //models.front().set_debug_aabb_draw(true);
-    //models.front().set_debug_bone_aabb_draw(true);
-    //models.front().set_rotation({-90, 180, 0});
-
-    wnd.push_postprocess(grx::grx_postprocess(cm, "shader_gamma_correction"));
-    //wnd.push_postprocess(grx::grx_postprocess(cm, "shader_vhs1", [](grx::grx_shader_program& prg) {
-    //    prg.get_uniform_unwrap<float>("time") =
-    //        static_cast<float>(core::global_timer().measure_count());
-    //}));
-
-    core::fps_counter counter;
-    core::timer timer;
-
-    dir_light.direction(core::vec{0.9987f, 0.01335f, -0.04827f}.normalize());
-    dir_light.ambient_intensity(0.00f);
-    dir_light.diffuse_intensity(1.0f);
-
-    while (!wnd.should_close()) {
-        counter.update();
-        inp::inp_ctx().update();
-
-        if (auto map = input_map.lock()) {
-            if (map->GetBoolIsNew('R')) {
-                //textures.clear();
-                //for (auto& m : models)
-                    mesh.play_animation("", true);
-            }
-        }
-
-        if (timer.measure() > core::seconds(1)) {
-            core::printline("FPS: {}, fov: {.3f} pos:{.4f} dir:{.4f}",
-                    counter.get(), cam->horizontal_fov(), cam->position(), cam->directory());
-            timer.reset();
-        }
-
-        mpack.update_transforms();
-        mesh.update_animation_transforms();
-        //for (auto& m : models)
-        //    m.update_animation_transforms();
-
-        //spot_light.position(cam->position());
-        //spot_light.position({-29.2f, 5.792f, 23.87f});
-        //spot_light.direction(cam->directory());
-        //spot_light.direction({0.881f, -0.1505f, -0.4484f});
-        //spot_light.diffuse_intensity(1.0f);
-        //spot_light.cutoff(0.9f);
-
-        light_mgr->shadow_path(cam, core::span(&mesh, 1), shadow_sp);
-        light_mgr->shadow_path(cam, mpack, shadow_sp);
-
-        wnd.make_current(); // TODO: needless?
-        wnd.bind_and_clear_render_target();
-
-        light_mgr->setup_shadow_maps_to(light_sp_tech);
-
-        light_mgr->setup_mvps(mesh.model_matrix(), light_sp_tech);
-        light_mgr->setup_vps_instanced(light_sp_tech);
-        mesh.draw(cam->view_projection(), light_sp_tech);
-        mpack.draw(cam->view_projection(), light_sp_tech);
-        //for (auto& m : models) {
-        //    light_mgr->setup_mvps(m.model_matrix(), light_sp_tech);
-        //    m.draw(cam->view_projection(), light_sp_tech);
-        //}
-
-        wnd.present();
-
-        wnd.update_input();
-    }
-
-    return 0;
-}
-
-#endif
