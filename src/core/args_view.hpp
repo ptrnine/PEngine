@@ -42,9 +42,9 @@ public:
     template <typename T>
     static T opt_cast(string_view value) {
         if constexpr (Number<T>)
-            return value / to_number<T>();
+            return ston<T>(value);
         else
-            return value;
+            return T(value);
     }
 
     template <typename T = string>
