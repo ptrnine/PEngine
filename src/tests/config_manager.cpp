@@ -24,8 +24,30 @@ TEST_CASE("config_manager") {
         REQUIRE(config_cast<pair<int, float>>("1, 4.4") == pair{1, 4.4f});
         REQUIRE(config_cast<tuple<bool, double, string>>("true, 4.4, string") == tuple{true, 4.4, "string"});
 
+        struct test_tuple_serializable {
+            bool a;
+            double b;
+            string c;
+            TUPLE_SERIALIZE(a, b, c)
+        };
+
+        REQUIRE(config_cast<test_tuple_serializable>("true, 4.4, string").to_tuple() == tuple{true, 4.4, "string"});
+
         REQUIRE(config_cast<hash_map<string, int>>("{one, 1}, {two, 2}, {three, 3}") == hash_map<string, int>{{"one", 1}, {"two", 2}, {"three", 3}});
         REQUIRE(config_cast<vector<tuple<int, pair<bool, bool>>>>("{1, {true, true}}, {2, {false, off}}") == vector<tuple<int, pair<bool, bool>>>{ {1, {true, true}}, {2, {false, false}}});
+
+        enum class test_enum {
+            zero = 0, one, two, three
+        };
+        REQUIRE(config_cast<test_enum>("zero") == test_enum::zero);
+        REQUIRE(config_cast<test_enum>("one") == test_enum::one);
+        bool has_exception = false;
+        try {
+            config_cast<test_enum>("shit");
+        } catch (const config_exception& e) {
+            has_exception = true;
+        }
+        REQUIRE(has_exception);
     }
 
     SECTION("Config reading") {
