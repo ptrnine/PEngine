@@ -135,9 +135,6 @@ TEST_CASE("For loop variations") {
         REQUIRE(essentially_equal("228.228" / to_number<float>(), 228.228f, 0.0001f)); // NOLINT
 
         REQUIRE("    kwek        "s / remove_trailing_whitespaces() == "kwek");
-        REQUIRE("a b c d" / split_view(' ') == vector<string_view>{"a", "b", "c", "d"});
-        REQUIRE("a |b c d |" / split_view({' ', '|'}) == vector<string_view>{"a", "b", "c", "d"});
-        REQUIRE("a |b c d |" / split_view({' ', '|'}, true) == vector<string_view>{"a", "", "b", "c", "d", ""});
         REQUIRE("a |b c d |" / split(vector{' ', '|'}) == vector<string>{"a", "b", "c", "d"});
         REQUIRE("a |b c d |" / split(vector{' ', '|'}, true) == vector<string>{"a", "", "b", "c", "d", ""});
     }

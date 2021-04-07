@@ -3,6 +3,8 @@
 #include "core/log.hpp"
 #include "core/container_extensions.hpp"
 #include "core/time.hpp"
+#include "core/views/split.hpp"
+#include "core/acts/to.hpp"
 #include <fcntl.h>
 #include <filesystem>
 #include <linux/input.h>
@@ -42,8 +44,8 @@ core::map<core::string, core::vector<core::string>> get_devices_info() {
         auto handlers_str = core::string_view(data).substr(handlers_start, handlers_end - handlers_start);
         auto [handlers_pos, _] = result.emplace(core::string(name), core::vector<core::string>());
 
-        for (auto handler : handlers_str / core::split_view(' '))
-            handlers_pos->second.emplace_back(core::string(handler));
+        for (auto handler : handlers_str / core::views::split(' '))
+            handlers_pos->second.emplace_back(handler / core::acts::to<core::string>());
 
         pos = handlers_end;
     }

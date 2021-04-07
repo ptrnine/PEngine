@@ -9,6 +9,15 @@
 #include "ston.hpp"
 #include "types.hpp"
 #include "serialization.hpp"
+#include "views/split.hpp"
+#include "acts/to.hpp"
+#include "acts/trim.hpp"
+#include "views/sub.hpp"
+#include "acts/drop_pref.hpp"
+#include "views/skip.hpp"
+#include "acts/drop.hpp"
+#include "acts/unbracket.hpp"
+#include "range_op.hpp"
 
 namespace core
 {
@@ -92,12 +101,8 @@ private:
     no_quotes_iterator _begin, _end;
 };
 
-inline string_view remove_single_line_comment(string_view line) {
-    for (auto [c, idx] : no_quotes_view(line)) {
-        if (line.substr(idx).starts_with("//") || c == ';')
-            return line.substr(0, idx);
-    }
-    return line;
+inline auto drop_comments() {
+    return acts::drop_when(oneline_comment_start(exclude_in_quotes()));
 }
 
 template <typename IterT, typename... Ts>
@@ -227,16 +232,8 @@ inline string cfg_make_relative(const string& path) {
         return path;
 }
 
-template <typename T>
-inline T remove_brackets_if_exists(const T& str, pair<char, char> symbols = {'{', '}'}) {
-    if (str.size() > 1 && str.front() == symbols.first && str.back() == symbols.second)
-        return str.substr(1, str.size() - 2) / remove_trailing_whitespaces();
-    else
-        return str;
-}
-
 inline vector<string_view> config_unpack(string_view value) {
-    auto unbracketed = remove_brackets_if_exists(value);
+    auto unbracketed = value / acts::unbracket('{', '}') / acts::to<string_view>();
     {
         int level = 0;
         for (auto c : unbracketed) {
@@ -266,7 +263,8 @@ inline vector<string_view> config_unpack(string_view value) {
             --bracket_level;
         }
         else if (bracket_level == 0 && c == ',') {
-            result.emplace_back(unbracketed.substr(last_start, idx - last_start) / remove_trailing_whitespaces());
+            result.emplace_back(unbracketed.substr(last_start, idx - last_start) /
+                                acts::trim(' ', '\t') / acts::to<string_view>());
             last_start = idx + 1;
         }
     }
@@ -276,7 +274,7 @@ inline vector<string_view> config_unpack(string_view value) {
 
     if (last_start != unbracketed.size())
         result.emplace_back(unbracketed.substr(last_start, unbracketed.size() - last_start) /
-                            remove_trailing_whitespaces());
+                            acts::trim(' ', '\t') / acts::to<string_view>());
 
     if (result.size() < 1 && (value.front() != '{' || value.back() != '}'))
         throw std::runtime_error("Nothing to unpack!");
@@ -294,9 +292,8 @@ struct cast_helper {
 
 template <typename T> requires requires(T v) { string(v); }
 string config_cast(string_view str, const cast_helper& helper = {}) {
-    return remove_brackets_if_exists(
-            remove_brackets_if_exists(
-                helper.try_interpolation(str), {'"', '"'}), {'\'', '\''});
+    return helper.try_interpolation(str) /
+           acts::unbracket<array<char, 2>>({'"', '\''}, {'"', '\''}) / acts::to<string>();
 }
 
 template <typename T> requires std::is_same_v<T, bool>
@@ -396,9 +393,7 @@ public:
     config_value() = default;
 
     template <Printable T>
-    config_value(T&& val) {
-        _value = format("{}", std::forward<T>(val));
-    }
+    config_value(T&& val): _value(format("{}", std::forward<T>(val))) {}
 
     void print(std::ostream& os) const {
         os << _value;
@@ -481,14 +476,15 @@ inline string cfg_reentry(string_view name, const string& file_path = DEFAULT_CF
     auto path = path_eval(file_path);
     auto file = read_file(path);
 
-    for (auto& line : file / split_view({'\n', '\r'})) {
+    for (auto line : file / views::split('\n', '\r') / views::sub(acts::to<string_view>())) {
         if (!line.empty() && line.front() == '#') {
-            auto splits = (line.substr(1) / remove_trailing_whitespaces()) / split_view({'\t', ' '});
+            auto splits = line.substr(1) / views::split('\t', ' ') / acts::to<vector<string_view>>();
 
             if (splits.size() > 2 && splits[0] == "entry" && splits[1] == name)
                 return path_eval(
                     path / "../" /
-                    remove_brackets_if_exists(remove_brackets_if_exists(splits[2], {'"', '"'}), {'\'', '\''}));
+                    (splits[2] / acts::unbracket<array<char, 2>>({'"', '\''}, {'"', '\''}) /
+                     acts::to<string_view>()));
         }
     }
 
@@ -522,7 +518,7 @@ public:
         auto path   = path_eval(entry_path);
 
         struct file_node {
-            file_node(string_view data): lines(data / split({'\n', '\r'})) {}
+            file_node(string_view data): lines(data / views::split('\n', '\r') / acts::to<vector<string>>()) {}
             vector<string> lines;
             size_t         i = 0;
         };
@@ -537,27 +533,30 @@ public:
         while (!file_stack.empty()) {
             for (; file_stack.back().i != file_stack.back().lines.size(); ++file_stack.back().i) {
                 auto& line = file_stack.back().lines[file_stack.back().i];
-
-                line = remove_single_line_comment(line) / remove_trailing_whitespaces();
+                line = line / drop_comments() / acts::trim(' ', '\t') / acts::to<string_view>();
 
                 if (line.empty())
                     continue;
                 if (on_section && line.front() == '[')
                     return result;
                 else if (!on_section && line.starts_with(section_start)) {
-                    PeRelRequireF((line.substr(section_start.size()) / remove_trailing_whitespaces()).empty(),
-                             "Unrecognized symbols after section {} definition. "
-                             "Note: direct reading doesn't support section inheritance",
-                             section_start);
+                    PeRelRequireF((line.substr(section_start.size()) / acts::trim(' ', '\t') /
+                                   acts::to<string_view>())
+                                      .empty(),
+                                  "Unrecognized symbols after section {} definition. "
+                                  "Note: direct reading doesn't support section inheritance",
+                                  section_start);
                     on_section = true;
                 }
                 else if (line.front() == '#') {
-                    line = line.substr(1) / remove_trailing_whitespaces();
+                    line = line.substr(1) / acts::trim(' ', '\t') / acts::to<string_view>();
                     if (line.starts_with("include") && !is_global) {
-                        line          = line.substr(sizeof("include") - 1) / remove_trailing_whitespaces();
+                        line = line.substr(sizeof("include") - 1) / acts::trim(' ', '\t') /
+                               acts::to<string_view>();
                         auto new_path = path_eval(
                             path / ".." /
-                            remove_brackets_if_exists(remove_brackets_if_exists(line, {'"', '"'}), {'\'', '\''}));
+                            (line / acts::unbracket<array<char, 2>>({'"', '\''}, {'"', '\''}) /
+                             acts::to<string_view>()));
 
                         file_stack.back().i++; // Skip current line after incuded file processing
                         file_stack.emplace_back(read_file(new_path));
@@ -565,9 +564,7 @@ public:
                     }
                 }
                 else if (on_section) {
-                    auto splits = line / split_view('=');
-                    for (auto& s : splits) s = s / remove_trailing_whitespaces();
-
+                    auto splits = line / views::split('=') / views::sub(acts::trim(' ', '\t')) / acts::to<vector<string_view>>();
                     if (splits.size() == 1 && current_value_pos != result._map.end()) {
                         current_value_pos->second.str() += splits.front();
                     }
@@ -705,7 +702,7 @@ public:
         if (!_parents.empty()) {
             os << ": ";
             auto parents = format("{}", _parents);
-            os << remove_brackets_if_exists(parents).substr(0, parents.size() - 1);
+            os << (parents / acts::unbracket('{', '}') / acts::to<string_view>()).substr(0, parents.size() - 1);
         }
         os << '\n';
 
@@ -991,14 +988,13 @@ private:
 
         PeRelRequireF(file.has_value(), "Can't open file '{}'", path);
 
-        auto lines = file.value() / split_view({'\n'}, true);
-
         auto current_section = &(_sections.emplace("__global", "__global").first->second);
         auto current_value   = &(current_section->values()["dummy_global"]);
 
-        for (auto& line : lines) {
-            line = remove_single_line_comment(line) / remove_trailing_whitespaces();
-
+        for (auto line : file.value() / views::split(views::split_mode::allow_empty, '\n') /
+                             views::sub(drop_comments()) /
+                             views::sub(acts::trim(' ', '\t')) /
+                             views::sub(acts::to<string_view>())) {
             if (line.empty())
                 continue;
 
@@ -1025,9 +1021,10 @@ private:
 
                 if (*pos == ':') {
                     ++pos;
-                    auto parents = line.substr(strsize_cast(pos - line.begin())) / split({','});
-
-                    for (auto& p : parents) p = p / remove_trailing_whitespaces();
+                    auto parents = line.substr(strsize_cast(pos - line.begin())) /
+                                   views::split(',') /
+                                   views::sub(acts::trim(' ', '\t')) /
+                                   acts::to<vector<string>>();
 
                     current_section->setup_parents(parents);
 
@@ -1044,20 +1041,21 @@ private:
 
                 auto preprocessor_directive =
                     line.substr(strsize_cast(start - line.begin()), strsize_cast(pos - start));
-                auto command = line.substr(strsize_cast(pos - line.begin())) / remove_trailing_whitespaces();
+                auto command = line.substr(strsize_cast(pos - line.begin())) /
+                               acts::trim(' ', '\t') / acts::to<string_view>();
 
                 if (preprocessor_directive == "include")
                     do_file(path_eval(
                         path / ".." /
-                        remove_brackets_if_exists(remove_brackets_if_exists(command, {'"', '"'}), {'\'', '\''})));
+                        (command / acts::unbracket<array<char, 2>>({'"', '\''}, {'"', '\''}) /
+                         acts::to<string_view>())));
                 else if (preprocessor_directive != "entry")
                     LOG_WARNING(
                         "config_manager: {}: unknown preprocessor_directive '{}'", path, preprocessor_directive);
             }
             else {
-                auto splits = line / split_view(_value_delimiter);
-                for (auto& s : splits) s = s / remove_trailing_whitespaces();
-
+                auto splits = line / views::split(_value_delimiter) /
+                              views::sub(acts::trim(' ', '\t')) / acts::to<vector<string_view>>();
                 if (splits.size() == 1) {
                     current_value->str() += splits.front();
                 }
