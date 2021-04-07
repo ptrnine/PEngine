@@ -20,12 +20,15 @@
 #include <libcuckoo/cuckoohash_map.hh>
 #include <readerwriterqueue/readerwriterqueue.h>
 #include <magic_enum.hpp>
+//#include <range/v3/all.hpp>
 
 #include <boost/hana.hpp>
 #include "try_opt.hpp"
 
 namespace core
 {
+    using std::begin, std::end;
+
     using gsl::byte;
 
     using u8  = std::uint8_t;
@@ -163,26 +166,49 @@ namespace core
     concept Enum = std::is_enum_v<T>;
 
     template<typename T>
-    concept Iterable = requires(T && v) {
-        std::begin(v);
-        std::end(v);
+    concept Range = requires(T&& v) {
+        begin(v);
+        end(v);
+    };
+
+    template <typename T>
+    concept InputIter = requires(T v) {
+        {v++};
+        {++v};
+        {*v};
+        {v == v} -> std::convertible_to<bool>;
+        {v != v} -> std::convertible_to<bool>;
+    };
+
+    template <typename T>
+    concept InputRange = Range<T> && requires(T&& v) {
+        InputIter<decltype(begin(v))>;
+    };
+
+    template <typename T>
+    concept BidirectIter = InputIter<T> && requires(T v) {
+        {v--};
+        {--v};
+    };
+
+    template <typename T>
+    concept BiderectRange = InputRange<T> && requires(T&& v) {
+        BidirectIter<decltype(begin(v))>;
     };
 
     template<typename T>
-    concept RandomAccessIterable = requires(T && v) {
-        std::begin(v);
-        std::end(v);
-        std::end(v) - std::begin(v);
+    concept RandomAccessRange = BiderectRange<T> && requires(T&& v) {
+        {std::end(v) - std::begin(v)} -> std::convertible_to<ptrdiff_t>;
     };
 
 
     template <typename T>
-    concept Resizable = Iterable<T> && requires(T&& v) {
+    concept Resizable = Range<T> && requires(T&& v) {
         v.resize(0);
     };
 
     template<typename T>
-    concept IndexAccessible = requires(T && v) {
+    concept IndexAccessible = requires(T&& v) {
         v[0];
     };
 
@@ -254,6 +280,10 @@ namespace core
     template <typename T>
     concept Pointer = CopyablePointer<T> || is_specialization<T, unique_ptr>::value;
 
+    template <typename T>
+    concept Character = std::same_as<T, char> || std::same_as<T, wchar_t> ||
+            std::same_as<T, char8_t> || std::same_as<T, char16_t> || std::same_as<T, char32_t>;
+
     template <CopyablePointer T>
     class safeptr {
     public:
@@ -284,5 +314,7 @@ namespace core
         T data;
     };
 
-
+    //namespace rn = ranges;
+    //namespace views = rn::views;
+    //namespace acts = rn::actions;
 } // namespace core

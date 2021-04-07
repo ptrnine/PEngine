@@ -20,6 +20,7 @@ add_executable(
         grx_skeleton.cpp
         grx_animation.cpp
         compression.cpp
+        ranges.cpp
         )
 
 target_link_libraries(
