@@ -46,3 +46,6 @@
 [submodule "submodules/magic_enum"]
 	path = submodules/magic_enum
 	url = https://github.com/Neargye/magic_enum
+[submodule "submodules/Nuklear"]
+	path = submodules/Nuklear
+	url = https://github.com/Immediate-Mode-UI/Nuklear
