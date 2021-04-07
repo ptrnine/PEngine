@@ -4,21 +4,20 @@
 #include "ston.hpp"
 #include "vec.hpp"
 #include <fstream>
-#include <ranges>
 #include <utility>
 
-#define GENERIC_C_STRING(CHAR_T, STR)                                                                                  \
-    []() constexpr {                                                                                                   \
-        static_assert(std::is_same_v<CHAR_T, char> || std::is_same_v<CHAR_T, char16_t> ||                              \
-                          std::is_same_v<CHAR_T, char32_t>,                                                            \
-                      "Invalid character type");                                                                       \
-        if constexpr (std::is_same_v<CHAR_T, char>)                                                                    \
-            return STR;                                                                                                \
-        else if constexpr (std::is_same_v<CHAR_T, char16_t>)                                                           \
-            return u"#STR";                                                                                            \
-        else if constexpr (std::is_same_v<CHAR_T, char32_t>)                                                           \
-            return U"#STR";                                                                                            \
-    }                                                                                                                  \
+#define GENERIC_C_STRING(CHAR_T, STR)                                                              \
+    []() constexpr {                                                                               \
+        static_assert(std::is_same_v<CHAR_T, char> || std::is_same_v<CHAR_T, char16_t> ||          \
+                          std::is_same_v<CHAR_T, char32_t>,                                        \
+                      "Invalid character type");                                                   \
+        if constexpr (std::is_same_v<CHAR_T, char>)                                                \
+            return STR;                                                                            \
+        else if constexpr (std::is_same_v<CHAR_T, char16_t>)                                       \
+            return u"#STR";                                                                        \
+        else if constexpr (std::is_same_v<CHAR_T, char32_t>)                                       \
+            return U"#STR";                                                                        \
+    }                                                                                              \
     ()
 
 namespace core
@@ -286,7 +285,7 @@ auto zip_view(IterT1 begin1, IterT1 end1, IterT2 begin2, IterT2 end2) {
  *
  * @return iterator_view_proxy
  */
-template <Iterable T>
+template <Range T>
 auto skip_view(T& container, size_t start) {
     using difference_type = decltype(container.begin() - container.begin());
     return iterator_view_proxy(container.begin() + static_cast<difference_type>(start), container.end());
@@ -331,7 +330,7 @@ auto value_index_view(I begin, I end) {
  *
  * @return iterator_view_proxy
  */
-template <Iterable T>
+template <Range T>
 auto index_view(T& container) {
     return index_view(container.begin(), container.end());
 }
@@ -497,7 +496,7 @@ auto dimensional_seq(vec<T, S> maxs) {
  *
  * @return iterator_view_proxy
  */
-template <Iterable... Ts>
+template <Range... Ts>
 auto zip_view(Ts&... containers) {
     return iterator_view_proxy(multi_view_iterator(containers.begin()...), multi_view_iterator(containers.end()...));
 }
@@ -519,7 +518,7 @@ auto zip_view(Ts&... containers) {
  *
  * @return iterator_view_proxy
  */
-template <Iterable T>
+template <Range T>
 auto value_index_view(T& container) {
     return zip_view(
             container.begin(),
@@ -529,7 +528,7 @@ auto value_index_view(T& container) {
 }
 
 template <typename ContainerT, typename T>
-requires Iterable<ContainerT> inline auto _fold_operator(const ContainerT& t, const T& delimiter) {
+requires Range<ContainerT> inline auto _fold_operator(const ContainerT& t, const T& delimiter) {
     using ItemT = std::remove_const_t<std::decay_t<decltype(t[0])>>;
 
     if (std::empty(t))
@@ -554,15 +553,15 @@ requires Iterable<ContainerT> inline auto _fold_operator(const ContainerT& t, co
 }
 
 template <typename F>
-inline void generate(Iterable auto& container, F&& generator) {
+inline void generate(Range auto& container, F&& generator) {
     std::generate(std::begin(container), std::end(container), std::forward<F>(generator));
 }
 
-inline void sort(Iterable auto& container) {
+inline void sort(Range auto& container) {
     std::sort(std::begin(container), std::end(container));
 }
 
-inline bool is_unique_sort(Iterable auto& container) {
+inline bool is_unique_sort(Range auto& container) {
     std::sort(std::begin(container), std::end(container));
     auto pos = std::adjacent_find(std::begin(container), std::end(container));
     return pos == std::end(container);
@@ -577,7 +576,7 @@ struct count_if {
 
     count_if(F callback): functor(std::move(callback)) {}
 
-    template <Iterable T>
+    template <Range T>
     auto operator()(const T& c) {
         return std::count_if(std::begin(c), std::end(c), functor);
     }
@@ -594,7 +593,7 @@ struct any_of {
 
     any_of(F callback): functor(std::move(callback)) {}
 
-    template <Iterable T>
+    template <Range T>
     bool operator()(const T& c) {
         return std::any_of(std::begin(c), std::end(c), functor);
     }
@@ -611,7 +610,7 @@ struct all_of {
 
     all_of(F callback): functor(std::move(callback)) {}
 
-    template <Iterable T>
+    template <Range T>
     bool operator()(const T& c) {
         return std::all_of(std::begin(c), std::end(c), functor);
     }
@@ -628,7 +627,7 @@ struct find_if {
 
     find_if(F callback): functor(std::move(callback)) {}
 
-    template <Iterable TT>
+    template <Range TT>
     auto operator()(const TT& c) {
         return std::find_if(std::begin(c), std::end(c), functor);
     }
@@ -642,7 +641,7 @@ struct transform_t {
 
     transform_t(F callback): functor(std::move(callback)) {}
 
-    template <RandomAccessIterable T> requires Resizable<C> && IndexAccessible<C>
+    template <RandomAccessRange T> requires Resizable<C> && IndexAccessible<C>
     C operator()(const T& c) {
         C r;
         r.resize(static_cast<size_t>(std::end(c) - std::begin(c)));
@@ -650,7 +649,7 @@ struct transform_t {
         return r;
     }
 
-    template <RandomAccessIterable T> requires IndexAccessible<C> && std::is_trivial_v<C>
+    template <RandomAccessRange T> requires IndexAccessible<C> && std::is_trivial_v<C>
     C operator()(const T& c) {
         C r;
         std::transform(std::begin(c), std::end(c), std::begin(r), functor);
@@ -679,7 +678,7 @@ struct is_sorted {
 
     is_sorted(F callback = F()): functor(std::move(callback)) {}
 
-    template <Iterable T>
+    template <Range T>
     bool operator()(const T& c) {
         return std::is_sorted(std::begin(c), std::end(c), functor);
     }
@@ -696,7 +695,7 @@ struct adjacent_difference {
 
     adjacent_difference(F callback = std::minus<>()): functor(callback) {}
 
-    template <Iterable T>
+    template <Range T>
     T operator()(const T& c) {
         T r = c;
         std::adjacent_difference(std::begin(r), std::end(r), std::begin(r), functor);
@@ -714,7 +713,7 @@ template <typename T, typename F>
 struct reduce {
     using adapter = void;
 
-    template <Iterable TT>
+    template <Range TT>
     auto operator()(const TT& c) {
         return std::reduce(std::begin(c), std::end(c), result, functor);
     }
@@ -733,7 +732,7 @@ template <typename T, typename F>
 struct accumulate {
     using adapter = void;
 
-    template <Iterable TT>
+    template <Range TT>
     auto operator()(const TT& c) {
         return std::accumulate(std::begin(c), std::end(c), result, functor);
     }
@@ -754,7 +753,7 @@ struct fold {
 
     template <typename ContainerT>
     auto operator()(ContainerT&& c) {
-        if constexpr (Iterable<T>)
+        if constexpr (Range<T>)
             return _fold_operator(std::forward<ContainerT>(c), delimiter);
         else {
             std::decay_t<decltype(c[0])> d = {delimiter};
@@ -912,21 +911,6 @@ struct split {
     bool          create_empty_strings = false;
 };
 
-/**
- * Adapter for splitting string into vector<string_view>
- */
-template <typename CharT>
-struct split_view : public split<CharT, std::basic_string_view<CharT>> {
-    explicit split_view(const vector<CharT>& delimiters, bool should_create_empty_strings = false):
-        split<CharT, std::basic_string_view<CharT>>(delimiters, should_create_empty_strings) {}
-
-    split_view(std::initializer_list<CharT> delimiters, bool should_create_empty_strings = false):
-        split<CharT, std::basic_string_view<CharT>>(delimiters, should_create_empty_strings) {}
-
-    explicit split_view(CharT delimiter, bool should_create_empty_strings = false):
-        split<CharT, std::basic_string_view<CharT>>(delimiter, should_create_empty_strings) {}
-};
-
 template <typename CharT>
 inline std::basic_string<CharT> path_eval(std::basic_string_view<CharT> src) {
     if (src.empty())
@@ -943,7 +927,7 @@ inline std::basic_string<CharT> path_eval(std::basic_string_view<CharT> src) {
 
     auto splits = std::basic_string_view(
                       src_begin, static_cast<typename std::basic_string_view<CharT>::size_type>(src_end - src_begin)) /
-                  split_view(static_cast<CharT>('/'), true);
+                  split<CharT, std::basic_string_view<CharT>>(static_cast<CharT>('/'), true);
     auto last_inner_double_slash =
         std::find_if(splits.rbegin(), splits.rend(), [](const auto& s) { return s.empty(); });
 
