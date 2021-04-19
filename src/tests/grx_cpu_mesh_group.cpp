@@ -27,7 +27,6 @@ TEST_CASE("grx_cpu_mesh test") {
                  aiProcess_FlipUVs                |
                  aiProcess_JoinIdenticalVertices;
 
-    std::cout << models_dir << std::endl;
     Assimp::Importer importer;
     auto scene = importer.ReadFile(models_dir / "basic/cube.dae", flags);
 
