@@ -12,6 +12,7 @@
 #include <graphics/grx_object_mgr.hpp>
 #include <graphics/grx_skybox.hpp>
 #include <core/avg_counter.hpp>
+#include <ui/nuklear.hpp>
 
 using namespace grx;
 using namespace core;
@@ -23,19 +24,21 @@ int pe_main(args_view args) {
 
     config_manager cm;
 
-    auto wnd = grx_window("wnd", {1600, 900});
-    wnd.make_current();
-    wnd.set_pos({300, 0});
-    wnd.enable_luminance_calculation();
+    auto wnd = grx_window::create_shared("wnd", {1600, 900});
+    wnd->make_current();
+    wnd->set_pos({300, 0});
+    wnd->enable_luminance_calculation();
+    wnd->enable_mouse_warp();
+    auto ui = ui::ui_ctx(wnd);
 
     auto avg_exp = core::avg_counter<float>(200);
 
-    wnd.push_postprocess(grx_postprocess(cm, "shader_hdr", [&wnd, &avg_exp](grx_shader_program& sp) {
-        auto lum = std::clamp(std::sqrt(wnd.scene_luminance()), 0.05f, 1.f);
+    wnd->push_postprocess(grx_postprocess(cm, "shader_hdr", [&wnd, &avg_exp](grx_shader_program& sp) {
+        auto lum = std::clamp(std::sqrt(wnd->scene_luminance()), 0.05f, 1.f);
         auto lum_factor = inverse_lerp(0.05f, 1.f, lum);
         auto exposure = lerp(0.1f, 15.f, 1.f - lum_factor);
         avg_exp.update(exposure);
-        LOG_UPDATE("luminance: {} exposure: {}", wnd.scene_luminance(), avg_exp.value());
+        LOG_UPDATE("luminance: {} exposure: {}", wnd->scene_luminance(), avg_exp.value());
         //LOG_UPDATE("exposure: {}", avg_exp.value());
         sp.get_uniform<float>("exposure") = avg_exp.value();
     }));
@@ -45,9 +48,9 @@ int pe_main(args_view args) {
     }));
     */
 
-    auto input_map = wnd.create_input_map();
+    auto input_map = wnd->create_input_map();
     if (auto map = input_map.lock()) {
-        auto keyboard = wnd.keyboard_id();
+        auto keyboard = wnd->keyboard_id();
         map->MapBool('R', keyboard, gainput::KeyR);
         map->MapBool('Z', keyboard, gainput::KeyZ);
         map->MapBool('X', keyboard, gainput::KeyX);
@@ -58,11 +61,11 @@ int pe_main(args_view args) {
     auto cam = grx_camera::make_shared({0.f, 0.f, 0.f}, 16.f/9.f, 73.f, 0.1f);
     cam->create_camera_manipulator<grx_camera_manipulator_fly>();
     cam->horizontal_fov(110.f);
-    wnd.attach_camera(cam);
+    wnd->attach_camera(cam);
     auto joint_anim_holder = make_shared<grx_joint_animation_holder>(cm);
     cam->set_camera_animations(joint_anim_holder);
 
-    auto ds_mgr = grx_ds_light_mgr::create_shared(wnd.size());
+    auto ds_mgr = grx_ds_light_mgr::create_shared(wnd->size());
     ds_mgr->enable_debug_draw();
     auto dir_light = ds_mgr->create_dir_light();
     ds_mgr->specular_power(12.f);
@@ -139,6 +142,42 @@ int pe_main(args_view args) {
         }
     };
 
+    auto draw_ui = [&ui, bg = vec{1.f, 1.f, 1.f, 1.f}]() mutable {
+        if (ui.begin("Demo", nk_rect(50, 50, 230, 250),
+            NK_WINDOW_BORDER|NK_WINDOW_MOVABLE|NK_WINDOW_SCALABLE|
+            NK_WINDOW_MINIMIZABLE|NK_WINDOW_TITLE))
+        {
+            enum {EASY, HARD};
+            static int op = EASY;
+            static int property = 20;
+            ui.layout_row_static(30, 80, 1);
+            if (ui.button_label("button"))
+                println("button pressed");
+
+            ui.layout_row_dynamic(30, 2);
+            if (ui.option_label("easy", op == EASY)) op = EASY;
+            if (ui.option_label("hard", op == HARD)) op = HARD;
+
+            ui.layout_row_dynamic(25, 1);
+            ui.property_int("Compression:", 0, &property, 100, 10, 1);
+
+            ui.layout_row_dynamic(20, 1);
+            ui.label("background:", NK_TEXT_LEFT);
+            ui.layout_row_dynamic(25, 1);
+            if (ui.combo_begin_color(hdr_color_cut_to_u8(bg), vec{ui.widget_width(), 400})) {
+                ui.layout_row_dynamic(120, 1);
+                bg = ui.color_picker(bg, NK_RGBA);
+                ui.layout_row_dynamic(25, 1);
+                bg.r() = ui.propertyf("#R:", 0, bg.r(), 1.0f, 0.01f, 0.005f);
+                bg.g() = ui.propertyf("#G:", 0, bg.g(), 1.0f, 0.01f, 0.005f);
+                bg.b() = ui.propertyf("#B:", 0, bg.b(), 1.0f, 0.01f, 0.005f);
+                bg.a() = ui.propertyf("#A:", 0, bg.a(), 1.0f, 0.01f, 0.005f);
+                ui.combo_end();
+            }
+        }
+        ui.end();
+    };
+
     auto skybox = grx_skybox(cm, "skybox_example");
 
     timer anim_timer;
@@ -150,10 +189,12 @@ int pe_main(args_view args) {
 
     grx_aabb_debug().enable();
 
-    while (!wnd.should_close()) {
+    while (!wnd->should_close()) {
         inp::inp_ctx().update();
         grx_ctx().update_states();
-        wnd.update_input();
+        wnd->update_input();
+
+        ui.new_frame();
 
         ds_mgr->start_geometry_pass();
 
@@ -173,16 +214,26 @@ int pe_main(args_view args) {
         glock.draw(vp, s_sp);
 
         ds_mgr->light_pass(ds_sp, cam->position(), vp);
-        wnd.bind_and_clear_render_target();
-        ds_mgr->present(wnd.size());
+        wnd->bind_and_clear_render_target();
+        ds_mgr->present(wnd->size());
 
         if (auto map = input_map.lock()) {
             if (!map->GetBool('V'))
                 last_pos = cam->position();
+            if (map->GetBoolIsNew('C'))
+                wnd->disable_mouse_warp();
+            if (map->GetBoolWasDown('C'))
+                wnd->enable_mouse_warp();
         }
         skybox.draw(last_pos, vp);
 
-        wnd.present();
+        wnd->present();
+
+        if (auto map = input_map.lock(); map && map->GetBool('C'))
+            draw_ui();
+
+        ui.render();
+        wnd->swap_buffers();
 
         grx_frustum_mgr().calculate_culling(cam->extract_frustum(),
                                             frustum_bits::csm_near | frustum_bits::csm_middle |

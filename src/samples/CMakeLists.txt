@@ -20,4 +20,4 @@ add_executable(glock glock.cpp)
 target_link_libraries(glock pe_graphics pe_util pe_input ${PE_LIBS})
 
 add_executable(glock_hud_test glock_hud_test.cpp)
-target_link_libraries(glock_hud_test pe_graphics pe_util pe_input ${PE_LIBS})
+target_link_libraries(glock_hud_test pe_graphics pe_util pe_input pe_ui ${PE_LIBS})
