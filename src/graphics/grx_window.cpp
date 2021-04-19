@@ -179,8 +179,6 @@ void grx::grx_window::present() {
     _render_target->draw_quad();
     //_vbo_tuple.draw(18);
     //glDisable(GL_FRAMEBUFFER_SRGB);
-
-    swap_buffers();
 }
 
 core::vec2u grx::grx_window::size() const {
