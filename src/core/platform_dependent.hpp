@@ -201,6 +201,167 @@ namespace platform_dependent
 
         return rc;
     }
+
+    /*
+    struct exec_result { // NOLINT
+        string std_out;
+        string std_err;
+        int    rc;
+    };
+    */
+
+    namespace details
+    {
+        /*
+        exec_result get_result(int rc, int std_out, int std_err) {
+            exec_result res;
+            res.rc = WEXITSTATUS(rc);
+
+            constexpr auto read_fd = [](int fd, string& out) {
+                constexpr ssize_t block_size = 512;
+
+                ssize_t actual = block_size;
+                while (actual == block_size) {
+                    size_t old_size = out.size();
+                    out.resize(old_size + block_size);
+                    actual = read(fd, out.data() + old_size, block_size);
+                    std::cout << "Actual: " << actual << std::endl;
+                }
+                std::cout << "Actual: " << actual << std::endl;
+                if (actual < 0)
+                    actual = 0;
+                if (actual < block_size)
+                    out.resize(out.size() - static_cast<size_t>(block_size - actual));
+            };
+
+            if (std_out >= 0)
+                read_fd(std_out, res.std_out);
+            if (std_err >= 0 && std_err != std_out)
+                read_fd(std_err, res.std_err);
+
+            return res;
+        }
+        */
+        inline void read_result(int fd, string& out) {
+            constexpr ssize_t block_size = 512;
+
+            ssize_t actual = block_size;
+            while (actual == block_size) {
+                size_t old_size = out.size();
+                out.resize(old_size + block_size);
+                actual = read(fd, out.data() + old_size, block_size);
+            }
+            if (actual < 0)
+                actual = 0;
+            if (actual < block_size)
+                out.resize(out.size() - static_cast<size_t>(block_size - actual));
+        }
+    } // namespace details
+
+    inline int exec_raw(core::span<char*>  args,
+                 core::string_view* stdin_str,
+                 core::string*      stdout_str,
+                 core::string*      stderr_str) {
+        int std_in[2];
+        int std_out[2];
+        int std_err[2];
+
+        using guard_t = core::scope_guard<core::function<void()>>;
+        vector<guard_t> guards;
+
+        auto create_pipe = [&] (auto str, int(&p)[2]) {
+            if (str) {
+                if (pipe(p) < 0)
+                    throw std::runtime_error("Can't allocate pipe");
+                guards.push_back(guard_t([&] {
+                    close(p[0]);
+                    close(p[1]);
+                }));
+            }
+        };
+
+        create_pipe(stdin_str,  std_in);
+        create_pipe(stdout_str, std_out);
+        create_pipe(stderr_str, std_err);
+
+        if (stdout_str) {
+            fcntl(std_out[0], F_SETFL, fcntl(std_out[0], F_GETFL, 0) | O_NONBLOCK);
+            fcntl(std_out[1], F_SETFL, fcntl(std_out[1], F_GETFL, 0) | O_NONBLOCK);
+        }
+        if (stderr_str) {
+            fcntl(std_err[0], F_SETFL, fcntl(std_err[0], F_GETFL, 0) | O_NONBLOCK);
+            fcntl(std_err[1], F_SETFL, fcntl(std_err[1], F_GETFL, 0) | O_NONBLOCK);
+        }
+
+        pid_t pid = fork();
+
+        if (pid == 0) {
+            /* Child process */
+            if (stdin_str)
+                dup2(std_in[0], STDIN_FILENO);
+            if (stdout_str)
+                dup2(std_out[1], STDOUT_FILENO);
+            if (stderr_str)
+                dup2(std_err[1], STDERR_FILENO);
+
+            guards.clear();
+
+            execvp(args[0], args.data());
+
+            /* This code executes if execvp failed */
+            std::cerr << "child exec process failed" << std::endl;
+            _exit(errno);
+        }
+
+        if (pid != -1) {
+            int rc;
+            waitpid(pid, &rc, 0);
+            if (WIFEXITED(rc)) {
+                rc = WEXITSTATUS(rc);
+                if (stdin_str) {
+                    [[maybe_unused]] auto size =
+                        ::write(std_in[1], stdin_str->data(), stdin_str->size());
+                    assert(size == stdin_str->size());
+                }
+                if (stdout_str)
+                    details::read_result(std_out[0], *stdout_str);
+                if (stdin_str)
+                    details::read_result(std_err[0], *stderr_str);
+            }
+            return rc;
+        }
+        else
+            throw std::runtime_error("exec failed for unknown reason");
+
+        return {};
+    }
+
+    inline int exec(core::string_view program, core::initializer_list<core::string_view> args = {}) {
+        vector<char*> arguments;
+        arguments.reserve(args.size() + 2);
+
+        auto scope_exit = core::scope_guard([&] {
+            for (auto p : arguments)
+                if (p)
+                    delete [] p; // NOLINT
+        });
+
+        arguments.push_back(new char[program.size() + 1]); // NOLINT
+        std::memcpy(arguments.back(), program.data(), program.size());
+        arguments.back()[program.size()] = '\0';
+
+        std::transform(
+            args.begin(), args.end(), std::back_inserter(arguments), [](core::string_view s) {
+                char* ptr = new char[s.size() + 1]; // NOLINT
+                std::memcpy(ptr, s.data(), s.size());
+                ptr[s.size()] = '\0';
+                return ptr;
+            });
+        arguments.push_back(nullptr);
+
+        return exec_raw(arguments, nullptr, nullptr, nullptr);
+    }
+
 } // namespace platform_dependent
 
 
