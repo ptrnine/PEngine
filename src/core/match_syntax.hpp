@@ -46,7 +46,9 @@ template <typename R, typename... ArgsT>
 struct is_callable_impl2<R(ArgsT...)> : std::true_type {};
 
 template <typename F>
-struct is_callable : std::conditional<std::is_class_v<F>, is_callable_impl<F>, is_callable_impl2<F>>::type {};
+struct is_callable : std::conditional<std::is_class_v<std::decay_t<F>>,
+                                      is_callable_impl<std::decay_t<F>>,
+                                      is_callable_impl2<std::decay_t<F>>>::type {};
 
 template <typename F>
 static constexpr bool is_callable_v = is_callable<F>::value;
