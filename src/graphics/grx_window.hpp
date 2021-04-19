@@ -21,6 +21,13 @@ namespace grx {
 
     class grx_window {
     public:
+        static core::shared_ptr<grx_window>
+        create_shared(const core::string& name,
+                      const core::vec2u&  size,
+                      const core::shared_ptr<grx_window_render_target>& render_target = nullptr) {
+            return core::make_shared<grx_window>(name, size, render_target);
+        }
+
         grx_window(
                 const core::string& name,
                 const core::vec2u& size,
@@ -120,6 +127,24 @@ namespace grx {
             return _luminance_calc_step;
         }
 
+        [[nodiscard]]
+        GLFWwindow* glfw_window() const {
+            return _wnd;
+        }
+
+        void enable_mouse_warp(bool value = true) {
+            _enable_mouse_warp = value;
+        }
+
+        void disable_mouse_warp() {
+            enable_mouse_warp(false);
+        }
+
+        [[nodiscard]]
+        bool is_mouse_warp_enabled() const {
+            return _enable_mouse_warp;
+        }
+
     private:
         GLFWwindow*                           _wnd;
         core::shared_ptr<grx_shader_program>  _screen_quad_passthrough;
@@ -140,6 +165,7 @@ namespace grx {
         float       _scene_luminance = 1.f;
         float       _luminance_calc_step = 0.2f;
         bool        _enable_luminance_calc = false;
+        bool        _enable_mouse_warp = false;
 
     public:
         DECLARE_GET          (render_target)
