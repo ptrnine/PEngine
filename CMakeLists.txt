@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.16)
 project(PEngine)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -40,7 +40,8 @@ set(cxx_flags
     -Wsign-conversion
     -Wsign-promo
     -Werror=unused-result
-    -Wno-unused-function -Wno-missing-braces
+    -Wno-unused-function
+    -Wno-missing-braces
 )
 
 if (CMAKE_BUILD_TYPE MATCHES "^(|RELEASE|RELWITHDEBINFO)$")
@@ -134,4 +135,4 @@ set(PE_LIBS pthread ${BOOST_LIBS})
 add_subdirectory(src)
 
 add_executable(PEngine main.cpp)
-target_link_libraries(PEngine pe_util pe_graphics ${PE_LIBS})
+target_link_libraries(PEngine pe_util pe_graphics pe_ui ${PE_LIBS})
