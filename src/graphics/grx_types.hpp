@@ -48,7 +48,8 @@ namespace grx {
 
     template <size_t S>
     core::vec<uint8_t, S> hdr_color_cut_to_u8(const core::vec<float, S>& s) {
-        return core::vec_map(s, [](float v) { return static_cast<uint8_t>(core::unit_clamp(v) * 255); });
+        return core::vec_map(s, [](float v) { return static_cast<uint8_t>(
+                    std::round(core::unit_clamp(v) * 255)); });
     }
 
     enum class grx_load_significance {
