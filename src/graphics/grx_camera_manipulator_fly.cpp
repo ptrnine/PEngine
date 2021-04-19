@@ -76,7 +76,7 @@ void grx::grx_camera_manipulator_fly::update_orientation(float       timestep,
     auto t = _input->start_transaction();
     _orient_states.update(t);
 
-    if (window->on_focus())
+    if (window->on_focus() && window->is_mouse_warp_enabled())
         window->reset_mouse_pos();
 
     float zero = 0.f;
