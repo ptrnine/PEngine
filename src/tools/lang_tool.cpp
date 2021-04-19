@@ -270,7 +270,10 @@ void nuklear_binding() {
     };
 
 
-    std::cout << "#pragma once\n"
+    std::cout << "/* Generated with lang_tool */\n"
+                 "/* Do not edit manually. */\n"
+                 "\n"
+                 "#pragma once\n"
                  "\n"
                  "#include <graphics/grx_types.hpp>\n"
                  "#include <nuklear.h>\n"

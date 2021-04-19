@@ -1,3 +1,6 @@
+/* Generated with lang_tool */
+/* Do not edit manually. */
+
 #pragma once
 
 #include <graphics/grx_types.hpp>
