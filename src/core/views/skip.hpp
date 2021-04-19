@@ -7,8 +7,13 @@ namespace core::views
 template <typename F, typename I>
 struct skip_when_iterator {
     skip_when_iterator(F binary_op, I ibegin, I iend): b(move(ibegin)), e(move(iend)), op(move(binary_op)) {
-        while (b != e && op(*b))
-            ++b;
+        if constexpr (detail::RangeFunc<F, I>) {
+            while (b != e && op(b, e))
+                ++b;
+        } else {
+            while (b != e && op(*b))
+                ++b;
+        }
     }
 
     skip_when_iterator(const skip_when_iterator& iter) = default;
@@ -17,11 +22,19 @@ struct skip_when_iterator {
         e = iter.e;
     }
 
-    auto operator*() {
+    decltype(auto) operator*() {
         return *b;
     }
 
-    auto operator->() {
+    decltype(auto) operator->() {
+        return *b;
+    }
+
+    decltype(auto) operator*() const {
+        return *b;
+    }
+
+    decltype(auto) operator->() const {
         return *b;
     }
 
@@ -30,8 +43,13 @@ struct skip_when_iterator {
             return *this;
 
         ++b;
-        while (b != e && op(*b))
-            ++b;
+        if constexpr (detail::RangeFunc<F, I>) {
+            while (b != e && op(b, e))
+                ++b;
+        } else {
+            while (b != e && op(*b))
+                ++b;
+        }
         return *this;
     }
 
