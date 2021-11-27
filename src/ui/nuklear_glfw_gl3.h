@@ -305,6 +305,7 @@ nk_glfw3_render(struct nk_glfw* glfw, enum nk_anti_aliasing AA, int max_vertex_b
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
     glDisable(GL_BLEND);
+    glEnable(GL_CULL_FACE);
     glDisable(GL_SCISSOR_TEST);
 }
 
