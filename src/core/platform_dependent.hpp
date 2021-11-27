@@ -54,6 +54,7 @@ namespace platform_dependent
 
         int rc = ::getpwuid_r(::getuid(), &pwd, buffer.data(), buffer.size(), &result);
         if (result == nullptr) {
+            /* TODO: stderror is thread-unsafe */
             std::cerr << "getpwnam_r() failed with errno = " << rc << " (" << ::strerror(rc) << ")" << std::endl;
             return "~/";
         }
@@ -321,7 +322,7 @@ namespace platform_dependent
                 if (stdin_str) {
                     [[maybe_unused]] auto size =
                         ::write(std_in[1], stdin_str->data(), stdin_str->size());
-                    assert(size == stdin_str->size());
+                    assert(size_t(size) == stdin_str->size());
                 }
                 if (stdout_str)
                     details::read_result(std_out[0], *stdout_str);
