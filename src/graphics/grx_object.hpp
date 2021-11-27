@@ -375,6 +375,15 @@ public:
         return _overlap_aabb;
     }
 
+    core::vector<grx_mesh_element>& elements() {
+        return _elements;
+    }
+
+    [[nodiscard]]
+    const core::vector<grx_mesh_element>& elements() const {
+        return _elements;
+    }
+
 private:
     void draw_setup_textures(grx_mesh_element& element) {
         if (element.material_index != core::numlim<uint>::max()) {
