@@ -143,7 +143,7 @@ void grx::grx_window::present() {
                               sizeof(pixel),
                               pixel.v.data());
             _scene_luminance = luminance(pixel);
-            if (_scene_luminance < 0.001f)
+            if (_scene_luminance < 0.001f || std::isnan(_scene_luminance))
                 _scene_luminance = 0.001f;
 
             _render_target->generate_mipmaps();
