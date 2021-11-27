@@ -196,13 +196,13 @@ namespace core {
     template <typename A, size_t... Idxs>
     inline void vec_fetch_normalize(std::array<A, sizeof...(Idxs)>& a, std::index_sequence<Idxs...>&&) {
         auto magnitude = vec_magnitude(a);
-        ((std::get<Idxs>(a) / magnitude), ...);
+        ((std::get<Idxs>(a) /= magnitude), ...);
     }
 
     template <size_t Steps = 1, typename A, size_t... Idxs>
     inline void vec_fetch_fast_normalize(std::array<A, sizeof...(Idxs)>& a, std::index_sequence<Idxs...>&&) {
         auto inverse_magnitude = vec_fast_inverse_magnitude<Steps>(a);
-        ((std::get<Idxs>(a) * inverse_magnitude), ...);
+        ((std::get<Idxs>(a) *= inverse_magnitude), ...);
     }
 
     template <typename A, typename B, size_t... Idxs>
@@ -432,7 +432,7 @@ namespace core {
             return DerivedT<T, S>{vec_normalize(this->v, std::make_index_sequence<S>())};
         }
 
-        DerivedT<T, S>& make_normalize() const {
+        DerivedT<T, S>& make_normalize() {
             vec_fetch_normalize(this->v, std::make_index_sequence<S>());
             return static_cast<DerivedT<T, S>&>(*this);
         }
@@ -443,7 +443,7 @@ namespace core {
         }
 
         template <size_t Iterations = 2>
-        DerivedT<T, S>& make_fast_normalize() const {
+        DerivedT<T, S>& make_fast_normalize() {
             vec_fetch_fast_normalize<Iterations>(this->v, std::make_index_sequence<S>());
             return static_cast<DerivedT<T, S>&>(*this);
         }
