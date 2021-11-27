@@ -117,7 +117,7 @@ public:
                                             "void main() {",
                                             "    tex_coords = position_ms;",
                                             "    vec4 pos = (MVP * vec4(position_ms, 1.0)).xyww;",
-                                            "    pos.z *= 0.999;",
+                                            "    pos.z *= 0.999999;",
                                             "    gl_Position = pos;",
                                             "}"),
             grx_shader<shader_type::fragment>("in  vec3 tex_coords;",
