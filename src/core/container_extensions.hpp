@@ -76,6 +76,7 @@ template <typename T, size_t S>
 class dimensional_index_iterator : public std::iterator<std::forward_iterator_tag, T> {
 public:
     dimensional_index_iterator(array<T, S> end) noexcept: ends(end) {}
+    dimensional_index_iterator(array<T, S> start, array<T, S> end) noexcept: idxs(start), ends(end) {}
     dimensional_index_iterator() noexcept: wrapped(true) {}
 
     inline dimensional_index_iterator& operator++() noexcept {
@@ -474,6 +475,33 @@ template <typename T = size_t, size_t S>
 auto dimensional_seq(vec<T, S> maxs) {
     return iterator_view_proxy(
             dimensional_index_iterator(maxs.v),
+            dimensional_index_iterator<T, S>());
+}
+
+/**
+ * @brief Generate n-dimensional index sequence
+ *
+ * Usage:
+ * for (int [x, y] : dimensional_seq(vec{1, 2}, vec{10, 20})) {
+ * }
+ *
+ * Equivalent of:
+ * auto v = vec{10, 20};
+ * for (int y = 2; y < vec.y(); ++y) {
+ *     for (size_t x = 1; x < vec.x(); ++x) {
+ *     }
+ * }
+ *
+ * @tparam T  - type of index
+ * @param max - n-dimensional vector specifying at which positions to start (included)
+ * @param max - n-dimensional vector specifying at which positions to stop (not included)
+ * @return    - n-dimensional index sequence
+ *
+ */
+template <typename T = size_t, size_t S>
+auto dimensional_seq(vec<T, S> start, vec<T, S> maxs) {
+    return iterator_view_proxy(
+            dimensional_index_iterator(start.v, maxs.v),
             dimensional_index_iterator<T, S>());
 }
 
@@ -1082,11 +1110,31 @@ constexpr inline auto array_map(const array<T, S>& arr, F callback) {
     return array_map(arr, callback, std::make_index_sequence<S>());
 }
 
-template <typename... Ts> requires requires (const Ts&... s) { ((s.size()), ...); (string_view(s), ...); }
-inline string build_string(const Ts&... strings) {
+namespace details {
+template <typename T> requires requires (T&& s) { {s.size()} -> std::convertible_to<size_t>; }
+size_t string_builder_size_getter(T&& s) {
+    return s.size();
+}
+template <size_t N>
+size_t string_builder_size_getter(const char(&)[N]) {
+    return N - 1;
+}
+inline size_t string_builder_size_getter(char) {
+    return 1;
+}
+void string_builder_append(string& str, auto&& v) {
+    str.append(v);
+}
+inline void string_builder_append(string& str, char c) {
+    str.push_back(c);
+}
+}
+
+template <typename... Ts>
+inline string build_string(Ts&&... strings) {
     string str;
-    str.reserve((strings.size() + ...));
-    ((str.append(strings)), ...);
+    str.reserve((details::string_builder_size_getter(strings) + ...));
+    (details::string_builder_append(str, std::forward<Ts>(strings)), ...);
     return str;
 }
 } // namespace core
