@@ -102,10 +102,10 @@ struct grx_mesh_element { // NOLINT
 
     uint     indices_count = 0;
     uint     vertices_count = 0;
-    uint     material_index = std::numeric_limits<uint>::max();
     uint     start_vertex_pos = 0;
     uint     start_index_pos = 0;
     grx_aabb aabb;
+    uint     material_index = std::numeric_limits<uint>::max();
 
     [[nodiscard]]
     bool operator==(const grx_mesh_element& rhs) const {
