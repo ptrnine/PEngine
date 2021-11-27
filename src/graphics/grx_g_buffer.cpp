@@ -3,10 +3,10 @@
 #include <GL/glew.h>
 
 namespace {
-void gen_vec4_attachment(uint& id, core::vec2i size, GLenum attachment) {
+void gen_vec4_attachment(uint& id, core::vec2i size, GLenum attachment, int internal_mode) {
     glGenTextures(1, &id);
     glBindTexture(GL_TEXTURE_2D, id);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, size.x(), size.y(), 0, GL_RGBA, GL_FLOAT, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, internal_mode, size.x(), size.y(), 0, GL_RGBA, GL_FLOAT, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, id, 0);
@@ -29,10 +29,10 @@ uint grx::details::gen_g_buffer(vec2i size, uint* attachments) {
     glGenFramebuffers(1, &fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
-    gen_vec4_attachment(attachments[grx_g_buffer::gbuf_albedo],         size, GL_COLOR_ATTACHMENT0);
-    gen_vec4_attachment(attachments[grx_g_buffer::gbuf_normal],         size, GL_COLOR_ATTACHMENT1);
-    gen_vec4_attachment(attachments[grx_g_buffer::gbuf_position_depth], size, GL_COLOR_ATTACHMENT2);
-    gen_vec4_attachment(attachments[grx_g_buffer::gbuf_final],          size, GL_COLOR_ATTACHMENT3);
+    gen_vec4_attachment(attachments[grx_g_buffer::gbuf_albedo],         size, GL_COLOR_ATTACHMENT0, GL_RGBA16F);
+    gen_vec4_attachment(attachments[grx_g_buffer::gbuf_normal],         size, GL_COLOR_ATTACHMENT1, GL_RGBA16F);
+    gen_vec4_attachment(attachments[grx_g_buffer::gbuf_position_depth], size, GL_COLOR_ATTACHMENT2, GL_RGBA32F);
+    gen_vec4_attachment(attachments[grx_g_buffer::gbuf_final],          size, GL_COLOR_ATTACHMENT3, GL_RGBA16F);
 
     glGenTextures(1, &attachments[grx_g_buffer::gbuf_depth]);
     glBindTexture(GL_TEXTURE_2D, attachments[grx_g_buffer::gbuf_depth]);
